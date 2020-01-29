@@ -10,8 +10,8 @@ Requirement
 6) gcc/g++
 7) Python (prefer 3.6 or above)
 Several Python packages need to be installed for calculation and ploting:
--numpy
--pandas
--plotnine
--matplotlib
+1) numpy
+2) pandas
+3) plotnine
+4) matplotlib
     
