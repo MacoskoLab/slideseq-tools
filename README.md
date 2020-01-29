@@ -27,9 +27,7 @@ Command:
 build_reference.py manifest_file
 ```
 
-Notice:
-1) build_reference.py calls build_reference.sh
-2) check `example.buildreference.txt` for manifest file format
+Check `example.buildreference.txt` for manifest file format
 
 # Run the pipeline
 
@@ -51,8 +49,9 @@ python run_pipeline.py manifest_file
 ```
 
 Notice: 
-1) an email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
-2) in order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
+1) Check `example.manifest.txt` for manifest file format
+2) an email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
+3) in order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
 
 # Manifest
 
