@@ -1,0 +1,274 @@
+
+********************************************************************************************
+**                                                                                        **
+**  Slide-seq Flowcell Alignment Workflow                                                 **
+**                                                                                        **
+**  Author:       Jilong Li                                                               **
+**  Version:      1.0.0                                                                   **
+**  Release date: 02/01/2020                                                              **
+**  Contact:      emacosko@broadinstitute.org                                             **
+**                jilong@broadinstitute.org                                               **
+**                                                                                        **
+********************************************************************************************
+
+
+The Slide-seq flowcell alignment workflow aligns reads to reference genome, generates 
+feature-barcode matrices, performs gene expression analysis and matches data from in 
+situ sequencing and indexing of barcodes with short read sequencing data. 
+
+
+********************************************************************************************
+*********************************      Requirement      ************************************
+********************************************************************************************
+
+The pipeline needs several public tools pre-installed:
+
+1) Drop-seq tools: https://github.com/broadinstitute/Drop-seq
+
+2) Picard: https://broadinstitute.github.io/picard/
+
+3) STAR: https://github.com/alexdobin/STAR
+
+4) Java
+
+5) Samtools
+
+6) gcc/g++
+
+7) Python (prefer 3.6 or above)
+
+Several Python packages need to be installed for calculation and ploting:
+
+1) numpy
+
+2) pandas
+
+3) plotnine
+
+4) matplotlib
+
+
+********************************************************************************************
+*****************************    Build genome reference     ********************************
+********************************************************************************************
+
+The Slide-seq pipeline needs a genome reference in specific format for alignment and analysis. 
+You could build a genome reference based on input fasta and gtf files. 
+
+Command:
+	build_reference.py manifest_file
+
+Check example.buildreference.txt for manifest file format
+
+
+********************************************************************************************
+********************************    Run the pipeline     ***********************************
+********************************************************************************************
+
+1) Add below commands into run.sh and build_reference.sh or your bashrc file (command might be different on your system):
+	use Java-1.8
+	use .samtools-1.7
+	use Python-3.6
+
+2) Compile CMatcher (command might be different on your system):
+	g++ -std=c++11 -o cmatcher cmatcher.cpp
+
+3) Submit a request to the pipeline:
+	python run_pipeline.py manifest_file
+
+Notice: 
+1) Check example.manifest.txt for manifest file format
+2) An email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file
+	when the submission is received, the workflow finishes, and/or any job fails. 
+3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, 
+    and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
+
+
+********************************************************************************************
+**************************************    Manifest    **************************************
+********************************************************************************************
+
+flowcell_directory		Specify the directory of the Illumina BCL files that will be used as input
+
+output_folder			Specify the directory where the output files will be saved. Its parent directory must exist
+
+library_folder			Specify the directory where the alignment and barcode matching outputs are saved. 
+						Default value: output_folder/libraries
+
+dropseq_folder			Specify the directory of the Drop-seq tools
+
+picard_folder			Specify the directory of the Picard tool
+
+STAR_folder				Specify the directory of the STAR aligner
+
+scripts_folder			Specify the directory of the pipeline scripts
+
+temp_folder				Specify the directory where the temporary files will be saved. 
+						Default value: output_folder/tmp
+
+flowcell_barcode		Specify the flowcell barcode that will be used as part of the output folder and file names
+
+metadata_file			Specify the meta data file containing information including library, experiment_date, lane, 
+						sample_barcode, bead_structure, estimated_num_cells, estimated_num_beads, reference, 
+						locus_function_list, start_sequence, base_quality, min_transcripts_per_cell, run_barcodematching, 
+						bead_barcode_file (see example.metadata.txt)
+
+option_file				Specify the options for calling the Drop-seq tools (see options.txt)
+
+illumina_platform		Specify the Illumina platform. It could be MiniSeq, NextSeq, NovaSeq or NovaSeqS4. 
+						Default value is NextSeq
+
+email_address			Specify email address(es) for receiving message from the pipeline
+		
+
+********************************************************************************************
+**************************************    Metadata    **************************************
+********************************************************************************************
+
+library					Specify the library ID
+
+experiment_date			Specify the experiment date that will be used as part of the output folder and file names
+
+lane					Specify the lane id for the library. It could be a single lane number like "1", 
+						a combination lane numbers like "1,2" or "{LANE}" for all of the lanes in the experiment. 
+						Default value is {LANE}
+
+sample_barcode			Specify sample barcode such as TAAGGCGA
+
+bead_structure			Specify bead structure such as 8C18X7C8M1X|*T
+
+estimated_num_cells		Specify the estimated number of cells
+
+estimated_num_beads		Specify the estimated number of beads
+
+reference				Specify the reference build to use for alignment
+
+start_sequence			Specify the starting sequence that is used to trim reads. Default value is AAGCAGTGGTATCAACGCAGAGTGAATGGG
+
+base_quality			Specify the minimum quality of reads that will be kept during the alignment process. Default value is 10
+
+min_transcripts			Specify the minimum number of transcripts per cell that is used to filter barcodes during 
+_per_cell				generating digital expression. Default value is 10
+
+locus_function_list		Specify a list of functional annotations that reads need to be completely contained by to be considered for analysis. 
+						This option is used to generate digital expression files. Possible values include exonic, exonic+intronic and intronic. 
+						Default value is exonic+intronic
+
+run_barcodematching		Specify whether to run barcode matching. Default value is False
+
+bead_barcode_file		Specify bead barcode file that contains a list of bead barcodes and related x coordinate and 
+						y coordinate as three columns. (See example.beadbarcodes.txt)
+
+
+********************************************************************************************
+**************************************    Script     ***************************************
+********************************************************************************************
+
+The following are the main scripts of the pipeline, describing what is done at each step. 
+
+1) run_pipeline.py
+-This script is to submit a request to the Slide-seq flowcell alignment pipeline
+-It checks options in the manifest file and prints error info if there is any invalid option
+-It calls run_preparation.py
+
+2) run_preparation.py
+-This script checks Illumina directory
+-It creates output directories, parses metadata file, generates barcode_params.txt and library_params.txt
+-It calls run_processbarcodes.py and run_mergebarcodes.py
+
+3) parse_metadata.py
+-This script parses input meta data file and generates parsed_metadata.txt
+
+4) gen_barcode_params.py
+-This script generates barcode_params.txt that is needed by extracting Illumina barcodes
+
+5) gen_library_params.py
+-This script generates library_params.txt that is needed by converting Illumina basecalls to sam
+
+6) run_processbarcodes.py
+-This script extracts Illumina barcodes from BCL files and calls run_barcodes2sam.py
+
+7) run_barcodes2sam.py
+-This script converts Illumina base calls to sam (unmapped.bam)
+
+8) run_mergebarcodes.py
+-This script merges barcode metrics for each library
+-It calls run_alignment.py and run_analysis.py
+
+9) run_alignment.py
+-This script does several steps:
+# Tag bam with cellular barcode
+# Tag bam with molecular barcode
+# Filter low-quality reads
+# Trim reads with starting sequence
+# Adapter-aware poly A trimming
+# Convert bam to fastq
+# Map reads to genome sequence using STAR
+# Sort aligned bam
+# Merge unmapped bam and aligned bam
+# Tag read with interval
+# Tag read with gene function
+
+10) run_analysis.py
+-This script merges bam files and validates the merged file
+
+11) run_analysis_spec.py
+-This script runs on each locus function for each library and does several steps:
+-It selects cells by the minimum number of transcripts
+-It calls CMatcher
+-It generates digital expression files for all Illumina barcodes
+
+12) generate_plots.py
+-This script generates analysis outputs from alignment and generates plots if not running barcode matching
+
+13) cmatcher.cpp
+-This script does barcode matching
+-It calculates hamming distance between each Illumina barcode and all of bead barcodes 
+ and picks unique matched Illumina barcodes with hamming distance <= 1
+
+14) run_cmatcher_combine.py
+-This script combines outputs from CMatcher and calls tag_matched_bam.py and filter_unmapped_bam.py
+
+15) tag_matched_bam.py
+-This script tags combined bam file using matched bead barcodes
+
+16) filter_unmapped_bam.py
+-This script filters unmapped bam file using matched barcodes
+
+17) generate_plots_cmatcher.py
+-This script generates digital expression and plots on matched bead barcodes
+
+18) send_email.py
+-This script sends an email to the user(s) when the submission is received, the workflow finishes, and/or any job fails 
+ if email_address is specified in the manifest file
+
+
+********************************************************************************************
+***************************************    Output    ***************************************
+********************************************************************************************
+
+output_folder/logs/: save log files for each step
+
+output_folder/status/: there are four kinds of empty folders under this directory, 
+    you can easily track if a job is waiting, running, finished or failed
+    1) waiting.***: waiting jobs
+    2) running.***: running jobs
+    3) finished.***: finished jobs
+    4) failed.***: failed jobs, error information can be found in log files
+
+output_folder/1/barcodes/: save the extracted Illumina barcodes for each lane. 1 is lane number
+
+library_folder/2019-02-19_Puck_181026_13/: save pre-alignment and alignment files. 2019-02-19 is the experiment date. Puck_181026_13 is library ID
+
+library_folder/2019-02-19_Puck_181026_13/***.unmapped.bam: unmapped bam file for each lane from Illumina BCL files
+
+library_folder/2019-02-19_Puck_181026_13/Puck_181026_13.bam: combined bam file
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/: save output files from alignment and digital expression. GRCm38.81 is reference name. exonic+intronic is locus function
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.digital_expression.txt.gz: digital expression matrix for matched bead barcodes
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13_GRCm38.81.exonic+intronic.pdf: plots for alignment and barcode matching
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/: save output files from barcode matching
+
