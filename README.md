@@ -1,7 +1,9 @@
 # slideseq-pipeline
 A pipeline for processing Slide-seq data
 
-Requirement
+# Requirement
+
+The pipeline needs several public tools pre-installed:
 1) Drop-seq tools: https://github.com/broadinstitute/Drop-seq
 2) Picard: https://broadinstitute.github.io/picard/
 3) STAR: https://github.com/alexdobin/STAR
