@@ -1,0 +1,10 @@
+reference_fasta=/broad/macosko/jilong/slideseq_pipeline/test2/ref/src/m38.fasta
+gtf=/broad/macosko/jilong/slideseq_pipeline/test2/ref/src/Mus_musculus.GRCm38.81.gtf
+name=GRCm38.81
+output_folder=/broad/macosko/jilong/slideseq_pipeline/test2/ref
+dropseq_folder=/broad/macosko/bin/dropseq-tools
+picard_folder=/broad/macosko/bin/dropseq-tools/3rdParty/picard
+STAR_folder=/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a
+shell_script=/broad/macosko/jilong/slideseq_pipeline/test2/scripts/build_reference.sh
+bgzip_location=/broad/software/free/Linux/redhat_6_x86_64/pkgs/tabix/tabix_0.2.6/bin/bgzip
+filtered_gene_biotypes=processed_pseudogene,unprocessed_pseudogene,transcribed_unprocessed_pseudogene,pseudogene,IG_V_pseudogene,transcribed_processed_pseudogene,TR_J_pseudogene,TR_V_pseudogene,unitary_pseudogene,polymorphic_pseudogene,IG_D_pseudogene,translated_processed_pseudogene,translated_unprocessed_pseudogene,IG_C_pseudogene
