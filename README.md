@@ -29,7 +29,7 @@ build_reference.py manifest_file
 
 Notice:
 1) build_reference.py calls build_reference.sh
-2) check example.buildreference.txt for manifest_file format
+2) check `example.buildreference.txt` for manifest file format
 
 # Run the pipeline
 
@@ -74,9 +74,9 @@ temp_folder: specify the directory where the temporary files will be saved. Defa
 
 flowcell_barcode: specify the flowcell barcode that will be used as part of the output folder and file names
 
-metadata_file: specify the meta data file containing information including library, experiment_date, lane, sample_barcode, bead_structure, estimated_num_cells, estimated_num_beads, reference, locus_function_list, start_sequence, base_quality, min_transcripts_per_cell, run_barcodematching, bead_barcode_file (see example.metadata.txt)
+metadata_file: specify the meta data file containing information including library, experiment_date, lane, sample_barcode, bead_structure, estimated_num_cells, estimated_num_beads, reference, locus_function_list, start_sequence, base_quality, min_transcripts_per_cell, run_barcodematching, bead_barcode_file (see `example.metadata.txt`)
 
-option_file: specify the options for calling the Drop-seq tools (see options.txt)
+option_file: specify the options for calling the Drop-seq tools (see `options.txt`)
 
 illumina_platform: specify the Illumina platform. It could be MiniSeq, NextSeq, NovaSeq or NovaSeqS4. Default value is NextSeq
 
@@ -110,5 +110,5 @@ locus_function_list: specify a list of functional annotations that reads need to
 
 run_barcodematching: specify whether to run barcode matching. Default value is False
 
-bead_barcode_file: specify bead barcode file that contains a list of bead barcodes and related x coordinate and y coordinate as three columns. (See example.beadbarcodes.txt)
+bead_barcode_file: specify bead barcode file that contains a list of bead barcodes and related x coordinate and y coordinate as three columns. (See `example.beadbarcodes.txt`)
 
