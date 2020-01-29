@@ -4,19 +4,19 @@ A pipeline for processing Slide-seq data, which aligns reads to reference genome
 # Requirement
 
 The pipeline needs several public tools pre-installed:
-1) Drop-seq tools: https://github.com/broadinstitute/Drop-seq
-2) Picard: https://broadinstitute.github.io/picard/
-3) STAR: https://github.com/alexdobin/STAR
-4) Java
-5) Samtools
-6) gcc/g++
-7) Python (prefer 3.6 or above)
+1) `Drop-seq tools`: https://github.com/broadinstitute/Drop-seq
+2) `Picard`: https://broadinstitute.github.io/picard/
+3) `STAR`: https://github.com/alexdobin/STAR
+4) `Java`
+5) `Samtools`
+6) `gcc/g++`
+7) `Python` (prefer 3.6 or above)
 
 Several Python packages need to be installed for calculation and ploting:
-1) numpy
-2) pandas
-3) plotnine
-4) matplotlib
+1) `numpy`
+2) `pandas`
+3) `plotnine`
+4) `matplotlib`
     
 # Build genome reference
 
@@ -33,7 +33,7 @@ Notice:
 
 # Run the pipeline
 
-Add below commands into run.sh and build_reference.sh or your bashrc file (command might be different on your system):
+Add below commands into `run.sh` and `build_reference.sh` or your `bashrc` file (command might be different on your system):
 ```
 use Java-1.8
 use .samtools-1.7
