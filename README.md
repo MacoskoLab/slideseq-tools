@@ -1,5 +1,5 @@
 # slideseq-pipeline
-A pipeline for processing Slide-seq data
+A pipeline for processing Slide-seq data, which aligns reads to reference genome, generates feature-barcode matrices, performs gene expression analysis and matches data from in situ sequencing and indexing of barcodes with short read sequencing data.
 
 # Requirement
 
