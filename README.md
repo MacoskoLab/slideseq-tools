@@ -71,3 +71,33 @@ illumina_platform: specify the Illumina platform. It could be MiniSeq, NextSeq, 
 
 email_address: specify email address(es) for receiving message from the pipeline
 
+# Metadata
+
+library: specify the library ID
+
+experiment_date: specify the experiment date that will be used as part of the output folder and file names
+
+lane: specify the lane id for the library. It could be a single lane number like "1", a combination lane numbers like "1,2" or "{LANE}" for all of the lanes in the experiment. Default value is {LANE}
+
+sample_barcode: specify sample barcode such as TAAGGCGA
+
+bead_structure: specify bead structure such as 8C18X7C8M1X|*T
+
+estimated_num_cells: specify the estimated number of cells
+
+estimated_num_beads: specify the estimated number of beads
+
+reference: specify the reference build to use for alignment
+
+start_sequence: specify the starting sequence that is used to trim reads. Default value is AAGCAGTGGTATCAACGCAGAGTGAATGGG
+
+base_quality: specify the minimum quality of reads that will be kept during the alignment process. Default value is 10
+
+min_transcripts_per_cell: specify the minimum number of transcripts per cell that is used to filter barcodes during generating digital expression. Default value is 10
+
+locus_function_list: specify a list of functional annotations that reads need to be completely contained by to be considered for analysis. This option is used to generate digital expression files. Possible values include exonic, exonic+intronic and intronic. Default value is exonic+intronic
+
+run_barcodematching: specify whether to run barcode matching. Default value is False
+
+bead_barcode_file: specify bead barcode file that contains a list of bead barcodes and related x coordinate and y coordinate as three columns. (See example.beadbarcodes.txt)
+
