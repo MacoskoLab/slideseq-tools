@@ -52,5 +52,5 @@ Notice:
 1) Check `example.manifest.txt` for manifest file format
 2) An email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
 3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
-4) See user_doc.txt for detailed usage of the Slide-seq pipeline. 
+4) See `user_doc.txt` for detailed usage of the Slide-seq pipeline. 
 
