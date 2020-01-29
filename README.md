@@ -39,41 +39,35 @@ Compile CMatcher (command might be different on your system): g++ -std=c++11 -o 
 
 Submit a request to the pipeline: python run_pipeline.py manifest_file
 
-Notice: an email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
+Notice: 
+1) an email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
+2) in order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
 
 # Manifest
 
-flowcell_directory      Specify the directory of the Illumina BCL files that will be used as input
+flowcell_directory: specify the directory of the Illumina BCL files that will be used as input
 
-output_folder			Specify the directory where the output files will be saved. Its parent directory must exist
+output_folder: specify the directory where the output files will be saved. Its parent directory must exist
 
-library_folder			Specify the directory where the alignment and barcode matching outputs are saved. 
-						Default value: output_folder/libraries
+library_folder: specify the directory where the alignment and barcode matching outputs are saved. Default value: output_folder/libraries
 
-dropseq_folder			Specify the directory of the Drop-seq tools
+dropseq_folder: specify the directory of the Drop-seq tools
 
-picard_folder			Specify the directory of the Picard tool
+picard_folder: specify the directory of the Picard tool
 
-STAR_folder				Specify the directory of the STAR aligner
+STAR_folder: specify the directory of the STAR aligner
 
-scripts_folder			Specify the directory of the pipeline scripts
+scripts_folder: specify the directory of the pipeline scripts
 
-temp_folder				Specify the directory where the temporary files will be saved. 
-						Default value: output_folder/tmp
+temp_folder: specify the directory where the temporary files will be saved. Default value: output_folder/tmp
 
-flowcell_barcode		Specify the flowcell barcode that will be used as part of the output folder and file names
+flowcell_barcode: specify the flowcell barcode that will be used as part of the output folder and file names
 
-metadata_file			Specify the meta data file containing information including library, experiment_date, lane, 
-						sample_barcode, bead_structure, estimated_num_cells, estimated_num_beads, reference, 
-						locus_function_list, start_sequence, base_quality, min_transcripts_per_cell, run_barcodematching, 
-						bead_barcode_file (see example.metadata.txt)
+metadata_file: specify the meta data file containing information including library, experiment_date, lane, sample_barcode, bead_structure, estimated_num_cells, estimated_num_beads, reference, locus_function_list, start_sequence, base_quality, min_transcripts_per_cell, run_barcodematching, bead_barcode_file (see example.metadata.txt)
 
-option_file				Specify the options for calling the Drop-seq tools (see options.txt)
+option_file: specify the options for calling the Drop-seq tools (see options.txt)
 
-illumina_platform		Specify the Illumina platform. It could be MiniSeq, NextSeq, NovaSeq or NovaSeqS4. 
-						Default value is NextSeq
+illumina_platform: specify the Illumina platform. It could be MiniSeq, NextSeq, NovaSeq or NovaSeqS4. Default value is NextSeq
 
-email_address			Specify email address(es) for receiving message from the pipeline
-
-Notice: in order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
+email_address: specify email address(es) for receiving message from the pipeline
 
