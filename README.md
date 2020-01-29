@@ -22,7 +22,10 @@ Several Python packages need to be installed for calculation and ploting:
 
 The Slide-seq pipeline needs a genome reference in specific format for alignment and analysis. You could build a genome reference based on input fasta and gtf files. 
 
-Command: build_reference.py manifest_file
+Command: 
+```
+build_reference.py manifest_file
+```
 
 Notice:
 1) build_reference.py calls build_reference.sh
@@ -35,9 +38,15 @@ Add below commands into run.sh and build_reference.sh or your bashrc file (more 
 2) use .samtools-1.7
 3) use Python-3.6
 
-Compile CMatcher (command might be different on your system): g++ -std=c++11 -o cmatcher cmatcher.cpp
+Compile CMatcher (command might be different on your system): 
+```
+g++ -std=c++11 -o cmatcher cmatcher.cpp
+```
 
-Submit a request to the pipeline: python run_pipeline.py manifest_file
+Submit a request to the pipeline: 
+```
+python run_pipeline.py manifest_file
+```
 
 Notice: 
 1) an email from slideseq@broadinstitute.org will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
