@@ -9,6 +9,7 @@ Requirement
 5) Samtools
 6) gcc/g++
 7) Python (prefer 3.6 or above)
+
 Several Python packages need to be installed for calculation and ploting:
 1) numpy
 2) pandas
