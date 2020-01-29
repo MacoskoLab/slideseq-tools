@@ -34,9 +34,11 @@ Notice:
 # Run the pipeline
 
 Add below commands into run.sh and build_reference.sh or your bashrc file (more or less based on your machine):
-1) use Java-1.8
-2) use .samtools-1.7
-3) use Python-3.6
+```
+use Java-1.8
+use .samtools-1.7
+use Python-3.6
+```
 
 Compile CMatcher (command might be different on your system): 
 ```
