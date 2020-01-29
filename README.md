@@ -33,7 +33,7 @@ Notice:
 
 # Run the pipeline
 
-Add below commands into run.sh and build_reference.sh or your bashrc file (more or less based on your machine):
+Add below commands into run.sh and build_reference.sh or your bashrc file (command might be different on your system):
 ```
 use Java-1.8
 use .samtools-1.7
