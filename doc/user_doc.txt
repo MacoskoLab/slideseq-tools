@@ -59,6 +59,32 @@ Command:
 
 Check example.buildreference.txt for manifest file format
 
+dropseq_folder			Specify the directory of the Drop-seq tools
+
+picard_folder			Specify the directory of the Picard tool
+
+STAR_folder				Specify the directory of the STAR aligner
+
+output_folder			Specify the directory where the output files will be saved. Its parent directory must exist
+
+reference_fasta			Specify the input reference genome fasta file
+
+gtf						Specify the input reference genome gtf file
+
+name					Specify the output file name
+
+shell_script			Specify the full path of build_reference.sh
+
+bgzip_location			Specify the full path of bgzip (e.g. /path/tabix_0.2.6/bin/bgzip)
+
+filtered_gene_biotypes	Specify gene biotypes that are used to filter input gtf file. 
+						Default value is processed_pseudogene,unprocessed_pseudogene,transcribed_unprocessed_pseudogene,
+						pseudogene,IG_V_pseudogene,transcribed_processed_pseudogene,TR_J_pseudogene,TR_V_pseudogene,
+						unitary_pseudogene,polymorphic_pseudogene,IG_D_pseudogene,translated_processed_pseudogene,
+						translated_unprocessed_pseudogene,IG_C_pseudogene
+
+MT_SEQUENCE				Specify the MT sequence (e.g. MT). Default value is empty
+
 
 ********************************************************************************************
 ********************************    Run the pipeline     ***********************************
