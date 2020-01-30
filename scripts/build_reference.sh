@@ -12,6 +12,7 @@ reference_fasta=$6
 gtf=$7
 name=$8
 filtered_gene_biotypes=$9
+mt_sequence="${10}"
 
 echo ${submission}
 
@@ -30,7 +31,11 @@ ${dropseq_folder}/ConvertToRefFlat ANNOTATIONS_FILE=$output_gtf SEQUENCE_DICTION
 
 ${dropseq_folder}/ReduceGtf GTF=$output_gtf SEQUENCE_DICTIONARY=$sequence_dictionary OUTPUT=$reduced_gtf
 
-${dropseq_folder}/CreateIntervalsFiles SEQUENCE_DICTIONARY=$sequence_dictionary REDUCED_GTF=$reduced_gtf PREFIX=${name} OUTPUT=${outdir} MT_SEQUENCE=chrM
+if [ "${mt_sequence}" == "" ]; then
+	${dropseq_folder}/CreateIntervalsFiles SEQUENCE_DICTIONARY=$sequence_dictionary REDUCED_GTF=$reduced_gtf PREFIX=${name} OUTPUT=${outdir}
+else
+	${dropseq_folder}/CreateIntervalsFiles SEQUENCE_DICTIONARY=$sequence_dictionary REDUCED_GTF=$reduced_gtf PREFIX=${name} OUTPUT=${outdir} MT_SEQUENCE=${mt_sequence}
+fi
 
 ${STAR_folder}/STAR --runMode genomeGenerate --genomeDir ${outdir}/STAR --genomeFastaFiles $output_fasta --sjdbGTFfile $output_gtf --sjdbOverhang 97
 
