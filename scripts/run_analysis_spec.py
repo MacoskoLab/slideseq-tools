@@ -160,6 +160,8 @@ def main():
 	
     reference_folder = reference[:reference.rfind('/')]
     referencePure = reference[reference.rfind('/') + 1:]
+    if (referencePure.endswith('.gz')):
+        referencePure = referencePure[:referencePure.rfind('.')]
     referencePure = referencePure[:referencePure.rfind('.')]
     genome_dir = '{}/STAR'.format(reference_folder)
     intervals = '{}/{}.genes.intervals'.format(reference_folder, referencePure)

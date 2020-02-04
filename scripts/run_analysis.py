@@ -251,6 +251,8 @@ def main():
         
         lists = locus_function_list.split(',')
         referencePure = reference[reference.rfind('/') + 1:]
+        if (referencePure.endswith('.gz')):
+            referencePure = referencePure[:referencePure.rfind('.')]
         referencePure = referencePure[:referencePure.rfind('.')]   
         for l in lists:
             call(['mkdir', '{}/{}.{}'.format(analysis_folder, referencePure, l)])

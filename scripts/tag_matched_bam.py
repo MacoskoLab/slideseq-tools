@@ -84,6 +84,8 @@ def main():
     fin.close()
     
     referencePure = reference[reference.rfind('/') + 1:]
+    if (referencePure.endswith('.gz')):
+        referencePure = referencePure[:referencePure.rfind('.')]
     referencePure = referencePure[:referencePure.rfind('.')]
     reference2 = referencePure + '.' + locus_function_list
 
