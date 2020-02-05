@@ -1,5 +1,5 @@
 # Slide-seq tools
-Tools for processing Slide-seq data including building genome reference, aligning reads to reference genome, generating feature-barcode matrices, performing gene expression analysis and matching data from in situ sequencing and indexing of barcodes with short read sequencing data.
+Tools for analyzing Slide-seq data including building genome reference, aligning reads to reference genome, generating feature-barcode matrices, performing gene expression analysis and matching data from in situ sequencing and indexing of barcodes with short read sequencing data.
 
 ## Requirement
 
