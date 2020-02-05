@@ -1,18 +1,18 @@
 
 ********************************************************************************************
 **                                                                                        **
-**  Slide-seq Flowcell Alignment Workflow                                                 **
+**  The Slide-seq tools                                                                   **
 **                                                                                        **
 **  Author:       Jilong Li                                                               **
 **  Version:      1.0.0                                                                   **
-**  Release date: 02/01/2020                                                              **
+**  Release date: 02/05/2020                                                              **
 **  Contact:      slideseq@gmail.com                                                      **
 **                                                                                        **
 ********************************************************************************************
 
 
-The Slide-seq flowcell alignment workflow aligns reads to reference genome, generates 
-feature-barcode matrices, performs gene expression analysis and matches data from in 
+The Slide-seq tools build genome reference, align reads to reference genome, generate 
+feature-barcode matrices, perform gene expression analysis and match data from in 
 situ sequencing and indexing of barcodes with short read sequencing data. 
 
 
@@ -20,7 +20,7 @@ situ sequencing and indexing of barcodes with short read sequencing data.
 *********************************      Requirement      ************************************
 ********************************************************************************************
 
-The pipeline needs several public tools pre-installed:
+Several public tools need to be pre-installed:
 
 1) Drop-seq tools: https://github.com/broadinstitute/Drop-seq
 
@@ -51,7 +51,7 @@ Several Python packages need to be installed for calculation and ploting:
 *****************************    Build genome reference     ********************************
 ********************************************************************************************
 
-The Slide-seq pipeline needs a genome reference in specific format for alignment and analysis. 
+The Slide-seq tools need a genome reference in specific format for alignment and analysis. 
 You could build a genome reference based on input fasta and gtf files. 
 
 Command:
@@ -87,7 +87,7 @@ MT_SEQUENCE				Specify the MT sequence (e.g. MT). Default value is empty
 
 
 ********************************************************************************************
-********************************    Run the pipeline     ***********************************
+*****************************    Run the Slide-seq tools     *******************************
 ********************************************************************************************
 
 1) Add below commands into run.sh and build_reference.sh or your bashrc file (command might be different on your system):
@@ -98,15 +98,15 @@ MT_SEQUENCE				Specify the MT sequence (e.g. MT). Default value is empty
 2) Compile CMatcher (command might be different on your system):
 	g++ -std=c++11 -o cmatcher cmatcher.cpp
 
-3) Submit a request to the pipeline:
-	python run_pipeline.py manifest_file
+3) Submit a request to the Slide-seq tools:
+	python submit_job.py manifest_file
 
 Notice: 
 1) Check example.manifest.txt for manifest file format
 2) An email from slideseq@gmail.com will be sent to you if email_address is specified in the manifest file
 	when the submission is received, the workflow finishes, and/or any job fails. 
-3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, 
-    and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
+3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the Slide-seq tools split each lane into a few slices, 
+    run the alignment steps on the slices parallelly and combine the alignment outputs together. 
 
 
 ********************************************************************************************
@@ -126,7 +126,7 @@ picard_folder			Specify the directory of the Picard tool
 
 STAR_folder				Specify the directory of the STAR aligner
 
-scripts_folder			Specify the directory of the pipeline scripts
+scripts_folder			Specify the directory of the scripts in the Slide-seq tools
 
 temp_folder				Specify the directory where the temporary files will be saved. 
 						Default value: output_folder/tmp
@@ -143,7 +143,7 @@ option_file				Specify the options for calling the Drop-seq tools (see options.t
 illumina_platform		Specify the Illumina platform. It could be MiniSeq, NextSeq, NovaSeq or NovaSeqS4. 
 						Default value is NextSeq
 
-email_address			Specify email address(es) for receiving message from the pipeline
+email_address			Specify email address(es) for receiving message from the Slide-seq tools
 		
 
 ********************************************************************************************
@@ -189,10 +189,10 @@ bead_barcode_file		Specify bead barcode file that contains a list of bead barcod
 **************************************    Script     ***************************************
 ********************************************************************************************
 
-The following are the main scripts of the pipeline, describing what is done at each step. 
+The following are the main scripts of the Slide-seq tools, describing what is done at each step. 
 
-1) run_pipeline.py
--This script is to submit a request to the Slide-seq flowcell alignment pipeline
+1) submit_job.py
+-This script is to submit a request to the Slide-seq tools
 -It checks options in the manifest file and prints error info if there is any invalid option
 -It calls run_preparation.py
 
