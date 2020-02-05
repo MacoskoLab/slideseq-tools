@@ -1,9 +1,9 @@
-# slideseq-tools
-A pipeline for processing Slide-seq data, which aligns reads to reference genome, generates feature-barcode matrices, performs gene expression analysis and matches data from in situ sequencing and indexing of barcodes with short read sequencing data.
+# Slide-seq tools
+Tools for processing Slide-seq data including building genome reference, aligning reads to reference genome, generating feature-barcode matrices, performing gene expression analysis and matching data from in situ sequencing and indexing of barcodes with short read sequencing data.
 
 ## Requirement
 
-The pipeline needs several public tools pre-installed:
+Several public tools need to be pre-installed:
 1) `Drop-seq tools`: https://github.com/broadinstitute/Drop-seq
 2) `Picard`: https://broadinstitute.github.io/picard/
 3) `STAR`: https://github.com/alexdobin/STAR
@@ -20,7 +20,7 @@ Several Python packages need to be installed for calculation and ploting:
     
 ## Build genome reference
 
-The Slide-seq pipeline needs a genome reference in specific format for alignment and analysis. You could build a genome reference based on input fasta and gtf files. 
+The Slide-seq tools need a genome reference in specific format for alignment and analysis. You could build a genome reference based on input fasta and gtf files. 
 
 Command: 
 ```
@@ -29,7 +29,7 @@ build_reference.py manifest_file
 
 Check `example.buildreference.txt` for manifest file format
 
-## Run the pipeline
+## Run the Slide-seq tools
 
 Add below commands into `run.sh` and `build_reference.sh` or your `bashrc` file (command might be different on your system):
 ```
@@ -51,6 +51,6 @@ python run_pipeline.py manifest_file
 Notice: 
 1) Check `example.manifest.txt` for manifest file format
 2) An email from slideseq@gmail.com will be sent to you if email_address is specified in the manifest file when the submission is received, the workflow finishes, and/or any job fails.
-3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the pipeline splits each lane into a few slices, and runs the alignment steps on the slices parallelly and combines the alignment outputs together. 
-4) See `user_doc.txt` for detailed usage of the Slide-seq pipeline. 
+3) In order to speed up the process of NovaSeq data and NovaSeq S4 data, the Slide-seq tools split each lane into a few slices, run the alignment steps on the slices parallelly and combine the alignment outputs together. 
+4) See `user_doc.txt` for detailed usage of the Slide-seq tools. 
 
