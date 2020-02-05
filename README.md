@@ -43,9 +43,9 @@ Compile CMatcher (command might be different on your system):
 g++ -std=c++11 -o cmatcher cmatcher.cpp
 ```
 
-Submit a request to the pipeline: 
+Submit a request to the Slide-seq tools: 
 ```
-python run_pipeline.py manifest_file
+python submit_job.py manifest_file
 ```
 
 Notice: 
