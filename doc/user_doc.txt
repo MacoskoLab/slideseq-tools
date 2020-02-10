@@ -272,28 +272,79 @@ The following are the main scripts of the Slide-seq tools, describing what is do
 ***************************************    Output    ***************************************
 ********************************************************************************************
 
-output_folder/logs/: save log files for each step
+output_folder/logs/
+-save log files for each step
 
-output_folder/status/: there are four kinds of empty folders under this directory, 
+output_folder/status/
+-save status of each job
+-there are four kinds of empty folders under this directory, 
     you can easily track if a job is waiting, running, finished or failed
     1) waiting.***: waiting jobs
     2) running.***: running jobs
     3) finished.***: finished jobs
     4) failed.***: failed jobs, error information can be found in log files
 
-output_folder/1/barcodes/: save the extracted Illumina barcodes for each lane. 1 is lane number
+output_folder/1/barcodes/
+-save the extracted Illumina barcodes for each lane. 1 is lane number
 
-library_folder/2019-02-19_Puck_181026_13/: save pre-alignment and alignment files. 2019-02-19 is the experiment date. Puck_181026_13 is library ID
+library_folder/2019-02-19_Puck_181026_13/
+-save alignment output files. 2019-02-19 is the experiment date. Puck_181026_13 is library ID
 
-library_folder/2019-02-19_Puck_181026_13/***.unmapped.bam: unmapped bam file for each lane from Illumina BCL files
+library_folder/2019-02-19_Puck_181026_13/***.unmapped.bam
+-unmapped bam file for each slice in each lane from Illumina BCL files
 
-library_folder/2019-02-19_Puck_181026_13/Puck_181026_13.bam: combined bam file
+library_folder/2019-02-19_Puck_181026_13/Puck_181026_13.bam
+-combined aligned bam file
 
-library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/: save output files from alignment and digital expression. GRCm38.81 is reference name. exonic+intronic is locus function
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/
+-save output files from alignment and analysis. GRCm38.81 is reference name. exonic+intronic is locus function
 
-library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.digital_expression.txt.gz: digital expression matrix for matched bead barcodes
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.10_transcripts_mq_10_selected_cells.txt
+-the list of selected Illumina barcodes
+-the first 10 means the minimum number of transcripts per cell
+-the second 10 means the minimum quality of reads
 
-library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13_GRCm38.81.exonic+intronic.pdf: plots for alignment and barcode matching
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.digital_expression.txt.gz
+-digital expression matrix for matched bead barcodes
+-the number of header lines: 3
+-row name: gene name
+-column name: cell barcode
+-delimiter: Tab (‘\t’)
 
-library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/: save output files from barcode matching
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.digital_expression_summary.txt
+-digital expression summary file for matched bead barcodes
+-the number of header lines: 6
+-4 columns: CELL_BARCODE, NUM_GENIC_READS, NUM_TRANSCRIPTS, NUM_GENES
+-delimiter: Tab (‘\t’)
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.AllIllumina.digital_expression.txt.gz
+-digital expression matrix for selected Illumina barcodes
+-the number of header lines: 3
+-row name: gene name
+-column name: cell barcode
+-delimiter: Tab (‘\t’)
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.AllIllumina.digital_expression_summary.txt
+-digital expression summary file for selected Illumina barcodes
+-the number of header lines: 6
+-4 columns: CELL_BARCODE, NUM_GENIC_READS, NUM_TRANSCRIPTS, NUM_GENES
+-delimiter: Tab (‘\t’)
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13_GRCm38.81.exonic+intronic.pdf
+-plots for alignment and barcode matching
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/
+-save output files from barcode matching
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/Puck_181026_13_matched.bam
+-merged aligned bam file tagged with matched bead barcodes
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/Puck_181026_13_matched_bead_barcodes.txt
+-the list of unique matched bead barcodes
+
+library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/barcode_matching/Puck_181026_13_matched_bead_locations.txt
+-column 1: hamming distance
+-column 2: coordinate x
+-column 3: coordinate y
+-same order of barcodes with Puck_181026_13_matched_bead_barcodes.txt
 
