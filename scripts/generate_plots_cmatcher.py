@@ -52,14 +52,6 @@ def get_read1_len(bs):
         if it:
             i += int(it)
     return i
-    
-
-def hamming(seq1, seq2):
-    c = 0
-    for i in range(len(seq1)):
-        if seq1[i] != seq2[i]:
-            c += 1
-    return c
 
 
 # Get tile information from RunInfo.xml
@@ -223,8 +215,8 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                fol1 = '{}/status/finished.tag_matched_bam_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, reference2)
-                fol2 = '{}/status/failed.tag_matched_bam_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, reference2)
+                fol1 = '{}/status/finished.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
+                fol2 = '{}/status/failed.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                 if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
                     f = False
                     break
@@ -252,7 +244,7 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lanes[i], slice)
+                filtered_bam = '{}/{}_{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
                 if os.path.isfile(filtered_bam):
                     commandStr += ' INPUT={}'.format(filtered_bam)
                 else:
@@ -265,7 +257,7 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lanes[i], slice)
+                filtered_bam = '{}/{}_{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
                 if os.path.isfile(filtered_bam):
                     call(['rm', filtered_bam])
         
@@ -772,8 +764,8 @@ def main():
                 if libraries[i] != library:
                     continue
                 for slice in slice_id[lanes[i]]:
-                    fol1 = '{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, reference2)
-                    fol2 = '{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, reference2)
+                    fol1 = '{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
+                    fol2 = '{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                     if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
                         f = False
                         break
@@ -795,7 +787,7 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice)
+                filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
                 if os.path.isfile(filtered_bam):
                     commandStr += ' INPUT={}'.format(filtered_bam)
                 else:
@@ -808,7 +800,7 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice)
+                filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
                 if os.path.isfile(filtered_bam):
                     call(['rm', filtered_bam])
         

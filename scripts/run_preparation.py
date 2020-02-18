@@ -197,7 +197,8 @@ def main():
                 call(['mkdir', '{}/{}/{}'.format(output_folder, lane, slice)])
         for i in range(len(lanes)):
             for slice in slice_id[lane]:
-                call(['mkdir', '{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])])
+                if not os.path.isdir('{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])):
+                    call(['mkdir', '{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])])
                 if (barcodes[i]):
                     call(['mkdir', '{}/{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i], barcodes[i])])
         
@@ -225,7 +226,7 @@ def main():
         # Call run_mergebarcodes
         output_file = '{}/logs/run_mergebarcodes.log'.format(output_folder)
         submission_script = '{}/run.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=4g', '-notify', '-l', 'h_rt=12:0:0', '-j', 'y', submission_script, 'run_mergebarcodes', manifest_file, scripts_folder]
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=4g', '-notify', '-l', 'h_rt=40:0:0', '-j', 'y', submission_script, 'run_mergebarcodes', manifest_file, scripts_folder]
         call(call_args)
     
         call(['mv', folder_running, folder_finished])

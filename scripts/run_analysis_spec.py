@@ -214,7 +214,7 @@ def main():
                     for line in fin:
                         l += 1
                 fin.close()
-                k = 100000
+                k = 50000
                 ls = l // k
 
                 for i in range(ls + 1):
@@ -253,7 +253,7 @@ def main():
         commandStr += 'I={} O={}{}.AllIllumina.digital_expression.txt.gz '.format(combined_bamfile, alignment_folder, library)
         commandStr += 'SUMMARY={}{}.AllIllumina.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ={} MIN_BC_READ_THRESHOLD=0 '.format(alignment_folder, library, base_quality)
         commandStr += 'CELL_BC_FILE={}{}.{}_transcripts_mq_{}_selected_cells.txt.gz TMP_DIR={} '.format(alignment_folder, library, min_transcripts_per_cell, base_quality, tmpdir)
-        commandStr += 'OUTPUT_HEADER=true UEI={} VALIDATION_STRINGENCY=SILENT'.format(library)
+        commandStr += 'OUTPUT_HEADER=false UEI={} VALIDATION_STRINGENCY=SILENT'.format(library)
         if locus_function_list == 'exonic+intronic':
             commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
         elif locus_function_list == 'intronic':

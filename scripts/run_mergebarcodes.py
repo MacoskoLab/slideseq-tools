@@ -225,17 +225,20 @@ def main():
                         unmapped_bam2 += '.'+barcodes[i]
                     unmapped_bam2 += '.unmapped.bam'
                     if os.path.isfile(unmapped_bam):
-                        os.system('mv ' + unmapped_bam + ' ' + unmapped_bam2)
-    
+                        os.system('mv {} {}'.format(unmapped_bam, unmapped_bam2))
+
                     # Call run_alignment
-                    output_file = '{}/logs/run_alignment_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice)
+                    output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
                     submission_script = '{}/run.sh'.format(scripts_folder)
-                    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, scripts_folder]
+                    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder]
                     call(call_args)
-    
-        # Call run_analysis
-        for j in range(len(libraries_unique)):
-            library = libraries_unique[j]
+        
+            if is_NovaSeq or is_NovaSeq_S4:
+                time.sleep(1800)
+            else:
+                time.sleep(600)
+        
+            # Call run_analysis
             output_file = '{}/logs/run_analysis_{}.log'.format(output_folder, library)
             submission_script = '{}/run.sh'.format(scripts_folder)
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=30:0:0', '-j', 'y', submission_script, 'run_analysis', manifest_file, library, scripts_folder]

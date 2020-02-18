@@ -227,7 +227,7 @@ def main():
             for line in fin:
                 l += 1
         fin.close()
-        k = 100000
+        k = 50000
         ls = l // k
         
         print('# selected cells: ' + str(l))
@@ -330,15 +330,15 @@ def main():
                 continue
             for slice in slice_id[lanes[i]]:
                 # Call tag_matched_bam
-                output_file = '{}/logs/tag_matched_bam_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, reference2)
+                output_file = '{}/logs/tag_matched_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                 submission_script = '{}/run.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'tag_matched_bam', manifest_file, library, lanes[i], slice, locus_function_list, scripts_folder]
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'tag_matched_bam', manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder]
                 call(call_args)
                 
                 # Call filter_unmapped_bam
-                output_file = '{}/logs/filter_unmapped_bam_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, reference2)
+                output_file = '{}/logs/filter_unmapped_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                 submission_script = '{}/run.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'filter_unmapped_bam', manifest_file, library, lanes[i], slice, locus_function_list, scripts_folder]
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'filter_unmapped_bam', manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder]
                 call(call_args)
                 
         # Call generate_plots_cmatcher

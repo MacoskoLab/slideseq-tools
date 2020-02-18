@@ -116,19 +116,11 @@ int main(int argc, char const *argv[])
 	
     std::ifstream infile2(illuminaBarcodeFile);
 	vector<string> illuminaBarcodes;
-    int j = 0;
 	if (infile2.is_open())
 	{
 		while (std::getline(infile2, line)) 
 		{
-			if (line.size() <= 1 || line[0] == '#')
-				continue;
-			
-			if (j++ > 0)
-			{
-				string barcode = line.substr(0, line.find("\t"));
-				illuminaBarcodes.push_back(barcode);
-			}
+			illuminaBarcodes.push_back(line);
 		}
 		infile2.close();
 	}

@@ -48,14 +48,15 @@ def write_log(log_file, flowcell_barcode, log_string):
 
 
 def main():
-    if len(sys.argv) != 5:
-        print("Please provide four arguments: manifest file, library ID, lane ID, and slice ID!")
+    if len(sys.argv) != 6:
+        print("Please provide five arguments: manifest file, library ID, lane ID, slice ID and sample barcode!")
         sys.exit()
     
     manifest_file = sys.argv[1]
     library = sys.argv[2]
     lane = sys.argv[3]
     slice = sys.argv[4]
+    barcode = sys.argv[5]
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
@@ -93,7 +94,6 @@ def main():
     basecalls_dir = '{}/Data/Intensities/BaseCalls'.format(flowcell_directory)
     
     # Read info from metadata file
-    barcode = ''
     bead_structure = ''
     reference = ''
     locus_function_list = 'exonic+intronic'
@@ -107,7 +107,6 @@ def main():
         for i in range(1, len(rows)):
             row = rows[i]
             if row[row0.index('library')] == library:
-                barcode = row[row0.index('sample_barcode')]
                 bead_structure = row[row0.index('bead_structure')]
                 reference = row[row0.index('reference')]
                 locus_function_list = row[row0.index('locus_function_list')]
@@ -148,9 +147,9 @@ def main():
     bs_range1 = get_bead_structure_range(bead_structure, 'C')
     bs_range2 = get_bead_structure_range(bead_structure, 'M')
     
-    folder_running = '{}/status/running.alignment_{}_{}_{}'.format(output_folder, library, lane, slice)
-    folder_finished = '{}/status/finished.alignment_{}_{}_{}'.format(output_folder, library, lane, slice)
-    folder_failed = '{}/status/failed.alignment_{}_{}_{}'.format(output_folder, library, lane, slice)
+    folder_running = '{}/status/running.alignment_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode)
+    folder_finished = '{}/status/finished.alignment_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode)
+    folder_failed = '{}/status/failed.alignment_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode)
 
     try:
         call(['mkdir', folder_running])

@@ -165,8 +165,8 @@ def main():
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
-                fol1 = '{}/status/finished.alignment_{}_{}_{}'.format(output_folder, library, lanes[i], slice)
-                fol2 = '{}/status/failed.alignment_{}_{}_{}'.format(output_folder, library, lanes[i], slice)
+                fol1 = '{}/status/finished.alignment_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i])
+                fol2 = '{}/status/failed.alignment_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i])
                 if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
                     f = False
                 prefix_libraries = '{}/{}.{}.{}.{}'.format(analysis_folder, flowcell_barcode, lanes[i], slice, library)
@@ -190,9 +190,9 @@ def main():
                             call(['rm', prefix_libraries+'.star.SJ.out.tab'])
                         if os.path.isdir(prefix_libraries+'.star._STARtmp'):
                             call(['rm', '-r', prefix_libraries+'.star._STARtmp'])
-                        output_file = '{}/logs/run_alignment_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice)
+                        output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
                         submission_script = '{}/run.sh'.format(scripts_folder)
-                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, scripts_folder]
+                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder]
                         call(call_args)
                         f = False
                     else:

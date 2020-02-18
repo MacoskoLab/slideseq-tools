@@ -31,15 +31,16 @@ def write_log(log_file, flowcell_barcode, log_string):
 
 
 def main():
-    if len(sys.argv) != 6:
-        print("Please provide five arguments: manifest file, library ID, lane ID, slice ID and locus function list!")
+    if len(sys.argv) != 7:
+        print("Please provide six arguments: manifest file, library ID, lane ID, slice ID, sample barcode and locus function list!")
         sys.exit()
     
     manifest_file = sys.argv[1]
     library = sys.argv[2]
     lane = sys.argv[3]
     slice = sys.argv[4]
-    locus_function_list = sys.argv[5]
+    barcode = sys.argv[5]
+    locus_function_list = sys.argv[6]
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
@@ -67,7 +68,6 @@ def main():
     email_address = options['email_address'] if 'email_address' in options else ''
     
     # Read info from metadata file
-    barcode = ''
     reference = ''
     experiment_date = ''
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
@@ -77,7 +77,6 @@ def main():
         for i in range(1, len(rows)):
             row = rows[i]
             if row[row0.index('library')] == library:
-                barcode = row[row0.index('sample_barcode')]
                 reference = row[row0.index('reference')]
                 experiment_date = row[row0.index('experiment_date')]
                 break
@@ -96,9 +95,9 @@ def main():
     if (barcode):
         prefix_libraries += '.'+barcode
     mapped_bam = '{}.star_gene_exon_tagged2.bam'.format(prefix_libraries)
-    mapped_sam = '{}/{}_{}_{}_aligned.sam'.format(barcode_matching_folder, library, lane, slice)
-    tagged_sam = '{}/{}_{}_{}_tagged.sam'.format(barcode_matching_folder, library, lane, slice)
-    tagged_bam = '{}/{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lane, slice)
+    mapped_sam = '{}/{}_{}_{}_{}_aligned.sam'.format(barcode_matching_folder, library, lane, slice, barcode)
+    tagged_sam = '{}/{}_{}_{}_{}_tagged.sam'.format(barcode_matching_folder, library, lane, slice, barcode)
+    tagged_bam = '{}/{}_{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lane, slice, barcode)
     combined_cmatcher_file = '{}/{}_barcode_matching.txt'.format(barcode_matching_folder, library)
     
     if not os.path.isfile(mapped_bam):
@@ -109,9 +108,9 @@ def main():
         write_log(log_file, flowcell_barcode, 'TagMatchedBam error: '+combined_cmatcher_file+' does not exist!')
         raise Exception('TagMatchedBam error: '+combined_cmatcher_file+' does not exist!')
         
-    folder_running = '{}/status/running.tag_matched_bam_{}_{}_{}_{}'.format(output_folder, library, lane, slice, reference2)
-    folder_finished = '{}/status/finished.tag_matched_bam_{}_{}_{}_{}'.format(output_folder, library, lane, slice, reference2)
-    folder_failed = '{}/status/failed.tag_matched_bam_{}_{}_{}_{}'.format(output_folder, library, lane, slice, reference2)
+    folder_running = '{}/status/running.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
+    folder_finished = '{}/status/finished.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
+    folder_failed = '{}/status/failed.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
 
     try:
         call(['mkdir', folder_running])
@@ -153,18 +152,19 @@ def main():
             fin.close()
         fout.close()
         
+        if os.path.isfile(mapped_sam):
+            call(['rm', mapped_sam])
+        
         commandStr = 'samtools view -S -b {} > {}'.format(tagged_sam, tagged_bam)
         os.system(commandStr)
         
+        if os.path.isfile(tagged_sam):
+            call(['rm', tagged_sam])
+
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
         
-        if os.path.isfile(mapped_sam):
-            call(['rm', mapped_sam])
-        if os.path.isfile(tagged_sam):
-            call(['rm', tagged_sam])
-            
         write_log(log_file, flowcell_barcode, "Tag matched bam for "+library+" "+reference2+" in lane "+lane+" slice "+slice+" is done. ")
         
         call(['mv', folder_running, folder_finished])
