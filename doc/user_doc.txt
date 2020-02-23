@@ -306,7 +306,7 @@ library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puc
 
 library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.digital_expression.txt.gz
 -digital expression matrix for matched bead barcodes
--the number of header lines: 3
+-the number of header lines: 0
 -row name: gene name
 -column name: cell barcode
 -delimiter: Tab (‘\t’)
@@ -319,7 +319,7 @@ library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puc
 
 library_folder/2019-02-19_Puck_181026_13/GRCm38.81.exonic+intronic/alignment/Puck_181026_13.AllIllumina.digital_expression.txt.gz
 -digital expression matrix for selected Illumina barcodes
--the number of header lines: 3
+-the number of header lines: 0
 -row name: gene name
 -column name: cell barcode
 -delimiter: Tab (‘\t’)
