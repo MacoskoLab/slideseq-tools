@@ -142,7 +142,7 @@ int main(int argc, char const *argv[])
 			barcode = seqrcomplement(barcode);
 		if (beadtype == "BobMistake")
 			barcode = barcode.substr(0, 7) + barcode.substr(8, 6) + "N";
-		
+
 		// calculate hamming distance		
 		int minDist = 100;
 		int minCou = 0;

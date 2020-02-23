@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is to call Python or C++ scripts
+# This script is to call Python and C++ scripts
 
 submission=$0
 

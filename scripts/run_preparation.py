@@ -124,7 +124,6 @@ def main():
     libraries = []
     libraries_unique = []
     barcodes = []
-    bead_structures = []
     references_unique = []
     locus_function_list_unique = []
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
@@ -142,7 +141,6 @@ def main():
                 references_unique.append(row[row0.index('reference')])
                 locus_function_list_unique.append(row[row0.index('locus_function_list')])
             barcodes.append(row[row0.index('sample_barcode')])
-            bead_structures.append(row[row0.index('bead_structure')])
     fin.close()
     
     # Get tile information from RunInfo.xml
@@ -176,7 +174,7 @@ def main():
     try:
         call(['mkdir', folder_running])
         
-        # Check if the input Illumina folder is in correct format
+        # Check the input Illumina folder
         commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '.format(tmpdir)
         commandStr += '-jar {}/picard.jar CheckIlluminaDirectory TMP_DIR={} VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
         commandStr += 'BASECALLS_DIR={} READ_STRUCTURE={}'.format(basecalls_dir, read_structure)
@@ -247,5 +245,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

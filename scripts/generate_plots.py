@@ -272,7 +272,7 @@ def main():
         #write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" Command="+commandStr)
         #os.system(commandStr)
         #write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" is done. ")
-        
+
         if not run_barcodematching:
             pp1 = PdfPages('{}/{}.pdf'.format(alignment_folder, library))
             
@@ -475,5 +475,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-    
+

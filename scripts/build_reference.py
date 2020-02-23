@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-# This script is to build genome reference for the Slide-seq pipeline
+# This script is to build genome reference
 
 import sys
 import os
@@ -110,7 +110,7 @@ if not os.path.isfile(submission_script):
     print("File {} does not exist. Exiting...".format(submission_script))
     sys.exit()
 
-print("Creating Slide-seq genome reference...")
+print("Creating genome reference...")
 
 filtered_gene_biotypes2 = ''
 if len(filtered_gene_biotypes) > 0:

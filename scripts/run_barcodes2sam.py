@@ -48,16 +48,9 @@ def main():
             options[dict[0]] = dict[1]
     fp.close()
     
-    flowcell_directory = options['flowcell_directory']
     scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
-    metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
-    
-    library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
-    tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
     email_address = options['email_address'] if 'email_address' in options else ''
     
     log_file = '{}/logs/workflow.log'.format(output_folder)
@@ -100,5 +93,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

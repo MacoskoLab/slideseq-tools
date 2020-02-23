@@ -142,7 +142,7 @@ def main():
         else:
             unmapped_bam1 += '{}.{}.{}.{}.unmapped.bam'.format(flowcell_barcode, lane, slice, library)
         if os.path.isfile(unmapped_bam1):
-            os.system('mv ' + unmapped_bam1 + ' ' + unmapped_bam)
+            os.system('mv {} {}'.format(unmapped_bam1, unmapped_bam))
     
     bs_range1 = get_bead_structure_range(bead_structure, 'C')
     bs_range2 = get_bead_structure_range(bead_structure, 'M')
@@ -362,5 +362,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

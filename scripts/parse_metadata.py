@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-# This script is to parse the original metadata file
-# and generate the new one with extended lane IDs and missed columns
+# This script is to parse the original metadata file and 
+# generate the new one with extended lane IDs and missed columns
 
 import sys
 import getopt

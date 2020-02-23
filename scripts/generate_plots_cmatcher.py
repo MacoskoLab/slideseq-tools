@@ -276,7 +276,7 @@ def main():
         if locus_function_list == 'exonic+intronic':
             commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
         elif locus_function_list == 'intronic':
-            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'       
+            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" on matched barcodes is done. ")
@@ -359,15 +359,15 @@ def main():
         file1 = '{}/{}.ReadQualityMetrics.txt'.format(alignment_folder, library)
         mat1 = np.loadtxt(file1, delimiter='\t', dtype='int', skiprows=3, max_rows=1, usecols=(1,2,3,4))
 
-        df_z = [mat[0],mat[1],mat[2],mat1[0]]
-        if mat[2] >= 1000000 and mat1[0] >= 1000000:
-            df_u = [int(mat[0]/1000000),int(mat[1]/1000000),int(mat[2]/1000000),int(mat1[0]/1000000)]
+        df_z = [mat[0],mat[1],mat[2],mat1[2]]
+        if mat[2] >= 1000000 and mat1[2] >= 1000000:
+            df_u = [int(mat[0]/1000000),int(mat[1]/1000000),int(mat[2]/1000000),int(mat1[2]/1000000)]
             yl = "# Reads [millions]"
         else:
-            df_u = [mat[0],mat[1],mat[2],mat1[0]]
+            df_u = [mat[0],mat[1],mat[2],mat1[2]]
             yl = "# Reads"
-        df_y = [mat[0]/mat[0]*100,mat[1]/mat[0]*100,mat[2]/mat[0]*100,mat1[0]/mat[0]*100]
-        df_v = ['{:,}'.format(mat[0]),'{:,}'.format(mat[1]),'{:,}'.format(mat[2]),'{:,}'.format(mat1[0])]
+        df_y = [mat[0]/mat[0]*100,mat[1]/mat[0]*100,mat[2]/mat[0]*100,mat1[2]/mat[0]*100]
+        df_v = ['{:,}'.format(mat[0]),'{:,}'.format(mat[1]),'{:,}'.format(mat[2]),'{:,}'.format(mat1[2])]
         labels = []
         for i in range(4):
             labels.append('{0:.3g}%'.format(df_y[i]))
@@ -969,5 +969,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-    
+

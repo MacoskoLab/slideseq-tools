@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to filter unmapped bam using matched barcodes
+# This script is to filter unmapped bam with matched barcodes
 
 from __future__ import print_function
 
@@ -213,5 +213,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

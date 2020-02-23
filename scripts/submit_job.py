@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to run the Slide-seq flowcell alignment pipeline
+# This script is to submit a request to the Slide-seq tools
 
 from __future__ import print_function
 
@@ -163,5 +163,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

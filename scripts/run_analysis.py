@@ -239,9 +239,9 @@ def main():
         commandStr += 'INPUT={} MODE=SUMMARY'.format(combined_bamfile)
         if (not is_NovaSeq) and (not is_NovaSeq_S4):
             commandStr += ' IGNORE=MISSING_PLATFORM_VALUE IGNORE=INVALID_VERSION_NUMBER'
-        write_log(log_file, flowcell_barcode, "ValidateSamFile for "+library+" Command="+commandStr)
-        os.system(commandStr)
-        write_log(log_file, flowcell_barcode, "ValidateSamFile for "+library+" is done. ")
+        #write_log(log_file, flowcell_barcode, "ValidateSamFile for "+library+" Command="+commandStr)
+        #os.system(commandStr)
+        #write_log(log_file, flowcell_barcode, "ValidateSamFile for "+library+" is done. ")
         
         # Call generate_plots
         output_file = '{}/logs/generate_plots_{}.log'.format(output_folder, library)
@@ -278,6 +278,8 @@ def main():
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=12:0:0', '-j', 'y', submission_script, 'run_analysis_spec', manifest_file, library, scripts_folder, l]
             call(call_args)
         
+        time.sleep(300)
+        
         for i in range(len(lanes)):
             if libraries[i] != library:
                 continue
@@ -313,5 +315,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

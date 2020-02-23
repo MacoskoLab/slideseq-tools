@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is to build genome reference for the Slide-seq pipeline
+# This script is to build genome reference
 
 submission=$0
 picard_folder=$1

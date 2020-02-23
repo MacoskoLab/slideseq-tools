@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to tag bam using matched bead barcodes
+# This script is to tag bam with matched bead barcodes
 
 from __future__ import print_function
 
@@ -107,7 +107,7 @@ def main():
     if not os.path.isfile(combined_cmatcher_file):
         write_log(log_file, flowcell_barcode, 'TagMatchedBam error: '+combined_cmatcher_file+' does not exist!')
         raise Exception('TagMatchedBam error: '+combined_cmatcher_file+' does not exist!')
-        
+
     folder_running = '{}/status/running.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
     folder_finished = '{}/status/finished.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
     folder_failed = '{}/status/failed.tag_matched_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
@@ -124,7 +124,8 @@ def main():
         commandStr = 'samtools view -h -o {} {}'.format(mapped_sam, mapped_bam)
         os.system(commandStr)
         
-        call(['rm', mapped_bam])
+        if os.path.isfile(mapped_bam):
+            call(['rm', mapped_bam])
 
         dict1 = {}
         with open(combined_cmatcher_file, 'r') as fin:
@@ -185,5 +186,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

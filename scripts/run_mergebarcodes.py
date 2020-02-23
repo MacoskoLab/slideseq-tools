@@ -206,7 +206,7 @@ def main():
         call(['mv', folder_waiting, folder_running])
     else:
         call(['mkdir', folder_running])
-        
+
     try:       
         for j in range(len(libraries_unique)):
             library = libraries_unique[j]
@@ -232,7 +232,7 @@ def main():
                     submission_script = '{}/run.sh'.format(scripts_folder)
                     call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder]
                     call(call_args)
-        
+
             if is_NovaSeq or is_NovaSeq_S4:
                 time.sleep(1800)
             else:
@@ -264,5 +264,4 @@ def main():
     
 if __name__ == "__main__":
     main()
-
 
