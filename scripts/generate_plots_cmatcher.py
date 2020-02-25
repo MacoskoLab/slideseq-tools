@@ -848,10 +848,13 @@ def main():
         ys = []
         zs = []
         matched_dge_summary_transcripts = np.loadtxt(matched_dge_summary, delimiter='\t', dtype='float', skiprows=7, usecols=(2))
+        k = int(len(matched_dge_summary_transcripts) / 20)
+        for i in range(k):
+            matched_dge_summary_transcripts[i] = matched_dge_summary_transcripts[k]
         for i in range(len(matched_dge_summary_barcodes)):
             barcode = matched_dge_summary_barcodes[i]
             if barcode in matched_barcodes:
-                zs.append(math.log10(matched_dge_summary_transcripts[i]))
+                zs.append(matched_dge_summary_transcripts[i])
                 xs.append(coordinatesx[np.where(matched_barcodes==barcode)])
                 ys.append(coordinatesy[np.where(matched_barcodes==barcode)])
         df = pd.DataFrame({"x":xs, "y":ys, "z":zs})
@@ -863,7 +866,7 @@ def main():
         plt.yticks(rotation=90)
         plt.xlabel("X")
         plt.ylabel("Y")
-        plt.title("log10 based total # UMIs per matched bead")
+        plt.title("total # UMIs per matched bead (95% perecntile)")
         plt.savefig(pp, format='pdf')
 
         f1 = '{}/{}.fracIntronicExonicPerCell.txt'.format(alignment_folder, library)
