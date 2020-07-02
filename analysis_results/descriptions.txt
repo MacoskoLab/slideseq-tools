@@ -1,0 +1,93 @@
+
+
+The example output files from each analysis step in the Slide-seq tools
+
+
+********************************************************************************
+/extract_Illumina_barcodes/s_1_11101_barcode.txt.gz
+contains barcodes in lane 1 and 11101 is the tile id
+
+********************************************************************************
+/convert_Illumina_basecalls_to_bam/flowcell.1.0.library.CGTACTAG.unmapped.bam
+the unmapped bam file in slice 0 in lane 1
+
+********************************************************************************
+/alignment/flowcell.1.0.library.CGTACTAG.adapter_trimming_report.txt
+contains adapter trimming report in slice 0 in lane 1
+
+/alignment/flowcell.1.0.library.CGTACTAG.polyA_trimming_report.txt
+contains polyA trimming report in slice 0 in lane 1
+
+/alignment/flowcell.1.0.library.CGTACTAG.unaligned_tagged_Cellular.bam_summary.txt
+contains summary for tagging cellular barcodes in slice 0 in lane 1
+
+/alignment/flowcell.1.0.library.CGTACTAG.unaligned_tagged_Molecular.bam_summary.txt
+contains summary for tagging molecular barcodes in slice 0 in lane 1
+
+********************************************************************************
+/select_top_cells/library.10_transcripts_mq_10_selected_cells.txt.gz
+contains a list of selected cell barcodes while both base_quality and min_transcripts_per_cell are 10
+
+********************************************************************************
+/match_barcodes/library_barcode_matching.txt
+contains the list of Illumina cell barcodes, matched bead barcodes, hamming distance, and coordinates x and y
+
+/match_barcodes/library_matched_bead_barcodes.txt
+contains the list of unique matched bead barcodes
+
+/match_barcodes/library_matched_bead_locations.txt
+contains hamming distances and coordinates x and y of the list of unique matched bead barcodes
+
+********************************************************************************
+/generate_alignment_reports/library.AllIllumina.digital_expression.txt.gz
+contains the digital expression matrix on Illumina cell barcodes. Row represents genes and column represents cell barcodes
+
+/generate_alignment_reports/library.AllIllumina.digital_expression_summary.txt
+contains the list of selected Illumina cell barcodes and the number of genic reads, the number of transcripts and the number of genes for each cell barcode
+
+/generate_alignment_reports/library.barcode_distribution_XC.txt
+contains distributions of A, C, G, T and N on each position of Illumina cell barcodes
+
+/generate_alignment_reports/library.barcode_distribution_XM.txt
+contains distributions of A, C, G, T and N on each position of Illumina molecular barcodes
+
+/generate_alignment_reports/library.fracIntronicExonic.txt
+contains read distributions on different RNA-Seq bases including ribosomal, coding, utr, intronic and intergenic on Illumina cell barcodes
+
+/generate_alignment_reports/library.numReads_perCell_XC_mq_10.txt.gz
+contains Illumina cell barcodes and the number of reads
+
+/generate_alignment_reports/library.ReadQualityMetrics.txt
+contains read quality and mapping summary on aligned bam file
+
+********************************************************************************
+/generate_reports_on_matched_barcodes/library.barcode_distribution_XC.txt
+contains distributions of A, C, G, T and N on each position of matched bead barcodes
+
+/generate_reports_on_matched_barcodes/library.barcode_distribution_XM.txt
+contains distributions of A, C, G, T and N on each position of matched molecular barcodes
+
+/generate_reports_on_matched_barcodes/library.base_distribution_read1.txt
+contains distributions of A, C, G, T and N on each position of matched read1 sequences
+
+/generate_reports_on_matched_barcodes/library.digital_expression.txt.gz
+contains the digital expression matrix on matched bead barcodes. Row represents genes and column represents bead barcodes
+
+/generate_reports_on_matched_barcodes/library.digital_expression_summary.txt
+contains the list of matched bead barcodes and the number of genic reads, the number of transcripts and the number of genes for each barcode
+
+/generate_reports_on_matched_barcodes/library.fracIntronicExonic.txt
+contains read distributions on different RNA-Seq bases including ribosomal, coding, utr, intronic and intergenic on matched bead barcodes
+
+/generate_reports_on_matched_barcodes/library.fracIntronicExonicPerCell.txt.gz
+contains read distributions on different RNA-Seq bases including ribosomal, coding, utr, intronic and intergenic on each matched bead barcode
+
+/generate_reports_on_matched_barcodes/library.numReads_perCell_XC_mq_10.txt.gz
+contains matched bead barcodes and the number of reads
+
+/generate_reports_on_matched_barcodes/library.ReadQualityMetrics.txt
+contains read quality and mapping summary on matched bam file
+
+/generate_reports_on_matched_barcodes/library_GRCm38.81.exonic+intronic.pdf
+contains alignment plots and barcode matching plots
+
