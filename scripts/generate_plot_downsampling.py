@@ -172,7 +172,7 @@ def main():
         xlab("Reads generated (relative to this run)") +\
         ylab("Transcripts per cell") +\
         ggtitle("Return to sequencing coverage (downsampling + projection)")
-        ggsave(plot=p, height=8, width=8, filename=library+'_'+reference2+"_downsampling.pdf", path=alignment_folder)
+        ggsave(plot=p, height=9, width=8, filename=library+'_'+reference2+"_downsampling.pdf", path=alignment_folder, verbose=False)
         
         call(['mv', folder_running, folder_finished])
     except Exception as exp:

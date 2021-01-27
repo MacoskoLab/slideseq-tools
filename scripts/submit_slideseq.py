@@ -183,7 +183,7 @@ for flowcell in flowcells:
 			call(['mkdir', '-p', output_dir])
 			call(['mkdir', '-p', '{}/logs'.format(output_dir)])
 			call(['mkdir', '-p', '{}/tmp_taskrunner'.format(output_dir)])
-			call(['mkdir', '-p', '{}/tmp_taskrunner/old'.format(output_dir)])
+			call(['mkdir', '-p', '{}/tmp_taskrunner/done'.format(output_dir)])
         
 		# write to me.manifest
 		with open(manifest_file, 'w') as f:

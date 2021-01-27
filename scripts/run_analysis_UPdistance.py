@@ -234,7 +234,7 @@ def main():
         xlab("Distance") +\
         ylab("Count") +\
         ggtitle("Distance vs Count")
-        ggsave(plot = p, height=10, width=10, filename=UPdistances_filename, path=analysis_folder)
+        ggsave(plot = p, height=10, width=10, filename=UPdistances_filename, path=analysis_folder, verbose=False)
         
         if os.path.isfile(UPbases_file):
             call(['rm', UPbases_file])

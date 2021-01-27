@@ -1188,7 +1188,7 @@ def main():
         xlab("hamming distance") +\
         ylab("# beads") +\
         ggtitle("hamming distance (real vs shuffled)")
-        ggsave(plot = p, height=10, width=10, filename=library+'_'+reference2+'_shuffled.pdf', path=alignment_folder)
+        ggsave(plot = p, height=10, width=10, filename=library+'_'+reference2+'_shuffled.pdf', path=alignment_folder, verbose=False)
         
         write_log(log_file, flowcell_barcode, "Generate plots for matched barcodes for "+library+" "+reference2+" is done. ")
         
