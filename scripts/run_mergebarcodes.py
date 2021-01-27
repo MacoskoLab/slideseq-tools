@@ -16,6 +16,8 @@ import time
 from subprocess import call
 from datetime import datetime
 
+from new_submit_to_taskrunner import call_to_taskrunner
+
 import traceback
 
 # Get read structure from RunInfo.xml
@@ -263,7 +265,7 @@ def main():
                         output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
                         submission_script = '{}/run_alignment.sh'.format(scripts_folder)
                         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=65g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
-                        call(call_args)
+                        call_to_taskrunner(output_folder, call_args)
                 
                 if run_barcodematching[j]:
                     puckcaller_path1 = puckcaller_path[j]
@@ -278,7 +280,7 @@ def main():
                             output_file = '{}/logs/ExtractBeadBarcode_{}.log'.format(output_folder, library)
                             submission_script = '{}/puckcaller/run_ExtractBeadBarcode.sh'.format(scripts_folder)
                             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, '/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a', puckcaller_path1, scripts_folder, output_folder]
-                            call(call_args)
+                            call_to_taskrunner(output_folder, call_args)
                         else:
                             print('{} is not found!'.format(file1))
                 
@@ -291,7 +293,7 @@ def main():
                 output_file = '{}/logs/run_analysis_{}.log'.format(output_folder, library)
                 submission_script = '{}/run_analysis.sh'.format(scripts_folder)
                 call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=50:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
-                call(call_args)
+                call_to_taskrunner(output_folder, call_args)
 
         call(['mv', folder_running, folder_finished])
     except Exception as exp:

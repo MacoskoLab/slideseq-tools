@@ -41,6 +41,8 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from new_submit_to_taskrunner import call_to_taskrunner
+
 import traceback
 
 # Get read 1 length
@@ -450,13 +452,13 @@ def main():
         output_file = '{}/logs/gen_sparse_matrix_{}_{}.log'.format(output_folder, library, locus_function_list)
         submission_script = '{}/gen_sparse_matrix.sh'.format(scripts_folder)
         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=70g', '-notify', '-l', 'h_rt=25:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, locus_function_list, alignment_folder, file_name, scripts_folder, output_folder, '{}/{}_{}/{}'.format(library_folder, experiment_date, library, reference2)]
-        call(call_args)
+        call_to_taskrunner(output_folder, call_args)
         
         # Call write_bijective_mapping.sh
         output_file = '{}/logs/write_bijective_mapping_{}_{}.log'.format(output_folder, library, locus_function_list)
         submission_script = '{}/write_bijective_mapping.sh'.format(scripts_folder)
         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
-        call(call_args)
+        call_to_taskrunner(output_folder, call_args)
         
         # Generate libraryID_XYUMIs.txt
         matched_barcodes = np.loadtxt(matched_bead_barcode_file, delimiter='\t', dtype='str', usecols=(0))
@@ -1196,7 +1198,7 @@ def main():
         output_file = '{}/logs/gen_readme_{}_{}.log'.format(output_folder, library, reference2)
         submission_script = '{}/gen_readme.sh'.format(scripts_folder)
         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=2g', '-notify', '-l', 'h_rt=1:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, alignment_folder]
-        call(call_args)
+        call_to_taskrunner(output_folder, call_args)
         
         if len(email_address) > 1:
             subject = "Slide-seq workflow finished for " + flowcell_barcode

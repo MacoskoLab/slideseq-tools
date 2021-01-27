@@ -15,6 +15,7 @@ import re
 from subprocess import call
 from datetime import datetime
 
+from new_submit_to_taskrunner import call_to_taskrunner
 import traceback
 
 # Convert string to boolean
@@ -134,7 +135,7 @@ def main():
     output_file = '{}/logs/run_preparation.log'.format(output_folder)
     submission_script = '{}/run_preparation.sh'.format(scripts_folder)
     call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=54g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
-    call(call_args)
+    call_to_taskrunner(output_folder, call_args)
     
     if len(email_address) > 1:
         subject = "Submission received for " + flowcell_barcode

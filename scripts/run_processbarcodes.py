@@ -15,6 +15,7 @@ import re
 from subprocess import call
 from datetime import datetime
 
+from new_submit_to_taskrunner import call_to_taskrunner
 import traceback
 
 # Get read structure from RunInfo.xml
@@ -166,7 +167,7 @@ def main():
             output_file = '{}/logs/run_barcodes2sam_lane_{}_{}.log'.format(output_folder, lane, slice_id[lane][i])
             submission_script = '{}/run_barcodes2sam.sh'.format(scripts_folder)
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, commandStr, lane, slice_id[lane][i], scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
-            call(call_args)
+            call_to_taskrunner(output_folder, call_args)
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")

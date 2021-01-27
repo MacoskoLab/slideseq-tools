@@ -25,6 +25,7 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 import pandas as pd 
 from oauth2client.service_account import ServiceAccountCredentials
 
+from new_submit_to_taskrunner import call_to_taskrunner
    
 scope = ['https://spreadsheets.google.com/feeds',
      'https://www.googleapis.com/auth/drive']
@@ -215,6 +216,13 @@ for flowcell in flowcells:
 	else:
 		submit_df.to_csv(metadata_file, sep = '\t', header = True, index = False)
 
+
+	output_file = '{}/logs/taskrunner.log'.format(output_dir)
+	# yes 20 days is huge but needs to stay alive for everything else, also 2g only 
+
+	taskrunner_script = '{}/new_taskrunner.sh'.format(scripts_folder)
+	call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=2g', '-notify', '-l', 'h_rt=480:00:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', taskrunner_script, scripts_folder, output_dir]
+	call(call_args)
     # Call run pipeline
 	if args.resubmit:
 		output_file = '{}/logs/run_mergebarcodes.log'.format(output_dir)
@@ -227,7 +235,7 @@ for flowcell in flowcells:
 	print(' '.join(call_args))
 
 	if not args.dryrun:
-		call(call_args)
+		call_to_taskrunner(output_dir, call_args)
 
 	submitted.append(flowcell)
     

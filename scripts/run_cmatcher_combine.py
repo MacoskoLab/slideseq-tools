@@ -42,6 +42,8 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from new_submit_to_taskrunner import call_to_taskrunner
+
 import traceback
 
 # Get tile information from RunInfo.xml
@@ -441,21 +443,21 @@ def main():
                 # Call tag_matched_bam
                 output_file = '{}/logs/tag_matched_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                 submission_script = '{}/tag_matched_bam.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder, output_folder, analysis_folder]
-                call(call_args)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder, output_folder, analysis_folder]
+                call_to_taskrunner(output_folder, call_args)
                 
                 # Call filter_unmapped_bam
                 if gen_read1_plot:
                     output_file = '{}/logs/filter_unmapped_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
                     submission_script = '{}/filter_unmapped_bam.sh'.format(scripts_folder)
                     call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder, output_folder, analysis_folder]
-                    call(call_args)
+                    call_to_taskrunner(output_folder, call_args)
         
         # Call generate_plots_cmatcher
         output_file = '{}/logs/generate_plots_cmatcher_{}_{}.log'.format(output_folder, library, reference2)
         submission_script = '{}/generate_plots_cmatcher.sh'.format(scripts_folder)
         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=35:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
-        call(call_args)
+        call_to_taskrunner(output_folder, call_args)
         
         call(['mv', folder_running, folder_finished])
     except Exception as exp:

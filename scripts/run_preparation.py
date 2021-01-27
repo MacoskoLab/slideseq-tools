@@ -18,6 +18,7 @@ import time
 from subprocess import call
 from datetime import datetime
 
+from new_submit_to_taskrunner import call_to_taskrunner
 import traceback
 
 # Get read structure from RunInfo.xml
@@ -218,13 +219,13 @@ def main():
             output_file = '{}/logs/run_processbarcodes_lane_{}.log'.format(output_folder, lane)
             submission_script = '{}/run_processbarcodes.sh'.format(scripts_folder)
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, lane, scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
-            call(call_args)
+            call_to_taskrunner(output_folder, call_args)
         
         # Call run_mergebarcodes
         output_file = '{}/logs/run_mergebarcodes.log'.format(output_folder)
         submission_script = '{}/run_mergebarcodes.sh'.format(scripts_folder)
         call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=50:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
-        call(call_args)
+        call_to_taskrunner(output_folder, call_args)
     
         call(['mv', folder_running, folder_finished])
     except:

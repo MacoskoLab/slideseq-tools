@@ -20,6 +20,7 @@ import numpy as np
 import random
 from random import sample
 
+from new_submit_to_taskrunner import call_to_taskrunner
 import traceback
 
 # Convert string to boolean
@@ -217,7 +218,7 @@ def main():
                 output_file = '{}/logs/run_cmatcher_{}_{}_{}.log'.format(output_folder, library, locus_function_list, str(i + 1))
                 submission_script = '{}/run_cmatcher.sh'.format(scripts_folder)
                 call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, bead_barcode_file, infile2, file4, file5, bead_type, output_folder, barcode_matching_folder]
-                call(call_args)
+                call_to_taskrunner(output_folder, call_args)
                 write_log(log_file, flowcell_barcode, "Run CMatcher for "+library+" "+reference2+" "+str(i + 1))
                 
                 # shuffled barcodes
@@ -230,14 +231,14 @@ def main():
                 output_file = '{}/logs/run_cmatcher_{}_{}_shuffled_{}.log'.format(output_folder, library, locus_function_list, str(i + 1))
                 submission_script = '{}/run_cmatcher.sh'.format(scripts_folder)
                 call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, bead_barcode_file, infile2, file4, file5, bead_type, output_folder, barcode_matching_folder]
-                call(call_args)
+                call_to_taskrunner(output_folder, call_args)
                 write_log(log_file, flowcell_barcode, "Run CMatcher for "+library+" "+reference2+" "+str(i + 1))
                 
             # Call run_cmatcher_combine
             output_file = '{}/logs/run_cmatcher_combine_{}_{}.log'.format(output_folder, library, locus_function_list)
             submission_script = '{}/run_cmatcher_combine.sh'.format(scripts_folder)
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=24:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
-            call(call_args)
+            call_to_taskrunner(output_folder, call_args)
         
         # Generate digital expression files for all Illumina barcodes
         commandStr = dropseq_folder+'/DigitalExpression '
@@ -269,13 +270,13 @@ def main():
                 output_file = '{}/logs/gen_downsample_dge_{}_{}_{}.log'.format(output_folder, library, reference2, str(ratio[i]))
                 submission_script = '{}/gen_downsample_dge.sh'.format(scripts_folder)
                 call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, str(ratio[i]), output_folder, downsample_folder]
-                call(call_args)
+                call_to_taskrunner(output_folder, call_args)
         
             # Call generate_plot_downsampling
             output_file = '{}/logs/generate_plot_downsampling_{}_{}.log'.format(output_folder, library, reference2)
             submission_script = '{}/generate_plot_downsampling.sh'.format(scripts_folder)
             call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=30:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, barcode_matching_folder]
-            call(call_args)
+            call_to_taskrunner(output_folder, call_args)
         
         if not run_barcodematching:
             if os.path.isdir(barcode_matching_folder):
