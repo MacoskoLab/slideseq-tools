@@ -134,7 +134,7 @@ def main():
     # Call run_preparation
     output_file = '{}/logs/run_preparation.log'.format(output_folder)
     submission_script = '{}/run_preparation.sh'.format(scripts_folder)
-    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=54g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
+    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
     call_to_taskrunner(output_folder, call_args)
     
     if len(email_address) > 1:

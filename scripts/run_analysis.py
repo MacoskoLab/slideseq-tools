@@ -220,13 +220,13 @@ def main():
             file5 = '{}/{}_barcode_matching_2_{}.txt'.format(analysis_folder, library, str(i + 1))
             output_file = '{}/logs/run_cmatcher_beads_{}.log'.format(output_folder, str(i + 1))
             submission_script = '{}/run_cmatcher_beads.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, infile2, bead_barcode_file, bead_location_file, file4, file5, bead_type, output_folder, analysis_folder]
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10G', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, infile2, bead_barcode_file, bead_location_file, file4, file5, bead_type, output_folder, analysis_folder]
             call_to_taskrunner(output_folder, call_args)
             
         # Call run_cmatcher_beads_combine
         output_file = '{}/logs/run_cmatcher_beads_combine_{}.log'.format(output_folder, library)
         submission_script = '{}/run_cmatcher_beads_combine.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, analysis_folder]
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10g', '-notify', '-l', 'h_rt=30:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, analysis_folder]
         call_to_taskrunner(output_folder, call_args)
     
     # Wait for all of run_alignment finish
@@ -264,7 +264,7 @@ def main():
                             call(['rm', '-r', prefix_libraries+'.star._STARtmp'])
                         output_file = '{}/logs/run_alignment_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice)
                         submission_script = '{}/run_alignment.sh'.format(scripts_folder)
-                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=65g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, analysis_folder]
+                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=62G', '-notify', '-l', 'h_rt=23:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, analysis_folder]
                         call_to_taskrunner(output_folder, call_args)
                         f = False
                     else:
@@ -318,7 +318,7 @@ def main():
         # Call generate_plots
         output_file = '{}/logs/generate_plots_{}.log'.format(output_folder, library)
         submission_script = '{}/generate_plots.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, analysis_folder]
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=45G', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, analysis_folder]
         call_to_taskrunner(output_folder, call_args)
         
         lists = locus_function_list.split(',')
@@ -347,7 +347,7 @@ def main():
             # Call run_analysis_spec
             output_file = '{}/logs/run_analysis_spec_{}_{}.log'.format(output_folder, library, l)
             submission_script = '{}/run_analysis_spec.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=18:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, l, output_folder, '{}/{}.{}'.format(analysis_folder, referencePure, l)]
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=45g', '-notify', '-l', 'h_rt=25:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, l, output_folder, '{}/{}.{}'.format(analysis_folder, referencePure, l)]
             call_to_taskrunner(output_folder, call_args)
         
         for i in range(len(lanes)):
@@ -575,7 +575,7 @@ def main():
 
                 output_file = '{}/logs/run_analysis_UPdistance_{}_{}.log'.format(output_folder, library, lanes[i])
                 submission_script = '{}/run_analysis_UPdistance.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], scripts_folder, output_folder, analysis_folder]
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35G', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], scripts_folder, output_folder, analysis_folder]
                 call_to_taskrunner(output_folder, call_args)
                 
                 break
