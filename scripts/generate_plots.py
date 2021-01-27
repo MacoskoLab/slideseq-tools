@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to generate analysis outputs from alignment and generate plots if not running barcode matching
+# This script is to generate PDFs for the alignment outputs 
 
 from __future__ import print_function
 
@@ -67,7 +67,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -93,24 +93,19 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
-    
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     
     # Read info from metadata file
     lanes = []
@@ -123,6 +118,7 @@ def main():
     sequence = 'AAGCAGTGGTATCAACGCAGAGTGAATGGG'
     base_quality = '10'
     min_transcripts_per_cell = '10'
+    email_address = ''
     bead_structure = ''
     experiment_date = ''
     run_barcodematching = False
@@ -145,8 +141,9 @@ def main():
                 sequence = row[row0.index('start_sequence')]
                 base_quality = row[row0.index('base_quality')]
                 min_transcripts_per_cell = row[row0.index('min_transcripts_per_cell')]
+                email_address = row[row0.index('email')]
                 bead_structure = row[row0.index('bead_structure')]
-                experiment_date = row[row0.index('experiment_date')]
+                experiment_date = row[row0.index('date')]
                 run_barcodematching = str2bool(row[row0.index('run_barcodematching')])
     fin.close()
     
@@ -196,83 +193,70 @@ def main():
     combined_bamfile = '{}/{}.bam'.format(alignment_folder, library)
 
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
         
         # Bam tag histogram
-        commandStr = '{}/BamTagHistogram '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/BamTagHistogram '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-m 15884m '
         else:
             commandStr += '-m 7692m '
-        commandStr += 'I={} OUTPUT={}{}.numReads_perCell_XC_mq_{}.txt.gz '.format(combined_bamfile, alignment_folder, library, base_quality)
-        commandStr += 'TAG=XC FILTER_PCR_DUPLICATES=false TMP_DIR={} READ_MQ={} VALIDATION_STRINGENCY=SILENT'.format(tmpdir, base_quality)
+        commandStr += 'I='+combined_bamfile+' OUTPUT='+alignment_folder+library+'.numReads_perCell_XC_mq_'+base_quality+'.txt.gz '
+        commandStr += 'TAG=XC FILTER_PCR_DUPLICATES=false TMP_DIR='+tmpdir+' READ_MQ='+base_quality+' VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BamTagHistogram for "+library+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BamTagHistogram for "+library+" is done. ")
         
         # Collect RnaSeq metrics
-        commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '.format(tmpdir)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-Xmx16384m '
         else:
             commandStr += '-Xmx8192m '
-        commandStr += '-jar {}/picard.jar CollectRnaSeqMetrics TMP_DIR={}'.format(picard_folder, tmpdir)
-        commandStr += ' VALIDATION_STRINGENCY=SILENT I={} REF_FLAT={} STRAND_SPECIFICITY=NONE '.format(combined_bamfile, ref_flat)
-        commandStr += 'OUTPUT={}{}.fracIntronicExonic.txt RIBOSOMAL_INTERVALS={}'.format(alignment_folder, library, ribosomal_intervals)
+        commandStr += '-jar '+picard_folder+'/picard.jar CollectRnaSeqMetrics TMP_DIR='+tmpdir
+        commandStr += ' VALIDATION_STRINGENCY=SILENT I='+combined_bamfile+' REF_FLAT='+ref_flat+' STRAND_SPECIFICITY=NONE '
+        commandStr += 'OUTPUT='+alignment_folder+library+'.fracIntronicExonic.txt RIBOSOMAL_INTERVALS='+ribosomal_intervals
         write_log(log_file, flowcell_barcode, "CollectRnaSeqMetrics for "+library+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "CollectRnaSeqMetrics for "+library+" is done. ")
         
         # Base distribution at read position for cellular
-        commandStr = '{}/BaseDistributionAtReadPosition '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/BaseDistributionAtReadPosition '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-m 15884m '
         else:
             commandStr += '-m 7692m '
-        commandStr += 'I={} OUTPUT={}{}.barcode_distribution_XC.txt TMP_DIR={} TAG=XC VALIDATION_STRINGENCY=SILENT'.format(combined_bamfile, alignment_folder, library, tmpdir)
+        commandStr += 'I='+combined_bamfile+' OUTPUT='+alignment_folder+library+'.barcode_distribution_XC.txt TMP_DIR='+tmpdir+' TAG=XC VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Cellular for "+library+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Cellular for "+library+" is done. ")
         
         # Base distribution at read position for molecular
-        commandStr = '{}/BaseDistributionAtReadPosition '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/BaseDistributionAtReadPosition '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-m 15884m '
         else:
             commandStr += '-m 7692m '
-        commandStr += 'I={} OUTPUT={}{}.barcode_distribution_XM.txt TMP_DIR={} TAG=XM VALIDATION_STRINGENCY=SILENT'.format(combined_bamfile, alignment_folder, library, tmpdir)
+        commandStr += 'I='+combined_bamfile+' OUTPUT='+alignment_folder+library+'.barcode_distribution_XM.txt TMP_DIR='+tmpdir+' TAG=XM VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Molecular for "+library+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Molecular for "+library+" is done. ")
         
         # Gather read quality metrics
-        commandStr = '{}/GatherReadQualityMetrics '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/GatherReadQualityMetrics '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-m 15884m '
         else:
             commandStr += '-m 7692m '
-        commandStr += 'I={} TMP_DIR={} OUTPUT={}{}.ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT'.format(combined_bamfile, tmpdir, alignment_folder, library)
+        commandStr += 'I='+combined_bamfile+' TMP_DIR='+tmpdir+' OUTPUT='+alignment_folder+library+'.ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "GatherReadQualityMetrics for "+library+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "GatherReadQualityMetrics for "+library+" is done. ")
         
-        # Single cell RnaSeq metrics collector
-        commandStr = '{}/SingleCellRnaSeqMetricsCollector '.format(dropseq_folder)
-        if is_NovaSeq or is_NovaSeq_S4:
-            commandStr += '-m 32268m '
-        else:
-            commandStr += '-m 15884m '
-        commandStr += 'I={} ANNOTATIONS_FILE={}'.format(combined_bamfile, annotations_file)
-        commandStr += ' OUTPUT={}{}.fracIntronicExonicPerCell.txt.gz RIBOSOMAL_INTERVALS={} CELL_BARCODE_TAG=XC READ_MQ={}'.format(alignment_folder, library, ribosomal_intervals, base_quality)
-        commandStr += ' TMP_DIR={} CELL_BC_FILE={}{}.{}_transcripts_mq_{}_selected_cells.txt.gz MT_SEQUENCE=MT VALIDATION_STRINGENCY=SILENT'.format(tmpdir, alignment_folder, library, min_transcripts_per_cell, base_quality)
-        #write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" Command="+commandStr)
-        #os.system(commandStr)
-        #write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" is done. ")
-
         if not run_barcodematching:
             pp1 = PdfPages('{}/{}.pdf'.format(alignment_folder, library))
             
@@ -332,7 +316,7 @@ def main():
                         shutil.copyfileobj(f_in, f_out)
                     f_out.close()
                 f_in.close()
-
+                
             mat = np.loadtxt(f1, delimiter='\t', dtype='int', skiprows=1, usecols=(0))
             l = int(len(mat) / 10)
             df_x = np.arange(1, l+1, 1)
@@ -462,7 +446,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
         
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -475,4 +459,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+    
+    

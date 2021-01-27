@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to filter unmapped bam with matched barcodes
+# This script is to filter unmapped bam using matched barcodes
 
 from __future__ import print_function
 
@@ -43,11 +43,11 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
 
 
-def main():
+def main():   
     if len(sys.argv) != 7:
         print("Please provide six arguments: manifest file, library ID, lane ID, slice ID, sample barcode and locus function list!")
         sys.exit()
@@ -73,19 +73,16 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
-    tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
-    
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+
     # Read info from metadata file
     reference = ''
+    email_address = ''
     bead_structure = ''
     experiment_date = ''
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
@@ -96,8 +93,9 @@ def main():
             row = rows[i]
             if row[row0.index('library')] == library:
                 reference = row[row0.index('reference')]
+                email_address = row[row0.index('email')]
                 bead_structure = row[row0.index('bead_structure')]
-                experiment_date = row[row0.index('experiment_date')]
+                experiment_date = row[row0.index('date')]
                 break
     fin.close()
     
@@ -112,7 +110,7 @@ def main():
     prefix_libraries = '{}/{}_{}/{}.{}.{}.{}'.format(library_folder, experiment_date, library, flowcell_barcode, lane, slice, library)
     if (barcode):
         prefix_libraries += '.'+barcode
-    unmapped_bam = '{}.unmapped.bam'.format(prefix_libraries)
+    unmapped_bam = prefix_libraries + '.unmapped.bam'
     
     barcode_matching_folder = '{}/{}_{}/{}/barcode_matching'.format(library_folder, experiment_date, library, reference2)
     unmapped_sam = '{}/{}_{}_{}_{}_unmapped.sam'.format(barcode_matching_folder, library, lane, slice, barcode)
@@ -133,7 +131,7 @@ def main():
     folder_failed = '{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode, reference2)
 
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         write_log(log_file, flowcell_barcode, "Filter unmapped bam for "+library+" "+reference2+" in lane "+lane+" slice "+slice)
         
@@ -141,7 +139,7 @@ def main():
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
 
-        commandStr = 'samtools view -h -o {} {}'.format(unmapped_sam, unmapped_bam)
+        commandStr = 'samtools view -h -o '+unmapped_sam+' '+unmapped_bam
         os.system(commandStr)
 
         dict1 = {}
@@ -183,16 +181,16 @@ def main():
         if os.path.isfile(unmapped_sam):
             call(['rm', unmapped_sam])
         
-        commandStr = 'samtools view -S -b {} > {}'.format(filtered_sam, filtered_bam)
+        commandStr = 'samtools view -S -b '+filtered_sam+' > '+filtered_bam
         os.system(commandStr)
         
-        if os.path.isfile(filtered_sam):
-            call(['rm', filtered_sam])
-            
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
         
+        if os.path.isfile(filtered_sam):
+            call(['rm', filtered_sam])
+            
         write_log(log_file, flowcell_barcode, "Filter unmapped bam for "+library+" "+reference2+" in lane "+lane+" slice "+slice+" is done. ")
         
         call(['mv', folder_running, folder_finished])
@@ -200,7 +198,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -213,4 +211,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

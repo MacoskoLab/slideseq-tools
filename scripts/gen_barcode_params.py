@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-# This script is to generate barcode_params.txt that is needed by extracting Illumina barcodes
+# This script is to generate barcode_params.txt
+# that is needed by extracting Illumina barcodes
 
 import sys
 import getopt
@@ -25,8 +26,13 @@ def main(argv):
             lane = arg
             
     fout = open(outputfile,'w')
+
     title = 'barcode_sequence_1\tlibrary_name\tbarcode_name\n';
     fout.write(title)
+
+    #barcode_sequence_1 => SAMPLE_BARCODE
+    #library_name => LIBRARY
+    #barcode_name => BARCODE_NAME
 
     with open(inputfile, 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')

@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
-# This script is to check the Illumina directory, parse input data, and call the steps 
-# of extracting Illumina barcodes and converting barcodes to bam files
+# This script is to check the Illumina directory, parse input data, 
+# and call the steps of extracting Illumina barcodes and 
+# converting barcodes to bam files
 
 from __future__ import print_function
 
@@ -61,7 +62,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -86,36 +87,31 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     email_address = options['email_address'] if 'email_address' in options else ''
     
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
-    
     basecalls_dir = '{}/Data/Intensities/BaseCalls'.format(flowcell_directory)
+    log_file = '{}/logs/workflow.log'.format(output_folder)
     
     # Get read structure from RunInfo.xml
     runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
     read_structure = get_read_structure(runinfo_file)
 
-    log_file = '{}/logs/workflow.log'.format(output_folder)
-
     # Parse metadata file
     write_log(log_file, flowcell_barcode, "Parse metadata file. ")
-    commandStr = 'python {}/parse_metadata.py -i {} -r {} -o {}/parsed_metadata.txt'.format(scripts_folder, metadata_file, runinfo_file, output_folder)
+    commandStr = 'python '+scripts_folder+'/parse_metadata.py -i '+metadata_file+' -r '+runinfo_file+' -o '+'{}/parsed_metadata.txt'.format(output_folder)
     os.system(commandStr)
     
     # Read info from metadata file
@@ -124,6 +120,7 @@ def main():
     libraries = []
     libraries_unique = []
     barcodes = []
+    bead_structures = []
     references_unique = []
     locus_function_list_unique = []
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
@@ -141,6 +138,7 @@ def main():
                 references_unique.append(row[row0.index('reference')])
                 locus_function_list_unique.append(row[row0.index('locus_function_list')])
             barcodes.append(row[row0.index('sample_barcode')])
+            bead_structures.append(row[row0.index('bead_structure')])
     fin.close()
     
     # Get tile information from RunInfo.xml
@@ -172,59 +170,59 @@ def main():
     folder_failed = '{}/status/failed.run_preparation'.format(output_folder)
 
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
-        # Check the input Illumina folder
-        commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar CheckIlluminaDirectory TMP_DIR={} VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
-        commandStr += 'BASECALLS_DIR={} READ_STRUCTURE={}'.format(basecalls_dir, read_structure)
+        # Check if the input Illumina folder is in correct format
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+        commandStr += '-jar '+picard_folder+'/picard.jar CheckIlluminaDirectory TMP_DIR='+tmpdir+' VALIDATION_STRINGENCY=SILENT '
+        commandStr += 'BASECALLS_DIR='+basecalls_dir+' READ_STRUCTURE='+read_structure
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += ' LINK_LOCS=false'
         for lane in lanes_unique:
-            commandStr += ' L=' + lane
-        write_log(log_file, flowcell_barcode, "CheckIlluminaDirectory Command=" + commandStr)
+            commandStr += ' L='+lane
+        write_log(log_file, flowcell_barcode, "CheckIlluminaDirectory Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "CheckIlluminaDirectory is done. ")
         
         # Create directories
         write_log(log_file, flowcell_barcode, "Creating directories. ")
         for lane in lanes_unique:
-            call(['mkdir', '{}/{}'.format(output_folder, lane)])
-            call(['mkdir', '{}/{}/barcodes'.format(output_folder, lane)])
+            call(['mkdir', '-p', '{}/{}'.format(output_folder, lane)])
+            call(['mkdir', '-p', '{}/{}/barcodes'.format(output_folder, lane)])
             for slice in slice_id[lane]:
-                call(['mkdir', '{}/{}/{}'.format(output_folder, lane, slice)])
+                call(['mkdir', '-p', '{}/{}/{}'.format(output_folder, lane, slice)])
         for i in range(len(lanes)):
             for slice in slice_id[lane]:
                 if not os.path.isdir('{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])):
-                    call(['mkdir', '{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])])
+                    call(['mkdir', '-p', '{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i])])
                 if (barcodes[i]):
-                    call(['mkdir', '{}/{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i], barcodes[i])])
+                    call(['mkdir', '-p', '{}/{}/{}/{}/{}'.format(output_folder, lanes[i], slice, libraries[i], barcodes[i])])
         
         # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
         for lane in lanes_unique:
-            write_log(log_file, flowcell_barcode, "Generating barcode_params.txt for Lane " + lane)
-            commandStr = 'python {}/gen_barcode_params.py -i {}/parsed_metadata.txt -o {}/{}/barcode_params.txt -l {}'.format(scripts_folder, output_folder, output_folder, lane, lane)
+            write_log(log_file, flowcell_barcode, "Generating barcode_params.txt for Lane "+lane)
+            commandStr = 'python '+scripts_folder+'/gen_barcode_params.py -i '+output_folder+'/parsed_metadata.txt -o '+output_folder+'/'+lane+'/barcode_params.txt -l '+lane
             os.system(commandStr)
 
         # Generate library_params that is needed by IlluminaBasecallsToSam
         for lane in lanes_unique:
-            write_log(log_file, flowcell_barcode, "Generating library_params.txt for Lane " + lane)
+            write_log(log_file, flowcell_barcode, "Generating library_params.txt for Lane "+lane)
             for slice in slice_id[lane]:
-                commandStr = 'python {}/gen_library_params.py -i {}/parsed_metadata.txt -o {}/{}/{}/library_params.txt -b '.format(scripts_folder, output_folder, output_folder, lane, slice)
-                commandStr += '{}/{}/{}/ -n {}.{}.{} -l {}'.format(output_folder, lane, slice, flowcell_barcode, lane, slice, lane)
+                commandStr = 'python '+scripts_folder+'/gen_library_params.py -i '+output_folder+'/parsed_metadata.txt -o '+output_folder+'/'+lane+'/'+slice+'/library_params.txt -b '
+                commandStr += output_folder+'/'+lane+'/'+slice+'/ -n '+flowcell_barcode+'.'+lane+'.'+slice+' -l '+lane
                 os.system(commandStr)
         
         # Call run_processbarcodes
         for lane in lanes_unique:
             output_file = '{}/logs/run_processbarcodes_lane_{}.log'.format(output_folder, lane)
-            submission_script = '{}/run.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_processbarcodes', manifest_file, lane, scripts_folder]
+            submission_script = '{}/run_processbarcodes.sh'.format(scripts_folder)
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, lane, scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
             call(call_args)
         
         # Call run_mergebarcodes
         output_file = '{}/logs/run_mergebarcodes.log'.format(output_folder)
-        submission_script = '{}/run.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=4g', '-notify', '-l', 'h_rt=40:0:0', '-j', 'y', submission_script, 'run_mergebarcodes', manifest_file, scripts_folder]
+        submission_script = '{}/run_mergebarcodes.sh'.format(scripts_folder)
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=50:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
         call(call_args)
     
         call(['mv', folder_running, folder_finished])
@@ -232,7 +230,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -245,4 +243,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

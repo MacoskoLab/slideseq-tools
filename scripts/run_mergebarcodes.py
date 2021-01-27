@@ -61,7 +61,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -86,27 +86,29 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     email_address = options['email_address'] if 'email_address' in options else ''
-    
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
+    resubmit = str2bool(options['resubmit']) if 'resubmit' in options else False
 
     runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
     log_file = '{}/logs/workflow.log'.format(output_folder)
+    
+    # Parse metadata file
+    if resubmit:
+        write_log(log_file, flowcell_barcode, "Parse metadata file. ")
+        commandStr = 'python '+scripts_folder+'/parse_metadata.py -i '+metadata_file+' -r '+runinfo_file+' -o '+'{}/parsed_metadata.txt'.format(output_folder)
+        os.system(commandStr)
     
     # Read info from metadata file
     lanes = []
@@ -117,7 +119,10 @@ def main():
     bead_structures = []
     references_unique = []
     locus_function_list_unique = []
+    resubmit_unique = []
     experiment_date = []
+    run_barcodematching = []
+    puckcaller_path = []
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')
         rows = list(reader)
@@ -132,7 +137,10 @@ def main():
                 libraries_unique.append(row[row0.index('library')])
                 references_unique.append(row[row0.index('reference')])
                 locus_function_list_unique.append(row[row0.index('locus_function_list')])
-                experiment_date.append(row[row0.index('experiment_date')])
+                resubmit_unique.append(row[row0.index('resubmit')])
+                experiment_date.append(row[row0.index('date')])
+                run_barcodematching.append(str2bool(row[row0.index('run_barcodematching')]))
+                puckcaller_path.append(row[row0.index('puckcaller_path')])
             barcodes.append(row[row0.index('sample_barcode')])
             bead_structures.append(row[row0.index('bead_structure')])
     fin.close()
@@ -166,7 +174,7 @@ def main():
     folder_finished = '{}/status/finished.mergebarcodes'.format(output_folder)
     folder_failed = '{}/status/failed.mergebarcodes'.format(output_folder)
     
-    call(['mkdir', folder_waiting])
+    call(['mkdir', '-p', folder_waiting])
     
     # Wait till all of run_processbarcodes and run_barcodes2sam finish
     while 1:
@@ -205,45 +213,85 @@ def main():
     if os.path.isdir(folder_waiting):
         call(['mv', folder_waiting, folder_running])
     else:
-        call(['mkdir', folder_running])
-
-    try:       
+        call(['mkdir', '-p', folder_running])
+    
+    try:
         for j in range(len(libraries_unique)):
-            library = libraries_unique[j]
-            os.system('mkdir ' + '{}/{}_{}'.format(library_folder, experiment_date[j], library))
-            for i in range(len(lanes)):
-                if libraries[i] != library:
-                    continue
-                for slice in slice_id[lanes[i]]:
-                    unmapped_bam = '{}/{}/{}/{}/'.format(output_folder, lanes[i], slice, library)
-                    if (barcodes[i]):
-                        unmapped_bam += '{}/{}.{}.{}.{}.{}.unmapped.bam'.format(barcodes[i], flowcell_barcode, lanes[i], slice, library, barcodes[i])
-                    else:
-                        unmapped_bam += '{}.{}.{}.{}.unmapped.bam'.format(flowcell_barcode, lanes[i], slice, library)
-                    unmapped_bam2 = '{}/{}_{}/{}.{}.{}.{}'.format(library_folder, experiment_date[j], library, flowcell_barcode, lanes[i], slice, library)
-                    if (barcodes[i]):
-                        unmapped_bam2 += '.'+barcodes[i]
-                    unmapped_bam2 += '.unmapped.bam'
-                    if os.path.isfile(unmapped_bam):
-                        os.system('mv {} {}'.format(unmapped_bam, unmapped_bam2))
-
-                    # Call run_alignment
-                    output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
-                    submission_script = '{}/run.sh'.format(scripts_folder)
-                    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=35g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_alignment', manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder]
-                    call(call_args)
-
-            if is_NovaSeq or is_NovaSeq_S4:
-                time.sleep(1800)
-            else:
-                time.sleep(600)
+            if (not resubmit) or resubmit_unique[j] == 'TRUE':
+                library = libraries_unique[j]
+                
+                if resubmit:
+                    for i in range(len(lanes)):
+                        if libraries[i] != library:
+                            continue
+                        for slice in slice_id[lanes[i]]:
+                            unmapped_bam = '{}/{}/{}/{}/'.format(output_folder, lanes[i], slice, library)
+                            if (barcodes[i]):
+                                unmapped_bam += '{}/{}.{}.{}.{}.{}.unmapped.bam'.format(barcodes[i], flowcell_barcode, lanes[i], slice, library, barcodes[i])
+                            else:
+                                unmapped_bam += '{}.{}.{}.{}.unmapped.bam'.format(flowcell_barcode, lanes[i], slice, library)
+                            unmapped_bam2 = '{}/{}_{}/{}.{}.{}.{}'.format(library_folder, experiment_date[j], library, flowcell_barcode, lanes[i], slice, library)
+                            if (barcodes[i]):
+                                unmapped_bam2 += '.'+barcodes[i]
+                            unmapped_bam2 += '.unmapped.bam'
+                            if os.path.isfile(unmapped_bam2):
+                                os.system('mv ' + unmapped_bam2 + ' ' + unmapped_bam)
+                    if os.path.isdir('{}/{}_{}'.format(library_folder, experiment_date[j], library)):
+                        os.system('rm -r ' + '{}/{}_{}'.format(library_folder, experiment_date[j], library))
+                    os.system('rm ' + '{}/logs/*{}*'.format(output_folder, library))
+                    os.system('rm -r ' + '{}/status/*{}*'.format(output_folder, library))
+                
+                os.system('mkdir -p ' + '{}/{}_{}'.format(library_folder, experiment_date[j], library))
+                for i in range(len(lanes)):
+                    if libraries[i] != library:
+                        continue
+                    for slice in slice_id[lanes[i]]:
+                        unmapped_bam = '{}/{}/{}/{}/'.format(output_folder, lanes[i], slice, library)
+                        if (barcodes[i]):
+                            unmapped_bam += '{}/{}.{}.{}.{}.{}.unmapped.bam'.format(barcodes[i], flowcell_barcode, lanes[i], slice, library, barcodes[i])
+                        else:
+                            unmapped_bam += '{}.{}.{}.{}.unmapped.bam'.format(flowcell_barcode, lanes[i], slice, library)
+                        unmapped_bam2 = '{}/{}_{}/{}.{}.{}.{}'.format(library_folder, experiment_date[j], library, flowcell_barcode, lanes[i], slice, library)
+                        if (barcodes[i]):
+                            unmapped_bam2 += '.'+barcodes[i]
+                        unmapped_bam2 += '.unmapped.bam'
+                        if os.path.isfile(unmapped_bam):
+                            os.system('mv ' + unmapped_bam + ' ' + unmapped_bam2)
         
-            # Call run_analysis
-            output_file = '{}/logs/run_analysis_{}.log'.format(output_folder, library)
-            submission_script = '{}/run.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=30:0:0', '-j', 'y', submission_script, 'run_analysis', manifest_file, library, scripts_folder]
-            call(call_args)
-        
+                        # Call run_alignment
+                        output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
+                        submission_script = '{}/run_alignment.sh'.format(scripts_folder)
+                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=65g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
+                        call(call_args)
+                
+                if run_barcodematching[j]:
+                    puckcaller_path1 = puckcaller_path[j]
+                    file1 = '{}/AnalysisOutputs-selected.mat'.format(puckcaller_path1)
+                    file2 = '{}/BeadBarcodes.txt'.format(puckcaller_path1)
+                    file3 = '{}/BeadLocations.txt'.format(puckcaller_path1)
+                    if puckcaller_path1[-1] != '/':
+                        puckcaller_path1 += '/'
+                    if (not os.path.isfile(file2)) or (not os.path.isfile(file3)):
+                        print('{} and/or {} are not found!'.format(file2, file3))
+                        if os.path.isfile(file1):
+                            output_file = '{}/logs/ExtractBeadBarcode_{}.log'.format(output_folder, library)
+                            submission_script = '{}/puckcaller/run_ExtractBeadBarcode.sh'.format(scripts_folder)
+                            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, '/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a', puckcaller_path1, scripts_folder, output_folder]
+                            call(call_args)
+                        else:
+                            print('{} is not found!'.format(file1))
+                
+                if is_NovaSeq or is_NovaSeq_S4:
+                    time.sleep(1800)
+                else:
+                    time.sleep(600)
+                
+                # Call run_analysis
+                output_file = '{}/logs/run_analysis_{}.log'.format(output_folder, library)
+                submission_script = '{}/run_analysis.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=50:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
+                call(call_args)
+
         call(['mv', folder_running, folder_finished])
     except:
         if os.path.isdir(folder_running):
@@ -251,7 +299,7 @@ def main():
         elif os.path.isdir(folder_waiting):
             call(['mv', folder_waiting, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -264,4 +312,5 @@ def main():
     
 if __name__ == "__main__":
     main()
+
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-# This script is to generate library_params.txt that is needed by converting Illumina basecalls to sam
+# This script is to generate library_params.txt
+# that is needed by converting Illumina basecalls to sam
 
 import sys
 import getopt
@@ -31,8 +32,18 @@ def main(argv):
             lane = arg
             
     fout = open(outputfile,'w')
+
     title = 'OUTPUT\tSAMPLE_ALIAS\tLIBRARY_NAME\tBARCODE_1\n';
     fout.write(title)
+
+    #OUTPUT => 
+    #SAMPLE_ALIAS => SAMPLE|LIBRARY
+    #LIBRARY_NAME => LIBRARY
+    #BARCODE_1 => SAMPLE_BARCODE
+    
+    #outfolder = '***/output/1/0/'
+    #outname = 'HLFWWBGX9.1.0'
+    #***/output/1/0/Puck_181206_3/TAGGCATG/HLFWWBGX9.1.0.Puck_181206_3.TAGGCATG.unmapped.bam
 
     with open(inputfile, 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')

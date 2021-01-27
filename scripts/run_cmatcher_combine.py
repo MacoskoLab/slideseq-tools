@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-# This script is to combine outputs from cmatcher and call tag_matched_bam and filter_unmapped_bam
+# This script is to combine outputs from cmatcher 
+# and call tag_matched_bam
 
 from __future__ import print_function
 
@@ -42,23 +43,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-# Get bead structure range
-def get_bead_structure_range(bs, type):
-    #12C8M|*T
-    #7C18X7C8M2X|*T
-    l = re.split('C|X|M', re.split('\|', bs)[0])
-    res = ''
-    i = 1
-    p = -1
-    for it in l:
-        if it:
-            p += len(it) + 1
-            if bs[p] == type:
-                res += str(i) + '-' + str(i + int(it) - 1) + ':'
-            i += int(it)
-    return res[:-1]
-
-
 # Get tile information from RunInfo.xml
 def get_tiles(x, lane):
     tiles = []
@@ -84,7 +68,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
 
 
@@ -111,24 +95,20 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
-    
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    STAR_folder = options['STAR_folder'] if 'STAR_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     
     # Read info from metadata file
     lanes = []
@@ -140,10 +120,12 @@ def main():
     reference = ''
     base_quality = '10'
     min_transcripts_per_cell = '10'
-    bead_structure = ''
-    experiment_date = ''
-    run_puckmatcher = False
+    email_address = ''
     bead_type = '180402'
+    bead_structure = ''
+    run_puckmatcher = False
+    experiment_date = ''
+    gen_read1_plot = False
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')
         rows = list(reader)
@@ -162,9 +144,13 @@ def main():
                 reference = row[row0.index('reference')]
                 base_quality = row[row0.index('base_quality')]
                 min_transcripts_per_cell = row[row0.index('min_transcripts_per_cell')]
+                email_address = row[row0.index('email')]
+                bead_type = row[row0.index('bead_type')]
                 bead_structure = row[row0.index('bead_structure')]
                 run_puckmatcher = str2bool(row[row0.index('run_barcodematching')])
-                experiment_date = row[row0.index('experiment_date')]
+                experiment_date = row[row0.index('date')]
+                if 'gen_read1_plot' in row0:
+                    gen_read1_plot = str2bool(row[row0.index('gen_read1_plot')])
     fin.close()
     
     reference_folder = reference[:reference.rfind('/')]
@@ -206,10 +192,11 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
     
-    alignment_folder = '{}/{}_{}/{}/alignment/'.format(library_folder, experiment_date, library, reference2)
-    barcode_matching_folder = '{}/{}_{}/{}/barcode_matching/'.format(library_folder, experiment_date, library, reference2)
-    select_cell_file = '{}{}.{}_transcripts_mq_{}_selected_cells.txt'.format(alignment_folder, library, min_transcripts_per_cell, base_quality)
-    bead_barcode_file = '{}/BeadBarcodes.txt'.format(barcode_matching_folder)
+    analysis_folder = '{}/{}_{}'.format(library_folder, experiment_date, library)
+    alignment_folder = '{}/{}/alignment/'.format(analysis_folder, reference2)
+    barcode_matching_folder = '{}/{}/barcode_matching/'.format(analysis_folder, reference2)
+    select_cell_file = alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.txt'
+    bead_barcode_file = '{}/BeadBarcodes_degenerate.txt'.format(analysis_folder)
     
     if not os.path.isfile(select_cell_file):
         write_log(log_file, flowcell_barcode, 'run_cmatcher_combine error: '+select_cell_file+' does not exist!')
@@ -220,14 +207,14 @@ def main():
     folder_failed = '{}/status/failed.cmatcher_combine_{}_{}'.format(output_folder, library, reference2)
     
     try:        
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         l = 0
         with open(select_cell_file, 'r') as fin:
             for line in fin:
                 l += 1
         fin.close()
-        k = 50000
+        k = 10000
         ls = l // k
         
         print('# selected cells: ' + str(l))
@@ -245,6 +232,19 @@ def main():
                 break
             time.sleep(30)
 
+        while 1:
+            f = True
+            for i in range(ls + 1):
+                if i * k >= l:
+                    break;
+                file2 = '{}/{}_barcode_matching_shuffled_{}.finished'.format(barcode_matching_folder, library, str(i + 1))
+                if not os.path.isfile(file2):
+                    f = False
+                    break
+            if f:
+                break
+            time.sleep(30)
+        
         print('combine cmatcher outputs...')
         write_log(log_file, flowcell_barcode, "Combine CMatcher outputs for "+library+" "+reference2)
         combined_cmatcher_file = '{}/{}_barcode_matching.txt'.format(barcode_matching_folder, library)
@@ -263,23 +263,56 @@ def main():
                 fin.close()
         fout.close()
         
+        # Combine CMatcher logs
+        combined_cmatcher_summary = '{}/{}_barcode_matching_summary.txt'.format(barcode_matching_folder, library)
+        total = 0
+        unique = 0
+        multi = 0
+        for i in range(ls + 1):
+            if i * k >= l:
+                break;
+            file2 = '{}/{}_barcode_matching_{}.txt.log'.format(barcode_matching_folder, library, str(i + 1))
+            if not os.path.isfile(file2):
+                continue
+            j = 0
+            with open(file2, 'r') as fin:
+                for line in fin:
+                    j += 1
+                    s = line.split(':')[1]
+                    s = s.strip(' \t\n')
+                    if j == 1:
+                        total += int(s)
+                    elif j == 2:
+                        unique += int(s)
+                    elif j == 3:
+                        multi += int(s)
+            fin.close()
+        with open(combined_cmatcher_summary, 'w') as fout:
+            fout.write('Total # barcodes: {}\n'.format(str(total)))
+            fout.write('# unique matched barcodes: {}, {}%\n'.format(str(unique), str(unique * 100 / total)))
+            fout.write('# multiple matched barcodes: {}, {}%\n'.format(str(multi), str(multi * 100 / total)))
+        fout.close()
+        
         for i in range(ls + 1):
             if i * k >= l:
                 break;
             file1 = '{}/{}_barcode_matching_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
             file2 = '{}/{}_barcode_matching_{}.finished'.format(barcode_matching_folder, library, str(i + 1))
-            name = '{}.{}_transcripts_mq_{}_selected_cells'.format(library, min_transcripts_per_cell, base_quality)
+            name = library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells'
             file3 = '{}/{}_{}.txt'.format(alignment_folder, name, str(i + 1))
+            file4 = '{}/{}_barcode_matching_{}.txt.log'.format(barcode_matching_folder, library, str(i + 1))
             if os.path.isfile(file1):
                 call(['rm', file1])
             if os.path.isfile(file2):
                 call(['rm', file2])
             if os.path.isfile(file3):
                 call(['rm', file3])
+            if os.path.isfile(file4):
+                call(['rm', file4])
 
         combined_cmatcher_file2 = '{}/{}_barcode_matching_distance.txt'.format(barcode_matching_folder, library)
         with open(combined_cmatcher_file2, 'w') as fout:
-            fout.write('IlluminaBarcodes\tProcessedIlluminaBarcodes\tBeadBarcodes\tDistance\n')
+            fout.write('IlluminaBarcodes\tProcessedIlluminaBarcodes\tBeadBarcodes\tDistance\tX\tY\n')
             for i in range(ls + 1):
                 if i * k >= l:
                     break;
@@ -291,7 +324,19 @@ def main():
                         if j > 1:
                             fout.write(line)
                 fin.close()
+                call(['rm', file2])
         fout.close()
+        
+        # UniqueMappedIlluminaBarcodes
+        bci = np.loadtxt(combined_cmatcher_file, delimiter='\t', dtype='str', skiprows=1, usecols=(1))
+        bci = np.unique(bci)
+        unique_bci_file = '{}/{}_unique_matched_illumina_barcodes.txt'.format(barcode_matching_folder, library)
+        with open(unique_bci_file, 'w') as f1:
+            for bc in bci:
+                f1.write("%s\n" % bc)
+        f1.close()
+        
+        os.system('gzip -c '+unique_bci_file+' > '+unique_bci_file+'.gz')
         
         write_log(log_file, flowcell_barcode, "Combine CMatcher outputs for "+library+" "+reference2+" is done. ")
         
@@ -301,50 +346,114 @@ def main():
         dict = {}
         matched_bead_barcode_file = '{}/{}_matched_bead_barcodes.txt'.format(barcode_matching_folder, library)
         matched_bead_location_file = '{}/{}_matched_bead_locations.txt'.format(barcode_matching_folder, library)
+        bead_location_forR = '{}/BeadLocationsForR.csv'.format(barcode_matching_folder)
         with open(matched_bead_barcode_file, 'w') as fout1:
             with open(matched_bead_location_file, 'w') as fout2:
-                with open(combined_cmatcher_file, 'r') as fin:
+                with open(bead_location_forR, 'w') as fout3:
+                    fout3.write('barcodes,xcoord,ycoord\n')
+                    with open(combined_cmatcher_file, 'r') as fin:
+                        j = 0
+                        for line in fin:
+                            j += 1
+                            if j > 1:
+                                bc = line.split('\t')[2]
+                                dist = line.split('\t')[3]
+                                x = line.split('\t')[4]
+                                y = line.split('\t')[5]
+                                if not bc in dict:
+                                    fout1.write(bc + '\n')
+                                    fout2.write(dist + '\t' + x + '\t' + y)
+                                    fout3.write(bc + ',' + x + ',' + y)
+                                    dict[bc] = 1
+                    fin.close()
+                fout3.close()
+            fout2.close()
+        fout1.close()
+        
+        write_log(log_file, flowcell_barcode, "Get unique matched bead barcodes and locations for "+library+" "+reference2+" is done. ")
+        
+        combined_cmatcher_file = '{}/{}_barcode_matching_shuffled.txt'.format(barcode_matching_folder, library)
+        with open(combined_cmatcher_file, 'w') as fout:
+            fout.write('IlluminaBarcodes\tProcessedIlluminaBarcodes\tBeadBarcodes\tDistance\tX\tY\n')
+            for i in range(ls + 1):
+                if i * k >= l:
+                    break;
+                file2 = '{}/{}_barcode_matching_shuffled_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                with open(file2, 'r') as fin:
                     j = 0
                     for line in fin:
                         j += 1
                         if j > 1:
-                            bc = line.split('\t')[2]
-                            dist = line.split('\t')[3]
-                            x = line.split('\t')[4]
-                            y = line.split('\t')[5]
-                            if not bc in dict:
-                                fout1.write(bc + '\n')
-                                fout2.write(dist + '\t' + x + '\t' + y)
-                                dict[bc] = 1
+                            fout.write(line)
                 fin.close()
-            fout2.close()
-        fout1.close()
+        fout.close()
         
-        print('Gzip unique matched bead barcode file...')
-        matched_bead_barcode_gzfile = '{}/{}_matched_bead_barcodes.txt.gz'.format(barcode_matching_folder, library)
-        os.system('gzip -c {} > {}'.format(matched_bead_barcode_file, matched_bead_barcode_gzfile))
-        write_log(log_file, flowcell_barcode, "Get unique matched bead barcodes and locations for "+library+" "+reference2+" is done. ")
+        for i in range(ls + 1):
+            if i * k >= l:
+                break;
+            file1 = '{}/{}_barcode_matching_shuffled_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+            file2 = '{}/{}_barcode_matching_shuffled_{}.finished'.format(barcode_matching_folder, library, str(i + 1))
+            name = library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.shuffled'
+            file3 = '{}/{}_{}.txt'.format(alignment_folder, name, str(i + 1))
+            file4 = '{}/{}_barcode_matching_shuffled_{}.txt.log'.format(barcode_matching_folder, library, str(i + 1))
+            if os.path.isfile(file1):
+                call(['rm', file1])
+            if os.path.isfile(file2):
+                call(['rm', file2])
+            if os.path.isfile(file3):
+                call(['rm', file3])
+            if os.path.isfile(file4):
+                call(['rm', file4])
 
+        combined_cmatcher_file2 = '{}/{}_barcode_matching_distance_shuffled.txt'.format(barcode_matching_folder, library)
+        with open(combined_cmatcher_file2, 'w') as fout:
+            fout.write('IlluminaBarcodes\tProcessedIlluminaBarcodes\tBeadBarcodes\tDistance\tX\tY\n')
+            for i in range(ls + 1):
+                if i * k >= l:
+                    break;
+                file2 = '{}/{}_barcode_matching_distance_shuffled_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                with open(file2, 'r') as fin:
+                    j = 0
+                    for line in fin:
+                        j += 1
+                        if j > 1:
+                            fout.write(line)
+                fin.close()
+                call(['rm', file2])
+        fout.close()
+        
+        # UniqueMappedIlluminaBarcodes
+        bci = np.loadtxt(combined_cmatcher_file, delimiter='\t', dtype='str', skiprows=1, usecols=(1))
+        bci = np.unique(bci)
+        shuffled_bci_file = '{}/{}_unique_shuffled_illumina_barcodes.txt'.format(barcode_matching_folder, library)
+        with open(shuffled_bci_file, 'w') as f1:
+            for bc in bci:
+                f1.write("%s\n" % bc)
+        f1.close()
+        
+        os.system('gzip -c '+shuffled_bci_file+' > '+shuffled_bci_file+'.gz')
+        
         for i in range(len(lanes)):
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
                 # Call tag_matched_bam
                 output_file = '{}/logs/tag_matched_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
-                submission_script = '{}/run.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'tag_matched_bam', manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder]
+                submission_script = '{}/tag_matched_bam.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder, output_folder, analysis_folder]
                 call(call_args)
                 
                 # Call filter_unmapped_bam
-                output_file = '{}/logs/filter_unmapped_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
-                submission_script = '{}/run.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'filter_unmapped_bam', manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder]
-                call(call_args)
-                
+                if gen_read1_plot:
+                    output_file = '{}/logs/filter_unmapped_bam_{}_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
+                    submission_script = '{}/filter_unmapped_bam.sh'.format(scripts_folder)
+                    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], locus_function_list, scripts_folder, output_folder, analysis_folder]
+                    call(call_args)
+        
         # Call generate_plots_cmatcher
         output_file = '{}/logs/generate_plots_cmatcher_{}_{}.log'.format(output_folder, library, reference2)
-        submission_script = '{}/run.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=30g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', submission_script, 'generate_plots_cmatcher', manifest_file, library, scripts_folder, locus_function_list]
+        submission_script = '{}/generate_plots_cmatcher.sh'.format(scripts_folder)
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=35:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
         call(call_args)
         
         call(['mv', folder_running, folder_finished])
@@ -352,7 +461,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
         
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -365,4 +474,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+    
+    

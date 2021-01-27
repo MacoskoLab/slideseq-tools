@@ -43,13 +43,13 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
 
 
 def main():
     if len(sys.argv) != 6:
-        print("Please provide five arguments: manifest file, library ID, lane ID, slice ID and sample barcode!")
+        print("Please provide five arguments: manifest file, library ID, lane ID, slice ID and barcode!")
         sys.exit()
     
     manifest_file = sys.argv[1]
@@ -72,26 +72,24 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    STAR_folder = options['STAR_folder'] if 'STAR_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
-
     basecalls_dir = '{}/Data/Intensities/BaseCalls'.format(flowcell_directory)
+    runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
+    log_file = '{}/logs/workflow.log'.format(output_folder)
     
     # Read info from metadata file
     bead_structure = ''
@@ -99,6 +97,7 @@ def main():
     locus_function_list = 'exonic+intronic'
     sequence = 'AAGCAGTGGTATCAACGCAGAGTGAATGGG'
     base_quality = '10'
+    email_address = ''
     experiment_date = ''
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')
@@ -112,7 +111,8 @@ def main():
                 locus_function_list = row[row0.index('locus_function_list')]
                 sequence = row[row0.index('start_sequence')]
                 base_quality = row[row0.index('base_quality')]
-                experiment_date = row[row0.index('experiment_date')]
+                email_address = row[row0.index('email')]
+                experiment_date = row[row0.index('date')]
                 break
     fin.close()
     
@@ -127,9 +127,6 @@ def main():
     ref_flat = '{}/{}.refFlat'.format(reference_folder, referencePure)
     ribosomal_intervals = '{}/{}.rRNA.intervals'.format(reference_folder, referencePure)
 
-    runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
-    log_file = '{}/logs/workflow.log'.format(output_folder)
-        
     prefix_libraries = '{}/{}_{}/{}.{}.{}.{}'.format(library_folder, experiment_date, library, flowcell_barcode, lane, slice, library)
     if (barcode):
         prefix_libraries += '.'+barcode
@@ -142,7 +139,7 @@ def main():
         else:
             unmapped_bam1 += '{}.{}.{}.{}.unmapped.bam'.format(flowcell_barcode, lane, slice, library)
         if os.path.isfile(unmapped_bam1):
-            os.system('mv {} {}'.format(unmapped_bam1, unmapped_bam))
+            os.system('mv ' + unmapped_bam1 + ' ' + unmapped_bam)
     
     bs_range1 = get_bead_structure_range(bead_structure, 'C')
     bs_range2 = get_bead_structure_range(bead_structure, 'M')
@@ -152,16 +149,16 @@ def main():
     folder_failed = '{}/status/failed.alignment_{}_{}_{}_{}'.format(output_folder, library, lane, slice, barcode)
 
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
         
         # Tag bam with read sequence extended cellular
-        commandStr = '{}/TagBamWithReadSequenceExtended O={}.unaligned_tagged_Cellular.bam COMPRESSION_LEVEL=0 TMP_DIR={}'.format(dropseq_folder, prefix_libraries, tmpdir)
-        commandStr += ' SUMMARY={}.unaligned_tagged_Cellular.bam_summary.txt BASE_RANGE={} BASE_QUALITY={}'.format(prefix_libraries, bs_range1, base_quality)
-        commandStr += ' BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 I={} VALIDATION_STRINGENCY=SILENT'.format(unmapped_bam)
+        commandStr = dropseq_folder+'/TagBamWithReadSequenceExtended O='+prefix_libraries+'.unaligned_tagged_Cellular.bam COMPRESSION_LEVEL=0 TMP_DIR='+tmpdir
+        commandStr += ' SUMMARY='+prefix_libraries+'.unaligned_tagged_Cellular.bam_summary.txt BASE_RANGE='+bs_range1+' BASE_QUALITY='+base_quality
+        commandStr += ' BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 I='+unmapped_bam+' VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "TagBamWithReadSequenceExtended Cellular for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "TagBamWithReadSequenceExtended Cellular for "+library+" in Lane "+lane+" is done. ")
@@ -172,9 +169,9 @@ def main():
             raise Exception('TagBamWithReadSequenceExtended error: '+unaligned_cellular_file+' does not exist!')
         
         # Tag bam with read sequence extended molecular
-        commandStr = '{}/TagBamWithReadSequenceExtended O={}.unaligned_tagged_Molecular.bam COMPRESSION_LEVEL=0 TMP_DIR={}'.format(dropseq_folder, prefix_libraries, tmpdir)
-        commandStr += ' SUMMARY={}.unaligned_tagged_Molecular.bam_summary.txt BASE_RANGE={} BASE_QUALITY={}'.format(prefix_libraries, bs_range2, base_quality)
-        commandStr += ' BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 I={}.unaligned_tagged_Cellular.bam VALIDATION_STRINGENCY=SILENT'.format(prefix_libraries)
+        commandStr = dropseq_folder+'/TagBamWithReadSequenceExtended O='+prefix_libraries+'.unaligned_tagged_Molecular.bam COMPRESSION_LEVEL=0 TMP_DIR='+tmpdir
+        commandStr += ' SUMMARY='+prefix_libraries+'.unaligned_tagged_Molecular.bam_summary.txt BASE_RANGE='+bs_range2+' BASE_QUALITY='+base_quality
+        commandStr += ' BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 I='+prefix_libraries+'.unaligned_tagged_Cellular.bam VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "TagBamWithReadSequenceExtended Molecular for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "TagBamWithReadSequenceExtended Molecular for "+library+" in Lane "+lane+" is done. ")
@@ -188,8 +185,8 @@ def main():
             call(['rm', unaligned_cellular_file])
         
         # Filter low-quality reads
-        commandStr = '{}/FilterBam TAG_REJECT=XQ I={}.unaligned_tagged_Molecular.bam '.format(dropseq_folder, prefix_libraries)
-        commandStr += 'O={}.unaligned.filtered.bam COMPRESSION_LEVEL=0 VALIDATION_STRINGENCY=SILENT TMP_DIR={} OPTIONS_FILE={}'.format(prefix_libraries, tmpdir, option_file)
+        commandStr = dropseq_folder+'/FilterBam TAG_REJECT=XQ I='+prefix_libraries+'.unaligned_tagged_Molecular.bam '
+        commandStr += 'O='+prefix_libraries+'.unaligned.filtered.bam COMPRESSION_LEVEL=0 VALIDATION_STRINGENCY=SILENT TMP_DIR='+tmpdir+' OPTIONS_FILE=/broad/macosko/jilong/slideseq_pipeline/options.txt'
         write_log(log_file, flowcell_barcode, "FilterBam for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "FilterBam for "+library+" in Lane "+lane+" is done. ")
@@ -203,8 +200,8 @@ def main():
             call(['rm', unaligned_molecular_file])
 
         # Trim reads with starting sequence
-        commandStr = '{}/TrimStartingSequence INPUT={}.unaligned.filtered.bam OUTPUT={}.unaligned_trimstartingsequence.filtered.bam COMPRESSION_LEVEL=0 TMP_DIR={} '.format(dropseq_folder, prefix_libraries, prefix_libraries, tmpdir)
-        commandStr += 'OUTPUT_SUMMARY={}.adapter_trimming_report.txt SEQUENCE={} MISMATCHES=0 NUM_BASES=5 VALIDATION_STRINGENCY=SILENT'.format(prefix_libraries, sequence)
+        commandStr = dropseq_folder+'/TrimStartingSequence INPUT='+prefix_libraries+'.unaligned.filtered.bam OUTPUT='+prefix_libraries+'.unaligned_trimstartingsequence.filtered.bam COMPRESSION_LEVEL=0 TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_SUMMARY='+prefix_libraries+'.adapter_trimming_report.txt SEQUENCE='+sequence+' MISMATCHES=0 NUM_BASES=5 VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "TrimStartingSequence for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "TrimStartingSequence for "+library+" in Lane "+lane+" is done. ")
@@ -213,13 +210,13 @@ def main():
         if not os.path.isfile(adapter_trim_file):
             write_log(log_file, flowcell_barcode, 'TrimStartingSequence error: '+adapter_trim_file+' does not exist!')
             raise Exception('TrimStartingSequence error: '+adapter_trim_file+' does not exist!')
-
+            
         if os.path.isfile(unaligned_filtered_file):
             call(['rm', unaligned_filtered_file])
-
+        
         # Adapter-aware poly A trimming
-        commandStr = '{}/PolyATrimmer I={}.unaligned_trimstartingsequence.filtered.bam O={}.unaligned_mc_tagged_polyA_filtered.bam TMP_DIR={} '.format(dropseq_folder, prefix_libraries, prefix_libraries, tmpdir)
-        commandStr += 'OUTPUT_SUMMARY={}.polyA_trimming_report.txt MISMATCHES=0 NUM_BASES=6 VALIDATION_STRINGENCY=SILENT USE_NEW_TRIMMER=true'.format(prefix_libraries)
+        commandStr = dropseq_folder+'/PolyATrimmer I='+prefix_libraries+'.unaligned_trimstartingsequence.filtered.bam O='+prefix_libraries+'.unaligned_mc_tagged_polyA_filtered.bam TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_SUMMARY='+prefix_libraries+'.polyA_trimming_report.txt MISMATCHES=0 NUM_BASES=6 VALIDATION_STRINGENCY=SILENT USE_NEW_TRIMMER=true'
         write_log(log_file, flowcell_barcode, "PolyATrimmer for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "PolyATrimmer for "+library+" in Lane "+lane+" is done. ")
@@ -233,8 +230,8 @@ def main():
             call(['rm', adapter_trim_file])
         
         # Convert bam to fastq
-        commandStr = 'java -Djava.io.tmpdir={} -Xmx500m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar SamToFastq I={}.unaligned_mc_tagged_polyA_filtered.bam F={}.fastq VALIDATION_STRINGENCY=SILENT'.format(picard_folder, prefix_libraries, prefix_libraries)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Xmx500m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '
+        commandStr += '-jar '+picard_folder+'/picard.jar SamToFastq I='+prefix_libraries+'.unaligned_mc_tagged_polyA_filtered.bam F='+prefix_libraries+'.fastq VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "SamToFastq for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "SamToFastq for "+library+" in Lane "+lane+" is done. ")
@@ -245,8 +242,8 @@ def main():
             raise Exception('SamToFastq error: '+fastq_file+' does not exist!')
         
         # Map reads to genome sequence using STAR
-        commandStr = '{}/STAR --genomeDir {} --readFilesIn {}.fastq '.format(STAR_folder, genome_dir, prefix_libraries)
-        commandStr += '--outFileNamePrefix {}.star. --outStd Log --outSAMtype BAM Unsorted --outBAMcompression 0'.format(prefix_libraries)
+        commandStr = STAR_folder+'/STAR --genomeDir '+genome_dir+' --readFilesIn '+prefix_libraries+'.fastq '
+        commandStr += '--outFileNamePrefix '+prefix_libraries+'.star. --outStd Log --outSAMtype BAM Unsorted --outBAMcompression 0'
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += ' --limitOutSJcollapsed 5000000'
         write_log(log_file, flowcell_barcode, "Mapping using STAR for "+library+" in Lane "+lane+" Command="+commandStr)
@@ -261,10 +258,20 @@ def main():
         if os.path.isfile(fastq_file):
             call(['rm', fastq_file])
         
+        # Check alignments quality
+        star_file2 = '{}.star.Aligned.out.sam'.format(prefix_libraries)
+        commandStr = 'samtools view -h -o '+star_file2+' '+star_file
+        os.system(commandStr)
+        commandStr = '{}/check_alignments_quality {}'.format(scripts_folder, star_file2)
+        write_log(log_file, flowcell_barcode, "Check alignments quality for "+library+" in Lane "+lane+" Command="+commandStr)
+        os.system(commandStr)
+        write_log(log_file, flowcell_barcode, "Check alignments quality for "+library+" in Lane "+lane+" is done. ")
+        call(['rm', star_file2])
+        
         # Sort aligned bam
-        commandStr = 'java -Djava.io.tmpdir={} -Xmx4000m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar SortSam I={}.star.Aligned.out.bam '.format(picard_folder, prefix_libraries)
-        commandStr += 'O={}.aligned.sorted.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR={}'.format(prefix_libraries, tmpdir)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Xmx4000m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '
+        commandStr += '-jar '+picard_folder+'/picard.jar SortSam I='+prefix_libraries+'.star.Aligned.out.bam '
+        commandStr += 'O='+prefix_libraries+'.aligned.sorted.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR='+tmpdir
         write_log(log_file, flowcell_barcode, "SortSam for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "SortSam for "+library+" in Lane "+lane+" is done. ")
@@ -278,10 +285,10 @@ def main():
             call(['rm', star_file])
         
         # Merge unmapped bam and aligned bam
-        commandStr = 'java -Djava.io.tmpdir={} -Xmx8192m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar MergeBamAlignment R={} UNMAPPED={}.unaligned_mc_tagged_polyA_filtered.bam '.format(picard_folder, reference, prefix_libraries)
-        commandStr += 'ALIGNED={}.aligned.sorted.bam O={}.merged.bam COMPRESSION_LEVEL=0 INCLUDE_SECONDARY_ALIGNMENTS=false CLIP_ADAPTERS=false '.format(prefix_libraries, prefix_libraries)
-        commandStr += 'VALIDATION_STRINGENCY=SILENT TMP_DIR={}'.format(tmpdir)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Xmx8192m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 '
+        commandStr += '-jar '+picard_folder+'/picard.jar MergeBamAlignment R='+reference+' UNMAPPED='+prefix_libraries+'.unaligned_mc_tagged_polyA_filtered.bam '
+        commandStr += 'ALIGNED='+prefix_libraries+'.aligned.sorted.bam O='+prefix_libraries+'.merged.bam COMPRESSION_LEVEL=0 INCLUDE_SECONDARY_ALIGNMENTS=false CLIP_ADAPTERS=false '
+        commandStr += 'VALIDATION_STRINGENCY=SILENT TMP_DIR='+tmpdir
         write_log(log_file, flowcell_barcode, "MergeBamAlignment for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "MergeBamAlignment for "+library+" in Lane "+lane+" is done. ")
@@ -297,8 +304,8 @@ def main():
             call(['rm', sortsam_file])
         
         # Tag read with interval
-        commandStr = '{}/TagReadWithInterval I={}.merged.bam O={}.merged.TagReadWithInterval.bam '.format(dropseq_folder, prefix_libraries, prefix_libraries)
-        commandStr += 'COMPRESSION_LEVEL=0 TMP_DIR={} INTERVALS={} TAG=XG VALIDATION_STRINGENCY=SILENT'.format(tmpdir, intervals)
+        commandStr = dropseq_folder+'/TagReadWithInterval I='+prefix_libraries+'.merged.bam O='+prefix_libraries+'.merged.TagReadWithInterval.bam '
+        commandStr += 'COMPRESSION_LEVEL=0 TMP_DIR='+tmpdir+' INTERVALS='+intervals+' TAG=XG VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "TagReadWithInterval for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "TagReadWithInterval for "+library+" in Lane "+lane+" is done. ")
@@ -312,8 +319,8 @@ def main():
             call(['rm', mergedbam_file])
         
         # Tag read with gene function
-        commandStr = '{}/TagReadWithGeneFunction I={}.merged.TagReadWithInterval.bam O={}.star_gene_exon_tagged2.bam '.format(dropseq_folder, prefix_libraries, prefix_libraries)
-        commandStr += 'ANNOTATIONS_FILE={} TMP_DIR={} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=false'.format(annotations_file, tmpdir)
+        commandStr = dropseq_folder+'/TagReadWithGeneFunction I='+prefix_libraries+'.merged.TagReadWithInterval.bam O='+prefix_libraries+'.star_gene_exon_tagged2.bam '
+        commandStr += 'ANNOTATIONS_FILE='+annotations_file+' TMP_DIR='+tmpdir+' VALIDATION_STRINGENCY=SILENT CREATE_INDEX=false'
         write_log(log_file, flowcell_barcode, "TagReadWithGeneFunction for "+library+" in Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "TagReadWithGeneFunction for "+library+" in Lane "+lane+" is done. ")
@@ -322,7 +329,7 @@ def main():
         if not os.path.isfile(merged_taggenefunc_file):
             write_log(log_file, flowcell_barcode, 'TagReadWithGeneFunction error: '+merged_taggenefunc_file+' does not exist!')
             raise Exception('TagReadWithGeneFunction error: '+merged_taggenefunc_file+' does not exist!')
-
+            
         if os.path.isfile(merged_taginterval_file):
             call(['rm', merged_taginterval_file])
         
@@ -349,7 +356,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -362,4 +369,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

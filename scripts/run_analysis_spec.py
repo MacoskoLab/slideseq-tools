@@ -17,22 +17,9 @@ from subprocess import call
 from datetime import datetime
 
 import numpy as np
+import random
+from random import sample
 
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, 'r') as fin:
-        for line in fin:
-            line = line.strip(' \t\n')
-            if (line.startswith('<Tile>', 0)):
-                l = line[6:].split('<')[0]
-                if (l.split('_')[0] == lane):
-                    tiles.append(l.split('_')[1])
-    fin.close()
-    tiles.sort()
-    return tiles
-    
 
 # Convert string to boolean
 def str2bool(s):
@@ -44,7 +31,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -71,27 +58,22 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
-    
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    STAR_folder = options['STAR_folder'] if 'STAR_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     
     basecalls_dir = '{}/Data/Intensities/BaseCalls'.format(flowcell_directory)
-    
     runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
     log_file = '{}/logs/workflow.log'.format(output_folder)
     
@@ -103,13 +85,15 @@ def main():
     barcodes = []
     bead_structures = []
     reference = ''
+    run_barcodematching = False
+    puckcaller_path = ''
+    bead_type = '180402'
     sequence = 'AAGCAGTGGTATCAACGCAGAGTGAATGGG'
     base_quality = '10'
     min_transcripts_per_cell = '10'
+    email_address = ''
     experiment_date = ''
-    run_barcodematching = False
-    bead_barcode_file = ''
-    bead_type = '180402'
+    gen_downsampling = False
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')
         rows = list(reader)
@@ -129,35 +113,15 @@ def main():
                 sequence = row[row0.index('start_sequence')]
                 base_quality = row[row0.index('base_quality')]
                 min_transcripts_per_cell = row[row0.index('min_transcripts_per_cell')]
+                email_address = row[row0.index('email')]
                 run_barcodematching = str2bool(row[row0.index('run_barcodematching')])
-                bead_barcode_file = row[row0.index('bead_barcode_file')]
-                experiment_date = row[row0.index('experiment_date')]
+                puckcaller_path = row[row0.index('puckcaller_path')]
+                bead_type = row[row0.index('bead_type')]
+                experiment_date = row[row0.index('date')]
+                if 'gen_downsampling' in row0:
+                    gen_downsampling = str2bool(row[row0.index('gen_downsampling')])
     fin.close()
     
-    # Get tile information from RunInfo.xml
-    slice_id = {}
-    slice_first_tile = {}
-    slice_tile_limit = {}
-    for lane in lanes_unique:
-        tile_nums = get_tiles(runinfo_file, lane)
-        tile_cou = len(tile_nums)
-        if ((not is_NovaSeq) and (not is_NovaSeq_S4)):
-            slice_id[lane] = ['0']
-            slice_first_tile[lane] = [str(tile_nums[0])]
-            slice_tile_limit[lane] = [str(tile_cou)]
-        else:
-            slice_cou = num_slice_NovaSeq if is_NovaSeq else num_slice_NovaSeq_S4
-            tile_cou_per_slice = (tile_cou // slice_cou) + 1
-            slice_id[lane] = []
-            slice_first_tile[lane] = []
-            slice_tile_limit[lane] = []
-            for i in range(slice_cou):
-                if (tile_cou_per_slice * i >= tile_cou):
-                    break
-                slice_id[lane].append(str(i))
-                slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
-                slice_tile_limit[lane].append(str(tile_cou_per_slice))
-	
     reference_folder = reference[:reference.rfind('/')]
     referencePure = reference[reference.rfind('/') + 1:]
     if (referencePure.endswith('.gz')):
@@ -174,11 +138,12 @@ def main():
     folder_finished = '{}/status/finished.analysis_spec_{}_{}'.format(output_folder, library, locus_function_list)
     folder_failed = '{}/status/failed.analysis_spec_{}_{}'.format(output_folder, library, locus_function_list)
     
-    alignment_folder = '{}/{}_{}/{}/alignment/'.format(library_folder, experiment_date, library, reference2)
-    combined_bamfile = '{}/{}_{}/{}.bam'.format(library_folder, experiment_date, library, library)
-    barcode_matching_folder = '{}/{}_{}/{}/barcode_matching/'.format(library_folder, experiment_date, library, reference2)
+    analysis_folder = '{}/{}_{}'.format(library_folder, experiment_date, library)
+    alignment_folder = '{}/{}/alignment/'.format(analysis_folder, reference2)
+    barcode_matching_folder = '{}/{}/barcode_matching/'.format(analysis_folder, reference2)
+    combined_bamfile = '{}/{}.bam'.format(analysis_folder, library)
     
-    call(['mkdir', folder_running])
+    call(['mkdir', '-p', folder_running])
 
     try:
         now = datetime.now()
@@ -186,13 +151,13 @@ def main():
         print(dt_string)
     
         # Select cells by num transcripts
-        commandStr = '{}/SelectCellsByNumTranscripts '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/SelectCellsByNumTranscripts '
         if is_NovaSeq or is_NovaSeq_S4:
-            commandStr += '-m 24076m I={} MIN_TRANSCRIPTS_PER_CELL={} READ_MQ={}'.format(combined_bamfile, min_transcripts_per_cell, base_quality)
+            commandStr += '-m 24076m I='+combined_bamfile+' MIN_TRANSCRIPTS_PER_CELL='+min_transcripts_per_cell+' READ_MQ='+base_quality
         else:
-            commandStr += '-m 7692m I={} MIN_TRANSCRIPTS_PER_CELL={} READ_MQ={}'.format(combined_bamfile, min_transcripts_per_cell, base_quality)
-        commandStr += ' OUTPUT={}{}.{}_transcripts_mq_{}_selected_cells.txt.gz '.format(alignment_folder, library, min_transcripts_per_cell, base_quality)
-        commandStr += 'TMP_DIR={} VALIDATION_STRINGENCY=SILENT'.format(tmpdir)
+            commandStr += '-m 7692m I='+combined_bamfile+' MIN_TRANSCRIPTS_PER_CELL='+min_transcripts_per_cell+' READ_MQ='+base_quality
+        commandStr += ' OUTPUT='+alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.txt.gz '
+        commandStr += 'TMP_DIR='+tmpdir+' VALIDATION_STRINGENCY=SILENT'
         if locus_function_list == 'exonic+intronic':
             commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
         elif locus_function_list == 'intronic':
@@ -203,57 +168,86 @@ def main():
 
         # Call run_cmatcher
         if run_barcodematching:
-            if os.path.isfile(bead_barcode_file):               
-                name = '{}.{}_transcripts_mq_{}_selected_cells'.format(library, min_transcripts_per_cell, base_quality)
-                select_cell_file = '{}{}.txt'.format(alignment_folder, name)
-                select_cell_gzfile = '{}.gz'.format(select_cell_file)
-                os.system('gunzip -c {} > {}'.format(select_cell_gzfile, select_cell_file))
-
-                l = 0
+            finish_file = '{}/BeadBarcodes_degenerate.finished'.format(analysis_folder)
+            while 1:
+                if os.path.isfile(finish_file):
+                    call(['rm', finish_file])
+                    break
+                time.sleep(30)
+            
+            bead_barcode_file = '{}/BeadBarcodes_degenerate.txt'.format(analysis_folder)
+            select_cell_gzfile = alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.txt.gz'
+            select_cell_file = alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.txt'
+            name = library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells'
+            name_shuffled = library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.shuffled'
+            os.system('gunzip -c '+select_cell_gzfile+' > '+select_cell_file)
+            
+            select_cell_shuffled_file = alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.shuffled.txt'
+            with open(select_cell_shuffled_file, 'w') as fout:
                 with open(select_cell_file, 'r') as fin:
                     for line in fin:
-                        l += 1
+                        line = line.strip(' \t\n')
+                        items = list(line)
+                        random.shuffle(items)
+                        bc = ''.join(items)
+                        fout.write(bc + '\n')
                 fin.close()
-                k = 50000
-                ls = l // k
+            fout.close()
 
-                for i in range(ls + 1):
-                    if i * k >= l:
-                        break;
-                    
-                    infile2 = '{}/{}_{}.txt'.format(alignment_folder, name, str(i + 1))
-                    commandStr = 'awk \'NR >= {} && NR <= {}\' {} > {}'.format(str(i * k + 1), str((i+1) * k), select_cell_file, infile2)
-                    os.system(commandStr)
-                    
-                    file4 = '{}/{}_barcode_matching_distance_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
-                    file5 = '{}/{}_barcode_matching_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
-                    output_file = '{}/logs/run_cmatcher_{}_{}_{}.log'.format(output_folder, library, locus_function_list, str(i + 1))
-                    submission_script = '{}/run.sh'.format(scripts_folder)
-                    call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', submission_script, 'cmatcher', scripts_folder, bead_barcode_file, infile2, file4, file5, bead_type, '1']
-                    call(call_args)
-                    write_log(log_file, flowcell_barcode, "Run CMatcher for "+library+" "+reference2+" "+str(i + 1))
+            l = 0
+            with open(select_cell_file, 'r') as fin:
+                for line in fin:
+                    l += 1
+            fin.close()
+            k = 10000
+            ls = l // k
 
-                # Call run_cmatcher_combine
-                output_file = '{}/logs/run_cmatcher_combine_{}_{}.log'.format(output_folder, library, locus_function_list)
-                submission_script = '{}/run.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=20g', '-notify', '-l', 'h_rt=12:0:0', '-j', 'y', submission_script, 'run_cmatcher_combine', manifest_file, library, scripts_folder, locus_function_list]
+            for i in range(ls + 1):
+                if i * k >= l:
+                    break;
+                
+                # real barcodes
+                infile2 = '{}/{}_{}.txt'.format(alignment_folder, name, str(i + 1))
+                commandStr = 'awk \'NR >= {} && NR <= {}\' {} > {}'.format(str(i * k + 1), str((i+1) * k), select_cell_file, infile2)
+                os.system(commandStr)
+                
+                file4 = '{}/{}_barcode_matching_distance_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                file5 = '{}/{}_barcode_matching_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                output_file = '{}/logs/run_cmatcher_{}_{}_{}.log'.format(output_folder, library, locus_function_list, str(i + 1))
+                submission_script = '{}/run_cmatcher.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, bead_barcode_file, infile2, file4, file5, bead_type, output_folder, barcode_matching_folder]
                 call(call_args)
-            else:
-                run_barcodematching = False
-                if os.path.isdir(barcode_matching_folder):
-                    call(['rm', '-r', barcode_matching_folder])
-                print("File {} does not exist. Do not run barcode matching...".format(bead_barcode_file))
+                write_log(log_file, flowcell_barcode, "Run CMatcher for "+library+" "+reference2+" "+str(i + 1))
+                
+                # shuffled barcodes
+                infile2 = '{}/{}_{}.txt'.format(alignment_folder, name_shuffled, str(i + 1))
+                commandStr = 'awk \'NR >= {} && NR <= {}\' {} > {}'.format(str(i * k + 1), str((i+1) * k), select_cell_shuffled_file, infile2)
+                os.system(commandStr)
+                
+                file4 = '{}/{}_barcode_matching_distance_shuffled_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                file5 = '{}/{}_barcode_matching_shuffled_{}.txt'.format(barcode_matching_folder, library, str(i + 1))
+                output_file = '{}/logs/run_cmatcher_{}_{}_shuffled_{}.log'.format(output_folder, library, locus_function_list, str(i + 1))
+                submission_script = '{}/run_cmatcher.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, scripts_folder, bead_barcode_file, infile2, file4, file5, bead_type, output_folder, barcode_matching_folder]
+                call(call_args)
+                write_log(log_file, flowcell_barcode, "Run CMatcher for "+library+" "+reference2+" "+str(i + 1))
+                
+            # Call run_cmatcher_combine
+            output_file = '{}/logs/run_cmatcher_combine_{}_{}.log'.format(output_folder, library, locus_function_list)
+            submission_script = '{}/run_cmatcher_combine.sh'.format(scripts_folder)
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=24:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
+            call(call_args)
         
         # Generate digital expression files for all Illumina barcodes
-        commandStr = '{}/DigitalExpression '.format(dropseq_folder)
+        commandStr = dropseq_folder+'/DigitalExpression '
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += '-m 32268m '
         else:
             commandStr += '-m 7692m '
-        commandStr += 'I={} O={}{}.AllIllumina.digital_expression.txt.gz '.format(combined_bamfile, alignment_folder, library)
-        commandStr += 'SUMMARY={}{}.AllIllumina.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ={} MIN_BC_READ_THRESHOLD=0 '.format(alignment_folder, library, base_quality)
-        commandStr += 'CELL_BC_FILE={}{}.{}_transcripts_mq_{}_selected_cells.txt.gz TMP_DIR={} '.format(alignment_folder, library, min_transcripts_per_cell, base_quality, tmpdir)
-        commandStr += 'OUTPUT_HEADER=false UEI={} VALIDATION_STRINGENCY=SILENT'.format(library)
+        commandStr += 'I='+combined_bamfile+' O='+alignment_folder+library+'.AllIllumina.digital_expression.txt.gz '
+        commandStr += 'SUMMARY='+alignment_folder+library+'.AllIllumina.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ='+base_quality+' MIN_BC_READ_THRESHOLD=0 '
+        commandStr += 'CELL_BC_FILE='+alignment_folder+library+'.'+min_transcripts_per_cell+'_transcripts_mq_'+base_quality+'_selected_cells.txt.gz TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_HEADER=false UEI='+library+' VALIDATION_STRINGENCY=SILENT'
         if locus_function_list == 'exonic+intronic':
             commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
         elif locus_function_list == 'intronic':
@@ -261,6 +255,26 @@ def main():
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" for all Illumina barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" for all Illumina barcodes is done. ")
+        
+        if gen_downsampling:
+            # Downsample bam
+            downsample_folder = '{}/{}_{}/{}/downsample/'.format(library_folder, experiment_date, library, reference2)
+            call(['mkdir', '-p', downsample_folder])
+            f1 = '{}/{}.AllIllumina.digital_expression_summary.txt'.format(alignment_folder, library)
+            f2 = '{}/{}_1.digital_expression_summary.txt'.format(downsample_folder, library)
+            call(['cp', f1, f2])
+            ratio = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+            for i in range(0, 9, 1):
+                output_file = '{}/logs/gen_downsample_dge_{}_{}_{}.log'.format(output_folder, library, reference2, str(ratio[i]))
+                submission_script = '{}/gen_downsample_dge.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, str(ratio[i]), output_folder, downsample_folder]
+                call(call_args)
+        
+            # Call generate_plot_downsampling
+            output_file = '{}/logs/generate_plot_downsampling_{}_{}.log'.format(output_folder, library, reference2)
+            submission_script = '{}/generate_plot_downsampling.sh'.format(scripts_folder)
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=30:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, barcode_matching_folder]
+            call(call_args)
         
         if not run_barcodematching:
             if os.path.isdir(barcode_matching_folder):
@@ -282,7 +296,7 @@ def main():
         elif os.path.isdir(folder_waiting):
             call(['mv', folder_waiting, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -295,4 +309,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

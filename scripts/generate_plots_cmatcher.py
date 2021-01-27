@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This script is to generate analysis outputs and PDFs on matched barcodes
+# This script is to generate PDFs for matched barcodes from CMatcher
 
 from __future__ import print_function
 
@@ -79,7 +79,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
 
 
@@ -106,24 +106,20 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
-    email_address = options['email_address'] if 'email_address' in options else ''
-    
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    STAR_folder = options['STAR_folder'] if 'STAR_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     
     # Read info from metadata file
     lanes = []
@@ -135,8 +131,12 @@ def main():
     reference = ''
     base_quality = '10'
     min_transcripts_per_cell = '10'
+    email_address = ''
+    bead_type = '180402'
     bead_structure = ''
     experiment_date = ''
+    gen_read1_plot = False
+    thres_fdr = 1
     with open('{}/parsed_metadata.txt'.format(output_folder), 'r') as fin:
         reader = csv.reader(fin, delimiter='\t')
         rows = list(reader)
@@ -155,8 +155,14 @@ def main():
                 reference = row[row0.index('reference')]
                 base_quality = row[row0.index('base_quality')]
                 min_transcripts_per_cell = row[row0.index('min_transcripts_per_cell')]
+                email_address = row[row0.index('email')]
+                bead_type = row[row0.index('bead_type')]
                 bead_structure = row[row0.index('bead_structure')]
-                experiment_date = row[row0.index('experiment_date')]
+                experiment_date = row[row0.index('date')]
+                if 'gen_read1_plot' in row0:
+                    gen_read1_plot = str2bool(row[row0.index('gen_read1_plot')])
+                if 'fdr_threshold' in row0:
+                    thres_fdr = int(row[row0.index('fdr_threshold')])
     fin.close()
     
     reference_folder = reference[:reference.rfind('/')]
@@ -199,10 +205,9 @@ def main():
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
     
     analysis_folder = '{}/{}_{}/'.format(library_folder, experiment_date, library)
-    alignment_folder = '{}/{}_{}/{}/alignment/'.format(library_folder, experiment_date, library, reference2)
-    barcode_matching_folder = '{}/{}_{}/{}/barcode_matching/'.format(library_folder, experiment_date, library, reference2)
-    
-    bead_barcode_file = '{}/BeadBarcodes.txt'.format(barcode_matching_folder)
+    alignment_folder = '{}/{}/alignment/'.format(analysis_folder, reference2)
+    barcode_matching_folder = '{}/{}/barcode_matching/'.format(analysis_folder, reference2)
+    bead_barcode_file = '{}/BeadBarcodes_degenerate.txt'.format(analysis_folder)
 
     folder_running = '{}/status/running.generate_plots_cmatcher_{}_{}'.format(output_folder, library, reference2)
     folder_finished = '{}/status/finished.generate_plots_cmatcher_{}_{}'.format(output_folder, library, reference2)
@@ -227,7 +232,7 @@ def main():
         time.sleep(60)
     
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -236,17 +241,18 @@ def main():
         print('Merge tagged matched bam files...')
         write_log(log_file, flowcell_barcode, "Merge tagged matched bam files for "+library+" "+reference2)
         
+        # matched bam
         matched_bam_file = '{}/{}_matched.bam'.format(barcode_matching_folder, library)
-        commandStr = 'java -Djava.io.tmpdir={} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar MergeSamFiles TMP_DIR={} CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
-        commandStr += 'OUTPUT={} SORT_ORDER=coordinate ASSUME_SORTED=true'.format(matched_bam_file)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+        commandStr += '-jar '+picard_folder+'/picard.jar MergeSamFiles TMP_DIR='+tmpdir+' CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '
+        commandStr += 'OUTPUT='+matched_bam_file+' SORT_ORDER=coordinate ASSUME_SORTED=true'
         for i in range(len(lanes)):
             if libraries[i] != library:
                 continue
             for slice in slice_id[lanes[i]]:
                 filtered_bam = '{}/{}_{}_{}_{}_tagged.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
                 if os.path.isfile(filtered_bam):
-                    commandStr += ' INPUT={}'.format(filtered_bam)
+                    commandStr += ' INPUT='+filtered_bam
                 else:
                     print(filtered_bam + ' not found!')
         write_log(log_file, flowcell_barcode, "MergeSamFiles for "+library+" Command="+commandStr)
@@ -261,78 +267,277 @@ def main():
                 if os.path.isfile(filtered_bam):
                     call(['rm', filtered_bam])
         
+        # matched_raw_bam_file
+        matched_raw_bam_file = '{}/{}_matched_raw.bam'.format(barcode_matching_folder, library)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+        commandStr += '-jar '+picard_folder+'/picard.jar MergeSamFiles TMP_DIR='+tmpdir+' CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '
+        commandStr += 'OUTPUT='+matched_raw_bam_file+' SORT_ORDER=coordinate ASSUME_SORTED=true'
+        for i in range(len(lanes)):
+            if libraries[i] != library:
+                continue
+            for slice in slice_id[lanes[i]]:
+                filtered_bam = '{}/{}_{}_{}_{}_raw.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                if os.path.isfile(filtered_bam):
+                    commandStr += ' INPUT='+filtered_bam
+                else:
+                    print(filtered_bam + ' not found!')
+        os.system(commandStr)
+        
+        for i in range(len(lanes)):
+            if libraries[i] != library:
+                continue
+            for slice in slice_id[lanes[i]]:
+                filtered_bam = '{}/{}_{}_{}_{}_raw.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                if os.path.isfile(filtered_bam):
+                    call(['rm', filtered_bam])
+        
+        # matched_shuffled_bam_file
+        matched_shuffled_bam_file = '{}/{}_matched_shuffled.bam'.format(barcode_matching_folder, library)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+        commandStr += '-jar '+picard_folder+'/picard.jar MergeSamFiles TMP_DIR='+tmpdir+' CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '
+        commandStr += 'OUTPUT='+matched_shuffled_bam_file+' SORT_ORDER=coordinate ASSUME_SORTED=true'
+        for i in range(len(lanes)):
+            if libraries[i] != library:
+                continue
+            for slice in slice_id[lanes[i]]:
+                filtered_bam = '{}/{}_{}_{}_{}_shuffled.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                if os.path.isfile(filtered_bam):
+                    commandStr += ' INPUT='+filtered_bam
+                else:
+                    print(filtered_bam + ' not found!')
+        os.system(commandStr)
+        
+        for i in range(len(lanes)):
+            if libraries[i] != library:
+                continue
+            for slice in slice_id[lanes[i]]:
+                filtered_bam = '{}/{}_{}_{}_{}_shuffled.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                if os.path.isfile(filtered_bam):
+                    call(['rm', filtered_bam])
+        
         write_log(log_file, flowcell_barcode, "Merge tagged matched bam files for "+library+" "+reference2+" is done. ")
         
-        matched_bead_barcode_file = '{}/{}_matched_bead_barcodes.txt'.format(barcode_matching_folder, library)
-        matched_bead_location_file = '{}/{}_matched_bead_locations.txt'.format(barcode_matching_folder, library)        
-        matched_bead_barcode_gzfile = '{}/{}_matched_bead_barcodes.txt.gz'.format(barcode_matching_folder, library)
-
-        # Generate digital expression files
-        print('Generate digital expression files...')
-        commandStr = '{}/DigitalExpression -m 7692m I={} O={}{}.digital_expression.txt.gz '.format(dropseq_folder, matched_bam_file, alignment_folder, library)
-        commandStr += 'SUMMARY={}{}.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ={} MIN_BC_READ_THRESHOLD=0 '.format(alignment_folder, library, base_quality)
-        commandStr += 'CELL_BC_FILE={} TMP_DIR={} '.format(matched_bead_barcode_gzfile, tmpdir)
-        commandStr += 'OUTPUT_HEADER=true UEI={} VALIDATION_STRINGENCY=SILENT'.format(library)
+        # Generate digital expression files on shuffled Illumina barcodes
+        print('Generate digital expression files on shuffled Illumina barcodes...')
+        shuffled_bci_file = '{}/{}_unique_shuffled_illumina_barcodes.txt.gz'.format(barcode_matching_folder, library)
+        matched_dge_summary_shuffled = '{}/{}.digital_expression_summary_shuffled.txt'.format(alignment_folder, library)
+        commandStr = dropseq_folder+'/DigitalExpression -m 7692m I='+matched_shuffled_bam_file+' O='+alignment_folder+library+'.digital_expression_shuffled.txt.gz '
+        commandStr += 'SUMMARY='+matched_dge_summary_shuffled+' EDIT_DISTANCE=1 READ_MQ='+base_quality+' MIN_BC_READ_THRESHOLD=0 '
+        commandStr += 'CELL_BC_FILE='+shuffled_bci_file+' TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_HEADER=false UEI='+library+' VALIDATION_STRINGENCY=SILENT'
         if locus_function_list == 'exonic+intronic':
             commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
         elif locus_function_list == 'intronic':
-            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'
+            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'       
+        os.system(commandStr)
+        if os.path.isfile(matched_shuffled_bam_file):
+            call(['rm', matched_shuffled_bam_file])
+        if os.path.isfile(shuffled_bci_file):
+            call(['rm', shuffled_bci_file])
+        matched_shuffled_bai_file = '{}/{}_matched_shuffled.bai'.format(barcode_matching_folder, library)
+        if os.path.isfile(matched_shuffled_bai_file):
+            call(['rm', matched_shuffled_bai_file])
+        
+        # Generate digital expression files on raw Illumina barcodes
+        print('Generate digital expression files on raw Illumina barcodes...')
+        unique_bci_file = '{}/{}_unique_matched_illumina_barcodes.txt.gz'.format(barcode_matching_folder, library)
+        matched_dge_summary_raw = '{}/{}.digital_expression_summary_raw.txt'.format(alignment_folder, library)
+        commandStr = dropseq_folder+'/DigitalExpression -m 7692m I='+matched_raw_bam_file+' O='+alignment_folder+library+'.digital_expression_raw.txt.gz '
+        commandStr += 'SUMMARY='+matched_dge_summary_raw+' EDIT_DISTANCE=1 READ_MQ='+base_quality+' MIN_BC_READ_THRESHOLD=0 '
+        commandStr += 'CELL_BC_FILE='+unique_bci_file+' TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_HEADER=false UEI='+library+' VALIDATION_STRINGENCY=SILENT'
+        if locus_function_list == 'exonic+intronic':
+            commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
+        elif locus_function_list == 'intronic':
+            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'       
+        os.system(commandStr)
+        if os.path.isfile(unique_bci_file):
+            call(['rm', unique_bci_file])
+        
+        # remove matched beads with high FDR
+        dict1 = {}
+        dict2 = {}
+        dge_barcodes_raw = np.loadtxt(matched_dge_summary_raw, delimiter='\t', dtype='str', skiprows=7, usecols=(0))
+        dge_transcripts_raw = np.loadtxt(matched_dge_summary_raw, delimiter='\t', dtype='int', skiprows=7, usecols=(2))
+        for i in range(len(dge_barcodes_raw)):
+            dict1[dge_barcodes_raw[i]] = dge_transcripts_raw[i]
+        bm_raw = '{}/{}_barcode_matching.txt'.format(barcode_matching_folder, library)
+        bm_raw1 = np.loadtxt(bm_raw, delimiter='\t', dtype='str', skiprows=1, usecols=(0))
+        bm_raw2 = np.loadtxt(bm_raw, delimiter='\t', dtype='str', skiprows=1, usecols=(2))
+        for i in range(len(bm_raw1)):
+            if bm_raw1[i] in dict1:
+                if bm_raw2[i] in dict2:
+                    dict2[bm_raw2[i]] += dict1[bm_raw1[i]]
+                else:
+                    dict2[bm_raw2[i]] = dict1[bm_raw1[i]]
+
+        dict3 = {}
+        dict4 = {}
+        dge_barcodes_shuffled = np.loadtxt(matched_dge_summary_shuffled, delimiter='\t', dtype='str', skiprows=7, usecols=(0))
+        dge_transcripts_shuffled = np.loadtxt(matched_dge_summary_shuffled, delimiter='\t', dtype='int', skiprows=7, usecols=(2))
+        for i in range(len(dge_barcodes_shuffled)):
+            dict3[dge_barcodes_shuffled[i]] = dge_transcripts_shuffled[i]
+        bm_shuffled = '{}/{}_barcode_matching_shuffled.txt'.format(barcode_matching_folder, library)
+        bm_shuffled1 = np.loadtxt(bm_shuffled, delimiter='\t', dtype='str', skiprows=1, usecols=(0))
+        bm_shuffled2 = np.loadtxt(bm_shuffled, delimiter='\t', dtype='str', skiprows=1, usecols=(2))
+        for i in range(len(bm_shuffled1)):
+            if bm_shuffled1[i] in dict3:
+                if bm_shuffled2[i] in dict4:
+                    dict4[bm_shuffled2[i]] += dict3[bm_shuffled1[i]]
+                else:
+                    dict4[bm_shuffled2[i]] = dict3[bm_shuffled1[i]]
+
+        matched_bead_barcode_file = '{}/{}_matched_bead_barcodes.txt'.format(barcode_matching_folder, library)
+        matched_barcodes = np.loadtxt(matched_bead_barcode_file, delimiter='\t', dtype='str', usecols=(0))
+        non_selected_bc = []
+        for i in range(len(matched_barcodes)):
+            bc = matched_barcodes[i]
+            v_raw = 0
+            v_shuffled = 0
+            if bc in dict2:
+                v_raw = dict2[bc]
+            if bc in dict4:
+                v_shuffled = dict4[bc]
+            ratio = 100 * v_shuffled / (v_shuffled + v_raw)
+            if ratio > thres_fdr:
+                non_selected_bc.append(bc)
+        
+        # modified files based on new matched beads
+        matched_bead_location_file = '{}/{}_matched_bead_locations.txt'.format(barcode_matching_folder, library)
+        matched_bead_barcode_file2 = '{}/{}_matched_bead_barcodes_revised.txt'.format(barcode_matching_folder, library)
+        matched_bead_location_file2 = '{}/{}_matched_bead_locations_revised.txt'.format(barcode_matching_folder, library)
+        with open(matched_bead_barcode_file2, 'w') as fout1:
+            with open(matched_bead_location_file2, 'w') as fout2:
+                with open(matched_bead_location_file, 'r') as fin:
+                    j = -1
+                    for line in fin:
+                        j += 1
+                        if not matched_barcodes[j] in non_selected_bc:
+                            fout1.write(matched_barcodes[j] + '\n')
+                            fout2.write(line)
+                fin.close()
+            fout2.close()
+        fout1.close()
+        
+        if os.path.isfile(matched_bead_barcode_file):
+            call(['rm', matched_bead_barcode_file])
+        if os.path.isfile(matched_bead_location_file):
+            call(['rm', matched_bead_location_file])
+            
+        os.system('mv '+matched_bead_barcode_file2+' '+matched_bead_barcode_file)
+        os.system('mv '+matched_bead_location_file2+' '+matched_bead_location_file)
+        
+        matched_bead_barcode_gzfile = '{}/{}_matched_bead_barcodes.txt.gz'.format(barcode_matching_folder, library)
+        os.system('gzip -c '+matched_bead_barcode_file+' > '+matched_bead_barcode_gzfile)
+        
+        # Generate digital expression files on matched bead barcodes
+        print('Generate digital expression files on matched bead barcodes...')
+        commandStr = dropseq_folder+'/DigitalExpression -m 7692m I='+matched_bam_file+' O='+alignment_folder+library+'.digital_expression.txt.gz '
+        commandStr += 'SUMMARY='+alignment_folder+library+'.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ='+base_quality+' MIN_BC_READ_THRESHOLD=0 '
+        commandStr += 'CELL_BC_FILE='+matched_bead_barcode_gzfile+' TMP_DIR='+tmpdir+' '
+        commandStr += 'OUTPUT_HEADER=false UEI='+library+' VALIDATION_STRINGENCY=SILENT'
+        if locus_function_list == 'exonic+intronic':
+            commandStr += ' LOCUS_FUNCTION_LIST=INTRONIC'
+        elif locus_function_list == 'intronic':
+            commandStr += ' LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC'       
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "DigitalExpression for "+library+" on matched barcodes is done. ")
-
+        
+        # Call gen_sparse_matrix
+        file_name = '{}.digital_expression'.format(library)
+        output_file = '{}/logs/gen_sparse_matrix_{}_{}.log'.format(output_folder, library, locus_function_list)
+        submission_script = '{}/gen_sparse_matrix.sh'.format(scripts_folder)
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=70g', '-notify', '-l', 'h_rt=25:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, locus_function_list, alignment_folder, file_name, scripts_folder, output_folder, '{}/{}_{}/{}'.format(library_folder, experiment_date, library, reference2)]
+        call(call_args)
+        
+        # Call write_bijective_mapping.sh
+        output_file = '{}/logs/write_bijective_mapping_{}_{}.log'.format(output_folder, library, locus_function_list)
+        submission_script = '{}/write_bijective_mapping.sh'.format(scripts_folder)
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60g', '-notify', '-l', 'h_rt=15:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, '{}/{}'.format(analysis_folder, reference2)]
+        call(call_args)
+        
+        # Generate libraryID_XYUMIs.txt
+        matched_barcodes = np.loadtxt(matched_bead_barcode_file, delimiter='\t', dtype='str', usecols=(0))
+        distances = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='int', usecols=(0))
+        coordinatesx = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='float', usecols=(1))
+        coordinatesy = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='float', usecols=(2))
+        matched_dge_summary = '{}/{}.digital_expression_summary.txt'.format(alignment_folder, library)
+        matched_dge_summary_barcodes = np.loadtxt(matched_dge_summary, delimiter='\t', dtype='str', skiprows=7, usecols=(0))
+        matched_dge_summary_transcripts = np.loadtxt(matched_dge_summary, delimiter='\t', dtype='int', skiprows=7, usecols=(2))
+        XYUMIs_file = '{}/{}_XYUMIs.txt'.format(barcode_matching_folder, library)
+        dictX = {}
+        dictY = {}
+        for i in range(len(matched_barcodes)):
+            dictX[matched_barcodes[i]] = coordinatesx[i]
+            dictY[matched_barcodes[i]] = coordinatesy[i]
+        with open(XYUMIs_file, 'w') as fout:
+            for i in range(len(matched_dge_summary_barcodes)):
+                barcode = matched_dge_summary_barcodes[i]
+                umi = matched_dge_summary_transcripts[i]
+                fout.write(str(dictX[barcode]) + '\t' + str(dictY[barcode]) + '\t' + str(umi) + '\n')
+        fout.close()
+        
         # Bam tag histogram
-        print('Bam tag histogram...')
-        commandStr = '{}/BamTagHistogram -m 7692m '.format(dropseq_folder)
-        commandStr += 'I={} OUTPUT={}{}.numReads_perCell_XC_mq_{}.txt.gz '.format(matched_bam_file, alignment_folder, library, base_quality)
-        commandStr += 'TAG=XC FILTER_PCR_DUPLICATES=false TMP_DIR={} READ_MQ={} VALIDATION_STRINGENCY=SILENT'.format(tmpdir, base_quality)
+        commandStr = dropseq_folder+'/BamTagHistogram -m 7692m '
+        commandStr += 'I='+matched_bam_file+' OUTPUT='+alignment_folder+library+'.numReads_perCell_XC_mq_'+base_quality+'.txt.gz '
+        commandStr += 'TAG=XC FILTER_PCR_DUPLICATES=false TMP_DIR='+tmpdir+' READ_MQ='+base_quality+' VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BamTagHistogram for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BamTagHistogram for "+library+" on matched barcodes is done. ")
         
+        # Bam tag histogram on UMI
+        commandStr = dropseq_folder+'/BamTagHistogram -m 7692m '
+        commandStr += 'I='+matched_bam_file+' OUTPUT='+alignment_folder+library+'.numReads_perUMI_XM_mq_'+base_quality+'.txt.gz '
+        commandStr += 'TAG=XM FILTER_PCR_DUPLICATES=false TMP_DIR='+tmpdir+' READ_MQ='+base_quality+' VALIDATION_STRINGENCY=SILENT'
+        write_log(log_file, flowcell_barcode, "BamTagHistogram on UMI for "+library+" on matched barcodes Command="+commandStr)
+        os.system(commandStr)
+        write_log(log_file, flowcell_barcode, "BamTagHistogram on UMI for "+library+" on matched barcodes is done. ")
+        
         # Collect RnaSeq metrics
-        print('Collect RnaSeq metrics...')
-        commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar CollectRnaSeqMetrics TMP_DIR={}'.format(picard_folder, tmpdir)
-        commandStr += ' VALIDATION_STRINGENCY=SILENT I={} REF_FLAT={} STRAND_SPECIFICITY=NONE '.format(matched_bam_file, ref_flat)
-        commandStr += 'OUTPUT={}{}.fracIntronicExonic.txt RIBOSOMAL_INTERVALS={}'.format(alignment_folder, library, ribosomal_intervals)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+        commandStr += '-jar '+picard_folder+'/picard.jar CollectRnaSeqMetrics TMP_DIR='+tmpdir
+        commandStr += ' VALIDATION_STRINGENCY=SILENT I='+matched_bam_file+' REF_FLAT='+ref_flat+' STRAND_SPECIFICITY=NONE '
+        commandStr += 'OUTPUT='+alignment_folder+library+'.fracIntronicExonic.txt RIBOSOMAL_INTERVALS='+ribosomal_intervals
         write_log(log_file, flowcell_barcode, "CollectRnaSeqMetrics for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "CollectRnaSeqMetrics for "+library+" on matched barcodes is done. ")
         
         # Base distribution at read position for cellular
-        print('Base distribution at read position for cellular...')
-        commandStr = '{}/BaseDistributionAtReadPosition -m 7692m I={}'.format(dropseq_folder, matched_bam_file)
-        commandStr += ' OUTPUT={}{}.barcode_distribution_XC.txt TMP_DIR={} TAG=XC VALIDATION_STRINGENCY=SILENT'.format(alignment_folder, library, tmpdir)
+        commandStr = dropseq_folder+'/BaseDistributionAtReadPosition -m 7692m I='+matched_raw_bam_file
+        commandStr += ' OUTPUT='+alignment_folder+library+'.barcode_distribution_XC.txt TMP_DIR='+tmpdir+' TAG=XC VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Cellular for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Cellular for "+library+" on matched barcodes is done. ")
         
         # Base distribution at read position for molecular
-        print('Base distribution at read position for molecular...')
-        commandStr = '{}/BaseDistributionAtReadPosition -m 7692m I={}'.format(dropseq_folder, matched_bam_file)
-        commandStr += ' OUTPUT={}{}.barcode_distribution_XM.txt TMP_DIR={} TAG=XM VALIDATION_STRINGENCY=SILENT'.format(alignment_folder, library, tmpdir)
+        commandStr = dropseq_folder+'/BaseDistributionAtReadPosition -m 7692m I='+matched_raw_bam_file
+        commandStr += ' OUTPUT='+alignment_folder+library+'.barcode_distribution_XM.txt TMP_DIR='+tmpdir+' TAG=XM VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Molecular for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "BaseDistributionAtReadPosition Molecular for "+library+" on matched barcodes is done. ")
-
+        
+        if os.path.isfile(matched_raw_bam_file):
+            call(['rm', matched_raw_bam_file])
+        matched_raw_bai_file = '{}/{}_matched_raw.bai'.format(barcode_matching_folder, library)
+        if os.path.isfile(matched_raw_bai_file):
+            call(['rm', matched_raw_bai_file])
+        
         # Gather read quality metrics
-        print('Gather read quality metrics...')
-        commandStr = '{}/GatherReadQualityMetrics -m 7692m I={}'.format(dropseq_folder, matched_bam_file)
-        commandStr += ' TMP_DIR={} OUTPUT={}{}.ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT'.format(tmpdir, alignment_folder, library)
+        commandStr = dropseq_folder+'/GatherReadQualityMetrics -m 7692m I='+matched_bam_file
+        commandStr += ' TMP_DIR='+tmpdir+' OUTPUT='+alignment_folder+library+'.ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "GatherReadQualityMetrics for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "GatherReadQualityMetrics for "+library+" on matched barcodes is done. ")
 
         # Single cell RnaSeq metrics collector
-        print('Single cell RnaSeq metrics collector...')
-        commandStr = '{}/SingleCellRnaSeqMetricsCollector -m 15884m I={} ANNOTATIONS_FILE={}'.format(dropseq_folder, matched_bam_file, annotations_file)
-        commandStr += ' OUTPUT={}{}.fracIntronicExonicPerCell.txt.gz RIBOSOMAL_INTERVALS={} CELL_BARCODE_TAG=XC READ_MQ={}'.format(alignment_folder, library, ribosomal_intervals, base_quality)
-        commandStr += ' TMP_DIR={} CELL_BC_FILE={} MT_SEQUENCE=MT VALIDATION_STRINGENCY=SILENT'.format(tmpdir, matched_bead_barcode_gzfile)
+        commandStr = dropseq_folder+'/SingleCellRnaSeqMetricsCollector -m 15884m I='+matched_bam_file+' ANNOTATIONS_FILE='+annotations_file
+        commandStr += ' OUTPUT='+alignment_folder+library+'.fracIntronicExonicPerCell.txt.gz RIBOSOMAL_INTERVALS='+ribosomal_intervals+' CELL_BARCODE_TAG=XC READ_MQ='+base_quality
+        commandStr += ' TMP_DIR='+tmpdir+ ' CELL_BC_FILE='+matched_bead_barcode_gzfile+' VALIDATION_STRINGENCY=SILENT'
         write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" on matched barcodes Command="+commandStr)
         os.system(commandStr)
         write_log(log_file, flowcell_barcode, "SingleCellRnaSeqMetricsCollector for "+library+" on matched barcodes is done. ")
-
+        
         if os.path.isfile('{}/{}.SelectCellsByNumTranscripts_metrics'.format(alignment_folder, library)):
             call(['rm', '{}/{}.SelectCellsByNumTranscripts_metrics'.format(alignment_folder, library)])
         if os.path.isfile(matched_bead_barcode_gzfile):
@@ -341,15 +546,9 @@ def main():
         print('generating plots... \n')
         write_log(log_file, flowcell_barcode, "Generate plots for matched barcodes for "+library+" "+reference2)
         
-        matched_barcodes = np.loadtxt(matched_bead_barcode_file, delimiter='\t', dtype='str', usecols=(0))
-        distances = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='int', usecols=(0))
-        coordinatesx = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='float', usecols=(1))
-        coordinatesy = np.loadtxt(matched_bead_location_file, delimiter='\t', dtype='float', usecols=(2))
-
         pp = PdfPages('{}/{}_{}.pdf'.format(alignment_folder, library, reference2))
 
         file = '{}/{}.ReadQualityMetrics.txt'.format(analysis_folder, library)
-        print(file + '... \n')
         while 1:
             if os.path.isfile(file):
                 break
@@ -384,7 +583,6 @@ def main():
         plt.savefig(pp, format='pdf')
         
         file = '{}/{}.fracIntronicExonic.txt'.format(analysis_folder, library)
-        print(file + '... \n')
         while 1:
             if os.path.isfile(file):
                 break
@@ -412,7 +610,6 @@ def main():
         
         f1 = '{}/{}.numReads_perCell_XC_mq_{}.txt'.format(analysis_folder, library, base_quality)
         f2 = '{}/{}.numReads_perCell_XC_mq_{}.txt.gz'.format(analysis_folder, library, base_quality)
-        print(f2 + '... \n')
         while 1:
             if os.path.isfile(f1) or os.path.isfile(f2):
                 break
@@ -424,8 +621,7 @@ def main():
                     shutil.copyfileobj(f_in, f_out)
                 f_out.close()
             f_in.close()
-        
-        print(f1 + '... \n')
+            
         mat = np.loadtxt(f1, delimiter='\t', dtype='int', skiprows=1, usecols=(0))
         l = int(len(mat) / 10)
         df_x = np.arange(1, l+1, 1)
@@ -445,7 +641,6 @@ def main():
             call(['rm', f1])
         
         file1 = '{}/{}.ReadQualityMetrics.txt'.format(analysis_folder, library)
-        print(file1 + '... \n')
         cou1 = np.loadtxt(file1, delimiter='\t', dtype='int', skiprows=3, max_rows=1, usecols=(1))
         l = 42
         f = False
@@ -488,7 +683,6 @@ def main():
         plt.savefig(pp, format='pdf')
         
         file = '{}/{}.barcode_distribution_XC.txt'.format(analysis_folder, library)
-        print(file + '... \n')
         while 1:
             if os.path.isfile(file):
                 break
@@ -523,7 +717,6 @@ def main():
         plt.savefig(pp, format='pdf')
         
         file = '{}/{}.barcode_distribution_XM.txt'.format(analysis_folder, library)
-        print(file + '... \n')
         while 1:
             if os.path.isfile(file):
                 break
@@ -557,43 +750,49 @@ def main():
         plt.title("Molecular barcodes for all reads")
         plt.savefig(pp, format='pdf')
         
-        num_beads = 0
+        num_beads = 1
         if os.path.isfile(bead_barcode_file):
-            with open(bead_barcode_file, 'r') as fin:
-                for line in fin:
-                    num_beads += 1
-            fin.close()
+            num_beads = len(open(bead_barcode_file).readlines())
 
-        num_cells = 0
+        num_cells = 1
         selected_cells = '{}/{}.{}_transcripts_mq_{}_selected_cells.txt'.format(alignment_folder, library, min_transcripts_per_cell, base_quality)
         if os.path.isfile(selected_cells):
-            with open(selected_cells, 'r') as fin:
-                for line in fin:
-                    num_cells += 1
-            fin.close()
-                
-        num_matched_beads = 0
-        dge_summary = '{}/{}.digital_expression_summary.txt'.format(alignment_folder, library)
-        if os.path.isfile(dge_summary):
-            dge_summary_reads = np.loadtxt(dge_summary, delimiter='\t', dtype='int', skiprows=7, usecols=(1))
-            num_matched_beads = len(dge_summary_reads)
+            num_cells = len(open(selected_cells).readlines())
+            call(['rm', selected_cells])
+
+        num_matched_beads = len(matched_dge_summary_barcodes)
 
         num_matched_cells = -1
         combined_cmatcher_file = '{}/{}_barcode_matching.txt'.format(barcode_matching_folder, library)
         if os.path.isfile(combined_cmatcher_file):
-            with open(combined_cmatcher_file, 'r') as fin:
-                for line in fin:
-                    num_matched_cells += 1
-            fin.close()
+            num_matched_cells = len(open(combined_cmatcher_file).readlines())
 
-        xtitle = ''
-        if num_cells > 0 and num_beads > 0:
-            ratio_cell = '{0:.3g}%'.format(num_matched_cells / num_cells * 100)
-            ratio_bead = '{0:.3g}%'.format(num_matched_beads / num_beads * 100)
-            xtitle = '{} Illumina barcodes matching to bead barcodes\n{} bead barcodes matching to Illumina barcodes'.format(ratio_cell, ratio_bead)
+        ratio_cell = '{0:.3g}%'.format(num_matched_cells / num_cells * 100)
+        ratio_bead = '{0:.3g}%'.format(num_matched_beads / num_beads * 100)
+        xtitle = ratio_cell+' Illumina barcodes matching to bead barcodes\n'+ratio_bead+' bead barcodes matching to Illumina barcodes'
+        
+        """
+        matched_raw_UMIs = np.loadtxt(alignment_folder+library+'.digital_expression_summary_raw.txt', delimiter='\t', dtype='int', skiprows=7, usecols=(2))
+        matched_shuffled_UMIs = np.loadtxt(alignment_folder+library+'.digital_expression_summary_shuffled.txt', delimiter='\t', dtype='int', skiprows=7, usecols=(2))
+        ratio_UMIs = '{0:.3g}%'.format(sum(matched_shuffled_UMIs) / sum(matched_raw_UMIs) * 100)
+        """
+        dict5 = {}
+        dict6 = {}
+        for i in range(len(bm_raw1)):
+            dict5[bm_raw1[i]] = bm_raw2[i]
+        for i in range(len(bm_shuffled1)):
+            dict6[bm_shuffled1[i]] = bm_shuffled2[i]
+        sum_raw = 0
+        for i in range(len(dge_barcodes_raw)):
+            if not dict5[dge_barcodes_raw[i]] in non_selected_bc:
+                sum_raw += dge_transcripts_raw[i]
+        sum_shuffled = 0
+        for i in range(len(dge_barcodes_shuffled)):
+            if (not dict6[dge_barcodes_shuffled[i]] in non_selected_bc) and (dict6[dge_barcodes_shuffled[i]] in dge_barcodes_raw):
+                sum_shuffled += dge_transcripts_shuffled[i]
+        ratio_UMIs = '{0:.3g}%'.format(100 * sum_shuffled / sum_raw)
         
         file1 = '{}/{}.ReadQualityMetrics.txt'.format(alignment_folder, library)
-        print(file1 + '... \n')
         mat1 = np.loadtxt(file1, delimiter='\t', dtype='int', skiprows=3, max_rows=1, usecols=(1,2,3,4))
         df_z = [mat1[0],mat1[1],mat1[2],mat1[3]]
         if mat1[3] >= 1000000:
@@ -617,11 +816,10 @@ def main():
         plt.yticks(rotation=90)
         plt.xlabel(xtitle)
         plt.ylabel(yl)
-        plt.title("Alignment quality for matched barcodes")
+        plt.title("Alignment quality for matched barcodes (FDR = " + str(ratio_UMIs) + ")")
         plt.savefig(pp, format='pdf')
         
         file = '{}/{}.fracIntronicExonic.txt'.format(alignment_folder, library)
-        print(file + '... \n')
         mat = np.loadtxt(file, delimiter='\t', dtype='float', skiprows=7, max_rows=1, usecols=(15,16,17,18,19))
         mat[1] += mat[2]
         mat[2] = mat[1] + mat[3]
@@ -650,14 +848,10 @@ def main():
         plt.bar(df['x'], df['y'], width=1, color='lightskyblue', edgecolor='black')
         plt.xlim((-1, 15))
         plt.yticks(rotation=90)
-        plt.xlabel("hamming distance\nThreshold for choosing matched barcodes: hamming distance <= 1")
         plt.ylabel("number of matched barcodes")
         plt.title("Histogram of barcode matches by hamming distance")
         plt.savefig(pp, format='pdf')
 
-        matched_dge_summary = '{}/{}.digital_expression_summary.txt'.format(alignment_folder, library)
-        print(matched_dge_summary + '... \n')
-        matched_dge_summary_barcodes = np.loadtxt(matched_dge_summary, delimiter='\t', dtype='str', skiprows=7, usecols=(0))
         matched_dge_summary_reads = np.loadtxt(matched_dge_summary, delimiter='\t', dtype='int', skiprows=7, usecols=(1))
         matched_distances = [0,0,0]
         for i in range(len(matched_dge_summary_barcodes)):
@@ -670,7 +864,6 @@ def main():
         plt.bar(df['x'], df['y'], width=1, color='lightskyblue', edgecolor='black')
         plt.xlim((-1, 15))
         plt.yticks(rotation=90)
-        plt.xlabel("hamming distance\nThreshold for choosing matched barcodes: hamming distance <= 1")
         plt.ylabel("# Reads [millions]")
         plt.title("Histogram of reads matches by hamming distance")
         plt.savefig(pp, format='pdf')
@@ -698,7 +891,6 @@ def main():
         plt.savefig(pp, format='pdf')
 
         file = '{}/{}.barcode_distribution_XC.txt'.format(alignment_folder, library)
-        print(file + '... \n')
         mat = np.loadtxt(file, delimiter='\t', dtype='int', skiprows=1)
         cou = mat[0,1] + mat[0,2] + mat[0,3] + mat[0,4]
         df_x = []
@@ -728,7 +920,6 @@ def main():
         plt.savefig(pp, format='pdf')
 
         file = '{}/{}.barcode_distribution_XM.txt'.format(alignment_folder, library)
-        print(file + '... \n')
         mat = np.loadtxt(file, delimiter='\t', dtype='int', skiprows=1)
         cou = mat[0,1] + mat[0,2] + mat[0,3] + mat[0,4]
         df_x = []
@@ -757,92 +948,93 @@ def main():
         plt.title("Matched molecular barcodes")
         plt.savefig(pp, format='pdf')
         
-        # Wait for all of filter_unmapped_bam finish
-        while 1:
-            f = True
+        if gen_read1_plot:
+            # Wait for all of filter_unmapped_bam finish
+            while 1:
+                f = True
+                for i in range(len(lanes)):
+                    if libraries[i] != library:
+                        continue
+                    for slice in slice_id[lanes[i]]:
+                        fol1 = '{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
+                        fol2 = '{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
+                        if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
+                            f = False
+                            break
+                    if not f:
+                        break
+                if f:
+                    break
+                time.sleep(60)
+        
+            print('Merge filtered unmapped bam files...')
+            write_log(log_file, flowcell_barcode, "Merge filtered unmapped bam files for "+library+" "+reference2)
+        
+            unmapped_bam_file = '{}/{}_unmapped.bam'.format(barcode_matching_folder, library)
+            read1_file = '{}/{}.base_distribution_read1.txt'.format(alignment_folder, library)
+            commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '
+            commandStr += '-jar '+picard_folder+'/picard.jar MergeSamFiles TMP_DIR='+tmpdir+' CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '
+            commandStr += 'OUTPUT='+unmapped_bam_file+' SORT_ORDER=coordinate ASSUME_SORTED=true'
             for i in range(len(lanes)):
                 if libraries[i] != library:
                     continue
                 for slice in slice_id[lanes[i]]:
-                    fol1 = '{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
-                    fol2 = '{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}'.format(output_folder, library, lanes[i], slice, barcodes[i], reference2)
-                    if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
-                        f = False
-                        break
-                if not f:
-                    break
-            if f:
-                break
-            time.sleep(60)
+                    filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                    if os.path.isfile(filtered_bam):
+                        commandStr += ' INPUT='+filtered_bam
+                    else:
+                        print(filtered_bam + ' not found!')
+            write_log(log_file, flowcell_barcode, "MergeSamFiles for "+library+" Command="+commandStr)
+            os.system(commandStr)
+            write_log(log_file, flowcell_barcode, "MergeSamFiles for "+library+" is done. ")
+        
+            for i in range(len(lanes)):
+                if libraries[i] != library:
+                    continue
+                for slice in slice_id[lanes[i]]:
+                    filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
+                    if os.path.isfile(filtered_bam):
+                        call(['rm', filtered_bam])
+            
+            write_log(log_file, flowcell_barcode, "Merge filtered unmapped bam files for "+library+" "+reference2+" is done. ")
+            
+            # Base distribution at read position for read 1
+            commandStr = dropseq_folder+'/BaseDistributionAtReadPosition -m 7692m I='+unmapped_bam_file
+            commandStr += ' OUTPUT='+read1_file+' TMP_DIR='+tmpdir+' READ_NUMBER=1 VALIDATION_STRINGENCY=SILENT'
+            os.system(commandStr)
+        
+            if os.path.isfile(unmapped_bam_file):
+                call(['rm', unmapped_bam_file])
+            if os.path.isfile('{}/{}_unmapped.bai'.format(barcode_matching_folder, library)):
+                call(['rm', '{}/{}_unmapped.bai'.format(barcode_matching_folder, library)])
 
-        print('Merge filtered unmapped bam files...')
-        write_log(log_file, flowcell_barcode, "Merge filtered unmapped bam files for "+library+" "+reference2)
-        
-        unmapped_bam_file = '{}/{}_unmapped.bam'.format(barcode_matching_folder, library)
-        read1_file = '{}/{}.base_distribution_read1.txt'.format(alignment_folder, library)
-        commandStr = 'java -Djava.io.tmpdir={} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar MergeSamFiles TMP_DIR={} CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
-        commandStr += 'OUTPUT={} SORT_ORDER=coordinate ASSUME_SORTED=true'.format(unmapped_bam_file)
-        for i in range(len(lanes)):
-            if libraries[i] != library:
-                continue
-            for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
-                if os.path.isfile(filtered_bam):
-                    commandStr += ' INPUT={}'.format(filtered_bam)
-                else:
-                    print(filtered_bam + ' not found!')
-        write_log(log_file, flowcell_barcode, "MergeSamFiles for "+library+" Command="+commandStr)
-        os.system(commandStr)
-        write_log(log_file, flowcell_barcode, "MergeSamFiles for "+library+" is done. ")
-        
-        for i in range(len(lanes)):
-            if libraries[i] != library:
-                continue
-            for slice in slice_id[lanes[i]]:
-                filtered_bam = '{}/{}_{}_{}_{}_filtered.bam'.format(barcode_matching_folder, library, lanes[i], slice, barcodes[i])
-                if os.path.isfile(filtered_bam):
-                    call(['rm', filtered_bam])
-        
-        write_log(log_file, flowcell_barcode, "Merge filtered unmapped bam files for "+library+" "+reference2+" is done. ")
-        
-        # Base distribution at read position for read 1
-        commandStr = '{}/BaseDistributionAtReadPosition -m 7692m I={}'.format(dropseq_folder, unmapped_bam_file)
-        commandStr += ' OUTPUT={} TMP_DIR={} READ_NUMBER=1 VALIDATION_STRINGENCY=SILENT'.format(read1_file, tmpdir)
-        os.system(commandStr)
-        
-        if os.path.isfile(unmapped_bam_file):
-            call(['rm', unmapped_bam_file])
-        if os.path.isfile('{}/{}_unmapped.bai'.format(barcode_matching_folder, library)):
-            call(['rm', '{}/{}_unmapped.bai'.format(barcode_matching_folder, library)])
-
-        read1_len = get_read1_len(bead_structure) # 42
-        mat = np.loadtxt(read1_file, delimiter='\t', dtype='int', skiprows=1)
-        cou = mat[0,1] + mat[0,2] + mat[0,3] + mat[0,4]
-        df_x = []
-        df_x.extend(mat[:,0])
-        df_x.extend(mat[:,0])
-        df_x.extend(mat[:,0])
-        df_x.extend(mat[:,0])
-        df_y = []
-        df_y.extend(mat[:,1] / cou * 100)
-        df_y.extend(mat[:,2] / cou * 100)
-        df_y.extend(mat[:,3] / cou * 100)
-        df_y.extend(mat[:,4] / cou * 100)
-        max_y = int(max(df_y))
-        fig, ax = plt.subplots(figsize=(8, 8))
-        colors = ['red', 'blue', 'green', 'purple']
-        labels = ['A', 'C', 'G', 'T']
-        for i in range(4):
-            ax.scatter(df_x[i*read1_len:(i+1)*read1_len], df_y[i*read1_len:(i+1)*read1_len], c=colors[i], s=20, label=labels[i])
-        ax.legend(loc="lower right")                 
-        plt.xlim((0, read1_len+2))
-        plt.ylim((0, max_y+2))
-        plt.yticks(rotation=90)
-        plt.xlabel("base position")
-        plt.ylabel("fraction of reads")
-        plt.title("Read 1 for matched barcodes")
-        plt.savefig(pp, format='pdf')
+            read1_len = get_read1_len(bead_structure) # 42
+            mat = np.loadtxt(read1_file, delimiter='\t', dtype='int', skiprows=1)
+            cou = mat[0,1] + mat[0,2] + mat[0,3] + mat[0,4]
+            df_x = []
+            df_x.extend(mat[:,0])
+            df_x.extend(mat[:,0])
+            df_x.extend(mat[:,0])
+            df_x.extend(mat[:,0])
+            df_y = []
+            df_y.extend(mat[:,1] / cou * 100)
+            df_y.extend(mat[:,2] / cou * 100)
+            df_y.extend(mat[:,3] / cou * 100)
+            df_y.extend(mat[:,4] / cou * 100)
+            max_y = int(max(df_y))
+            fig, ax = plt.subplots(figsize=(8, 8))
+            colors = ['red', 'blue', 'green', 'purple']
+            labels = ['A', 'C', 'G', 'T']
+            for i in range(4):
+                ax.scatter(df_x[i*read1_len:(i+1)*read1_len], df_y[i*read1_len:(i+1)*read1_len], c=colors[i], s=20, label=labels[i])
+            ax.legend(loc="lower right")                 
+            plt.xlim((0, read1_len+2))
+            plt.ylim((0, max_y+2))
+            plt.yticks(rotation=90)
+            plt.xlabel("base position")
+            plt.ylabel("fraction of reads")
+            plt.title("Read 1 for matched barcodes")
+            plt.savefig(pp, format='pdf')
 
         xs = []
         ys = []
@@ -857,6 +1049,15 @@ def main():
                 zs.append(matched_dge_summary_transcripts[i])
                 xs.append(coordinatesx[np.where(matched_barcodes==barcode)])
                 ys.append(coordinatesy[np.where(matched_barcodes==barcode)])
+        
+        l = len(zs)
+        for i in range(l - 1):
+            for j in range(i + 1, l):
+                if zs[i] > zs[j]:
+                    xs[i], xs[j] = xs[j], xs[i]
+                    ys[i], ys[j] = ys[j], ys[i]
+                    zs[i], zs[j] = zs[j], zs[i]
+        
         df = pd.DataFrame({"x":xs, "y":ys, "z":zs})
         plt.figure(figsize=(8, 8))
         plt.set_cmap('viridis_r')
@@ -902,6 +1103,16 @@ def main():
                 us.append(pct_coding[i]+pct_utr[i])
                 vs.append(pct_ribosomal[i])
         
+        l = len(zs)
+        for i in range(l - 1):
+            for j in range(i + 1, l):
+                if zs[i] > zs[j]:
+                    xs[i], xs[j] = xs[j], xs[i]
+                    ys[i], ys[j] = ys[j], ys[i]
+                    zs[i], zs[j] = zs[j], zs[i]
+                    us[i], us[j] = us[j], us[i]
+                    vs[i], vs[j] = vs[j], vs[i]
+        
         df = pd.DataFrame({"x":xs, "y":ys, "z":zs})
         plt.figure(figsize=(8, 8))
         plt.set_cmap('viridis_r')
@@ -913,6 +1124,14 @@ def main():
         plt.ylabel("Y")
         plt.title("% mitochondrial reads per matched bead")
         plt.savefig(pp, format='pdf')
+        
+        for i in range(l - 1):
+            for j in range(i + 1, l):
+                if us[i] > us[j]:
+                    xs[i], xs[j] = xs[j], xs[i]
+                    ys[i], ys[j] = ys[j], ys[i]
+                    us[i], us[j] = us[j], us[i]
+                    vs[i], vs[j] = vs[j], vs[i]
 
         df = pd.DataFrame({"x":xs, "y":ys, "z":us})
         plt.figure(figsize=(8, 8))
@@ -925,6 +1144,13 @@ def main():
         plt.ylabel("Y")
         plt.title("% exonic reads per matched bead")
         plt.savefig(pp, format='pdf')
+        
+        for i in range(l - 1):
+            for j in range(i + 1, l):
+                if vs[i] > vs[j]:
+                    xs[i], xs[j] = xs[j], xs[i]
+                    ys[i], ys[j] = ys[j], ys[i]
+                    vs[i], vs[j] = vs[j], vs[i]
         
         df = pd.DataFrame({"x":xs, "y":ys, "z":vs})
         plt.figure(figsize=(8, 8))
@@ -939,10 +1165,37 @@ def main():
         plt.savefig(pp, format='pdf')
         
         pp.close()
-        write_log(log_file, flowcell_barcode, "Generate plots for matched barcodes for "+library+" "+reference2+" is done. ")
         
         if os.path.isfile(f1):
             call(['rm', f1])
+        
+        combined_cmatcher_file = '{}/{}_barcode_matching_distance.txt'.format(barcode_matching_folder, library)
+        combined_cmatcher_shuffled_file = '{}/{}_barcode_matching_distance_shuffled.txt'.format(barcode_matching_folder, library)
+        distances = np.loadtxt(combined_cmatcher_file, delimiter='\t', dtype='int', skiprows=1, usecols=(3))
+        shuffdists = np.loadtxt(combined_cmatcher_shuffled_file, delimiter='\t', dtype='int', skiprows=1, usecols=(3))
+        if len(distances) > 100000:
+            distances = distances[:100000]
+            shuffdists = shuffdists[:100000]
+        df = pd.DataFrame({
+            "Real": distances,
+            "Shuffled": shuffdists
+        })
+        df = pd.melt(df)
+        p = ggplot(aes(x='value', fill='variable'), data=df) +\
+        geom_histogram(alpha=0.3, binwidth=1, position="identity") +\
+        scale_x_continuous(limits=(-1,15), breaks=np.arange(0, 16, 2), labels=np.arange(0, 16, 2)) +\
+        xlab("hamming distance") +\
+        ylab("# beads") +\
+        ggtitle("hamming distance (real vs shuffled)")
+        ggsave(plot = p, height=10, width=10, filename=library+'_'+reference2+'_shuffled.pdf', path=alignment_folder)
+        
+        write_log(log_file, flowcell_barcode, "Generate plots for matched barcodes for "+library+" "+reference2+" is done. ")
+        
+        # Call gen_readme
+        output_file = '{}/logs/gen_readme_{}_{}.log'.format(output_folder, library, reference2)
+        submission_script = '{}/gen_readme.sh'.format(scripts_folder)
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=2g', '-notify', '-l', 'h_rt=1:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, output_folder, alignment_folder]
+        call(call_args)
         
         if len(email_address) > 1:
             subject = "Slide-seq workflow finished for " + flowcell_barcode
@@ -959,7 +1212,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
         
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -968,8 +1221,9 @@ def main():
             call(call_args)
 
         sys.exit()
-    
+
 
 if __name__ == "__main__":
     main()
-
+    
+    

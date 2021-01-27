@@ -21,7 +21,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -48,11 +48,10 @@ def main():
             options[dict[0]] = dict[1]
     fp.close()
     
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     flowcell_barcode = options['flowcell_barcode']
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
     email_address = options['email_address'] if 'email_address' in options else ''
-    
     log_file = '{}/logs/workflow.log'.format(output_folder)
     
     folder_running = '{}/status/running.barcodes2sam_lane_{}_{}'.format(output_folder, lane, slice)
@@ -60,16 +59,16 @@ def main():
     folder_failed = '{}/status/failed.barcodes2sam_lane_{}_{}'.format(output_folder, lane, slice)
     
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
         
         # Convert Illumina base calls to sam (unmapped.bam)
-        write_log(log_file, flowcell_barcode, "IlluminaBasecallsToSam for Lane " + lane + '_' + slice + " Command=" + commandStr)
+        write_log(log_file, flowcell_barcode, "IlluminaBasecallsToSam for Lane "+lane+'_'+slice+" Command="+commandStr)
         os.system(commandStr)
-        write_log(log_file, flowcell_barcode, "IlluminaBasecallsToSam for Lane " + lane + '_' + slice + " is done. ")
+        write_log(log_file, flowcell_barcode, "IlluminaBasecallsToSam for Lane "+lane+'_'+slice+" is done. ")
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -80,7 +79,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -93,4 +92,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

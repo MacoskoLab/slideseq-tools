@@ -60,7 +60,7 @@ def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a") as logfile:
-        logfile.write('{} [Slide-seq Flowcell Alignment Workflow - {}]: {}\n'.format(dt_string, flowcell_barcode, log_string))
+        logfile.write(dt_string+" [Slide-seq Flowcell Alignment Workflow - "+flowcell_barcode+"]: "+log_string+"\n")
     logfile.close()
     
 
@@ -86,32 +86,28 @@ def main():
     fp.close()
     
     flowcell_directory = options['flowcell_directory']
-    dropseq_folder = options['dropseq_folder']
-    picard_folder = options['picard_folder']
-    STAR_folder = options['STAR_folder']
-    scripts_folder = options['scripts_folder']
     output_folder = options['output_folder']
     metadata_file = options['metadata_file']
-    option_file = options['option_file']
     flowcell_barcode = options['flowcell_barcode']
     
     library_folder = options['library_folder'] if 'library_folder' in options else '{}/libraries'.format(output_folder)
     tmpdir = options['temp_folder'] if 'temp_folder' in options else '{}/tmp'.format(output_folder)
-    illumina_platform = options['illumina_platform'] if 'illumina_platform' in options else 'NextSeq'
+    dropseq_folder = options['dropseq_folder'] if 'dropseq_folder' in options else '/broad/macosko/bin/dropseq-tools'
+    picard_folder = options['picard_folder'] if 'picard_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/picard'
+    STAR_folder = options['STAR_folder'] if 'STAR_folder' in options else '/broad/macosko/bin/dropseq-tools/3rdParty/STAR-2.5.2a'
+    scripts_folder = options['scripts_folder'] if 'scripts_folder' in options else '/broad/macosko/jilong/slideseq_pipeline/scripts'
+    is_NovaSeq = str2bool(options['is_NovaSeq']) if 'is_NovaSeq' in options else False
+    is_NovaSeq_S4 = str2bool(options['is_NovaSeq_S4']) if 'is_NovaSeq_S4' in options else False
+    num_slice_NovaSeq = int(options['num_slice_NovaSeq']) if 'num_slice_NovaSeq' in options else 10
+    num_slice_NovaSeq_S4 = int(options['num_slice_NovaSeq_S4']) if 'num_slice_NovaSeq_S4' in options else 40
     email_address = options['email_address'] if 'email_address' in options else ''
     
-    is_NovaSeq = True if illumina_platform == 'NovaSeq' else False
-    is_NovaSeq_S4 = True if illumina_platform == 'NovaSeq_S4' else False
-    num_slice_NovaSeq = 10
-    num_slice_NovaSeq_S4 = 40
-    
     basecalls_dir = '{}/Data/Intensities/BaseCalls'.format(flowcell_directory)
-
+    log_file = '{}/logs/workflow.log'.format(output_folder)
+    
     # Get read structure from RunInfo.xml
     runinfo_file = '{}/RunInfo.xml'.format(flowcell_directory)
     read_structure = get_read_structure(runinfo_file)
-    
-    log_file = '{}/logs/workflow.log'.format(output_folder)
     
     # Get tile information from RunInfo.xml
     slice_id = {}
@@ -141,34 +137,34 @@ def main():
     folder_failed = '{}/status/failed.processbarcodes_lane_{}'.format(output_folder, lane)
     
     try:
-        call(['mkdir', folder_running])
+        call(['mkdir', '-p', folder_running])
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
         print(dt_string)
     
         # Extract Illumina barcodes
-        commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx4000m '.format(tmpdir)
-        commandStr += '-jar {}/picard.jar ExtractIlluminaBarcodes TMP_DIR={} VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
-        commandStr += 'BASECALLS_DIR={} OUTPUT_DIR={}/{}/barcodes LANE={} '.format(basecalls_dir, output_folder, lane, lane)
-        commandStr += 'READ_STRUCTURE={} BARCODE_FILE={}/{}/barcode_params.txt '.format(read_structure, output_folder, lane)
-        commandStr += 'METRICS_FILE={}/{}/{}.{}.barcode_metrics COMPRESS_OUTPUTS=true NUM_PROCESSORS=4'.format(output_folder, lane, flowcell_barcode, lane)
-        write_log(log_file, flowcell_barcode, "ExtractIlluminaBarcodes for Lane " + lane + " Command="+commandStr)
+        commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx4000m '
+        commandStr += '-jar '+picard_folder+'/picard.jar ExtractIlluminaBarcodes TMP_DIR='+tmpdir+' VALIDATION_STRINGENCY=SILENT '
+        commandStr += 'BASECALLS_DIR='+basecalls_dir+' OUTPUT_DIR='+output_folder+'/'+lane+'/barcodes LANE='+lane+' '
+        commandStr += 'READ_STRUCTURE='+read_structure+' BARCODE_FILE='+output_folder+'/'+lane+'/barcode_params.txt '
+        commandStr += 'METRICS_FILE='+output_folder+'/'+lane+'/'+flowcell_barcode+'.'+lane+'.barcode_metrics COMPRESS_OUTPUTS=true NUM_PROCESSORS=4'
+        write_log(log_file, flowcell_barcode, "ExtractIlluminaBarcodes for Lane "+lane+" Command="+commandStr)
         os.system(commandStr)
-        write_log(log_file, flowcell_barcode, "ExtractIlluminaBarcodes for Lane " + lane + " is done. ")
+        write_log(log_file, flowcell_barcode, "ExtractIlluminaBarcodes for Lane "+lane+" is done. ")
         
         # Convert Illumina base calls to sam (unmapped.bam)
         for i in range(len(slice_id[lane])):
-            commandStr = 'java -Djava.io.tmpdir={} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx10192m '.format(tmpdir)
-            commandStr += '-jar {}/picard.jar IlluminaBasecallsToSam TMP_DIR={} VALIDATION_STRINGENCY=SILENT '.format(picard_folder, tmpdir)
-            commandStr += 'BASECALLS_DIR={} LANE={} RUN_BARCODE={} NUM_PROCESSORS=4 '.format(basecalls_dir, lane, flowcell_barcode)
-            commandStr += 'READ_STRUCTURE={} LIBRARY_PARAMS={}/{}/{}/library_params.txt INCLUDE_NON_PF_READS=false '.format(read_structure, output_folder, lane, slice_id[lane][i])
+            commandStr = 'java -Djava.io.tmpdir='+tmpdir+' -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx10192m '
+            commandStr += '-jar '+picard_folder+'/picard.jar IlluminaBasecallsToSam TMP_DIR='+tmpdir+' VALIDATION_STRINGENCY=SILENT '
+            commandStr += 'BASECALLS_DIR='+basecalls_dir+' LANE='+lane+' RUN_BARCODE='+flowcell_barcode+' NUM_PROCESSORS=4 '
+            commandStr += 'READ_STRUCTURE='+read_structure+' LIBRARY_PARAMS='+output_folder+'/'+lane+'/'+slice_id[lane][i]+'/library_params.txt INCLUDE_NON_PF_READS=false '
             commandStr += 'APPLY_EAMSS_FILTER=false MAX_READS_IN_RAM_PER_TILE=600000 ADAPTERS_TO_CHECK=null IGNORE_UNEXPECTED_BARCODES=true'
-            commandStr += ' SEQUENCING_CENTER=BI BARCODES_DIR={}/{}/barcodes FIRST_TILE={} TILE_LIMIT={}'.format(output_folder, lane, slice_first_tile[lane][i], slice_tile_limit[lane][i])
+            commandStr += ' SEQUENCING_CENTER=BI BARCODES_DIR='+output_folder+'/'+lane+'/barcodes FIRST_TILE='+slice_first_tile[lane][i]+' TILE_LIMIT='+slice_tile_limit[lane][i]
 
             output_file = '{}/logs/run_barcodes2sam_lane_{}_{}.log'.format(output_folder, lane, slice_id[lane][i])
-            submission_script = '{}/run.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=25g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 'run_barcodes2sam', manifest_file, commandStr, lane, slice_id[lane][i], scripts_folder]
+            submission_script = '{}/run_barcodes2sam.sh'.format(scripts_folder)
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-notify', '-l', 'h_rt=20:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, commandStr, lane, slice_id[lane][i], scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
             call(call_args)
         
         now = datetime.now()
@@ -180,7 +176,7 @@ def main():
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
-            call(['mkdir', folder_failed])
+            call(['mkdir', '-p', folder_failed])
             
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -193,4 +189,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
