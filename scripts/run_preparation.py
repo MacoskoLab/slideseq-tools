@@ -18,6 +18,7 @@ import time
 from subprocess import call
 from datetime import datetime
 
+import traceback
 
 # Get read structure from RunInfo.xml
 def get_read_structure(x):
@@ -227,6 +228,10 @@ def main():
     
         call(['mv', folder_running, folder_finished])
     except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:

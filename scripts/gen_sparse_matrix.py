@@ -25,6 +25,7 @@ import numpy as np
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
+import traceback
 
 
 # Convert string to boolean
@@ -185,7 +186,10 @@ def main():
         write_log(log_file, flowcell_barcode, "Generating sparse matrix "+library+" "+reference2+" "+file_name+" is done. ")
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:

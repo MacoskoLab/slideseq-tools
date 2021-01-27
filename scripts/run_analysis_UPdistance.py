@@ -27,6 +27,7 @@ import random
 from random import sample
 
 from plotnine import *
+import traceback
 
 def levenshtein(seq1, seq2):
     size_x = len(seq1) + 1
@@ -245,7 +246,10 @@ def main():
         print(dt_string)
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:

@@ -20,6 +20,7 @@ import numpy as np
 import random
 from random import sample
 
+import traceback
 
 # Convert string to boolean
 def str2bool(s):
@@ -290,7 +291,10 @@ def main():
         print(dt_string)
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         elif os.path.isdir(folder_waiting):

@@ -15,6 +15,7 @@ import re
 from subprocess import call
 from datetime import datetime
 
+import traceback
 
 # Convert string to boolean
 def str2bool(s):
@@ -119,7 +120,10 @@ def main():
             call(['mkdir', '-p', library_folder])
         if 'temp_folder' not in options:
             call(['mkdir', '-p', '{}/tmp'.format(output_folder)])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         print("Folder {} cannot be created. Exiting...".format(output_folder))
         sys.exit()
     

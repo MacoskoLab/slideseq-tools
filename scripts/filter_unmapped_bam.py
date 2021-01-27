@@ -14,6 +14,7 @@ import glob
 import re
 from subprocess import call
 from datetime import datetime
+import traceback
 
 
 # Get bead structure range
@@ -194,7 +195,10 @@ def main():
         write_log(log_file, flowcell_barcode, "Filter unmapped bam for "+library+" "+reference2+" in lane "+lane+" slice "+slice+" is done. ")
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:

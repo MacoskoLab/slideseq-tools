@@ -25,6 +25,7 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 import pandas as pd
 
+import traceback
 
 #Number of input reads |	3979435
 def get_key(line):
@@ -583,7 +584,10 @@ def main():
         print(dt_string)
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         elif os.path.isdir(folder_waiting):

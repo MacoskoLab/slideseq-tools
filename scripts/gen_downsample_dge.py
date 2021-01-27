@@ -29,6 +29,7 @@ import random
 from random import sample
 
 import itertools
+import traceback
 
 
 # Convert string to boolean
@@ -184,7 +185,10 @@ def main():
             os.system('rm '+sampled_bam_file)
       
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:

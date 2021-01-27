@@ -41,6 +41,8 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+import traceback
+
 
 # Get tile information from RunInfo.xml
 def get_tiles(x, lane):
@@ -442,7 +444,10 @@ def main():
         print(dt_string)
         
         call(['mv', folder_running, folder_finished])
-    except:
+    except Exception as exp:
+        print("EXCEPTION:!")
+        print(exp)
+        traceback.print_tb(exp.__traceback__, file=sys.stdout)
         if os.path.isdir(folder_running):
             call(['mv', folder_running, folder_failed])
         else:
