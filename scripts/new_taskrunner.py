@@ -25,7 +25,7 @@ def generate_rand(random_chars=12, alphabet="0123456789abcdefghijklmnopqrstuvwxy
     return ''.join([r.choice(alphabet) for i in range(random_chars)])
 
 def main():
-    MAX_NUM_JOBS = 950
+    MAX_NUM_JOBS = 890
 
     all_submitted_jobs = []
     already_submitted_jobs = set()
@@ -43,8 +43,7 @@ def main():
     while True:
 
         # put at top so if continue in the loop, still sleeps not a fast while loop
-        # TODO make 30
-        sleep(45)  # TODOO
+        sleep(45) 
         print("->")
         # oldest one on top
         out_ls, err_ls, status = subproc_res(["ls", "-rt1", taskrunner_dir])
@@ -99,8 +98,8 @@ def main():
             print("No files=no new jobs")
 
             # if there are no qstats running or all qstats aren't in jobs I submitted, wait 15 minutes then kill
-            if len(set(running_jnumbers) & set(all_submitted_jobs)) == 0: # TODOOO PUT BACK
-            #if len(set(running_jnumbers)) == 0: # TODOOO PUT BACK
+             if len(set(running_jnumbers) & set(all_submitted_jobs)) == 0: 
+            #if len(set(running_jnumbers)) == 0:
                 print("AND NO JOBS WE'RE WAITING ON *{}".format(num_times_nothing_to_do))
                 num_times_nothing_to_do+=1
             if num_times_nothing_to_do > 25: #90: # 45 mintes/30 second intervals
@@ -208,6 +207,7 @@ def main():
 
                         already_submitted_jobs.add(fn)
                         num_run+=1
+                        sleep(0.5)  # TODOO
             else:
                 print("FULL, let's wait")
             print("<-")
