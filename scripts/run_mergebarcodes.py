@@ -264,7 +264,7 @@ def main():
                         # Call run_alignment
                         output_file = '{}/logs/run_alignment_{}_{}_{}_{}.log'.format(output_folder, library, lanes[i], slice, barcodes[i])
                         submission_script = '{}/run_alignment.sh'.format(scripts_folder)
-                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=62g', '-notify', '-l', 'h_rt=23:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
+                        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60G', '-notify', '-l', 'h_rt=24:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, lanes[i], slice, barcodes[i], scripts_folder, output_folder, '{}/{}_{}'.format(library_folder, experiment_date[j], library)]
                         call_to_taskrunner(output_folder, call_args)
                 
                 if run_barcodematching[j]:

@@ -218,13 +218,13 @@ def main():
         for lane in lanes_unique:
             output_file = '{}/logs/run_processbarcodes_lane_{}.log'.format(output_folder, lane)
             submission_script = '{}/run_processbarcodes.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, lane, scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=70g', '-notify', '-l', 'h_rt=06:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, lane, scripts_folder, output_folder, '{}/{}'.format(output_folder, lane)]
             call_to_taskrunner(output_folder, call_args)
         
         # Call run_mergebarcodes
         output_file = '{}/logs/run_mergebarcodes.log'.format(output_folder)
         submission_script = '{}/run_mergebarcodes.sh'.format(scripts_folder)
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10g', '-notify', '-l', 'h_rt=100:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=5G', '-notify', '-l', 'h_rt=100:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_folder]
         call_to_taskrunner(output_folder, call_args)
     
         call(['mv', folder_running, folder_finished])

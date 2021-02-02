@@ -165,7 +165,7 @@ def main():
         # 'UniqueMappedBeads','UniqueMappedDGE','UniqueMappedIlluminaBarcodes','GeneNames'
         output_file = '{}/logs/run_WriteBijectiveMapping_{}_{}.log'.format(output_folder, library, locus_function_list)
         submission_script = '/broad/macosko/jilong/slideseq_pipeline/scripts/run_WriteBijectiveMapping.sh'
-        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=40g', '-notify', '-l', 'h_rt=5:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, '/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a', scripts_folder, bcb_file, uniqueMappedDge_file, unique_bci_file, genename_file, location_file, puckcaller_path, output_folder]
+        call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=55g', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, '/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a', scripts_folder, bcb_file, uniqueMappedDge_file, unique_bci_file, genename_file, location_file, puckcaller_path, output_folder]
         call_to_taskrunner(output_folder, call_args)
         
         commandStr = 'perl '+scripts_folder+'/txt2csv.pl '+dge_file+' '+MappedDGEForR_file

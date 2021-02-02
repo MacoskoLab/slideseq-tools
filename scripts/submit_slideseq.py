@@ -77,6 +77,7 @@ gen_downsampling_i = 26
 workflow_dir = '/broad/macosko/data/workflows/flowcell'
 library_dir = '/broad/macosko/data/libraries'
 
+# TODOO CHANGE BACK
 scripts_folder = '/broad/macosko/jilong/slideseq_pipeline/scripts'
 platforms = ['MiniSeq', 'NextSeq', 'NovaSeq', 'NovaSeqS4']
 
@@ -221,7 +222,7 @@ for flowcell in flowcells:
 	# yes 20 days is huge but needs to stay alive for everything else, also 2g only 
 
 	taskrunner_script = '{}/new_taskrunner.sh'.format(scripts_folder)
-	call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=2g', '-notify', '-l', 'h_rt=480:00:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', taskrunner_script, scripts_folder, output_dir]
+	call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=5g', '-notify', '-l', 'h_rt=480:00:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', taskrunner_script, scripts_folder, output_dir]
 	call(call_args)
 
     # Call run pipeline
@@ -230,7 +231,7 @@ for flowcell in flowcells:
 		call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10G', '-notify', '-l', 'h_rt=90:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_dir]
 	else:
 		output_file = '{}/logs/run_pipeline.log'.format(output_dir)
-		call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10G', '-notify', '-l', 'h_rt=3:00:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_dir]
+		call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=10G', '-notify', '-l', 'h_rt=5:00:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, scripts_folder, output_dir]
     
 	print('Command issued:')
 	print(' '.join(call_args))
