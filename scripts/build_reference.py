@@ -1,16 +1,8 @@
-from __future__ import print_function
-
 # This script is to build genome reference
 
-import sys
 import os
-import getopt
-
-import argparse
-import glob
-import re
+import sys
 from subprocess import call
-
 
 if len(sys.argv) != 2:
     print("Please provide one argument: manifest file!")
@@ -25,61 +17,69 @@ if not os.path.isfile(manifest_file):
 
 # Read manifest file
 options = {}
-with open(manifest_file,"r") as fp:
+with open(manifest_file, "r") as fp:
     for line in fp:
-        dict = line.rstrip().split("=")
-        options[dict[0]] = dict[1]
-fp.close()
+        key, value = line.rstrip().split("=")
+        options[key] = value
 
 # Check if options exist
-if 'reference_fasta' not in options:
-    print('reference_fasta is not specified in the manifest file. Exiting...')
+if "reference_fasta" not in options:
+    print("reference_fasta is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'gtf' not in options:
-    print('gtf is not specified in the manifest file. Exiting...')
-    sys.exit()
-    
-if 'name' not in options:
-    print('name is not specified in the manifest file. Exiting...')
+if "gtf" not in options:
+    print("gtf is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'output_folder' not in options:
-    print('output_folder is not specified in the manifest file. Exiting...')
+if "name" not in options:
+    print("name is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'dropseq_folder' not in options:
-    print('dropseq_folder is not specified in the manifest file. Exiting...')
+if "output_folder" not in options:
+    print("output_folder is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'picard_folder' not in options:
-    print('picard_folder is not specified in the manifest file. Exiting...')
+if "dropseq_folder" not in options:
+    print("dropseq_folder is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'STAR_folder' not in options:
-    print('STAR_folder is not specified in the manifest file. Exiting...')
+if "picard_folder" not in options:
+    print("picard_folder is not specified in the manifest file. Exiting...")
     sys.exit()
 
-if 'bgzip_location' not in options:
-    print('bgzip_location is not specified in the manifest file. Exiting...')
-    sys.exit()
-    
-if 'shell_script' not in options:
-    print('shell_script is not specified in the manifest file. Exiting...')
+if "STAR_folder" not in options:
+    print("STAR_folder is not specified in the manifest file. Exiting...")
     sys.exit()
 
-reference_fasta = options['reference_fasta']
-gtf = options['gtf']
-name = options['name']
-output_folder = options['output_folder']
-dropseq_folder = options['dropseq_folder']
-picard_folder = options['picard_folder']
-STAR_folder = options['STAR_folder']
-bgzip_location = options['bgzip_location']
-submission_script = options['shell_script']
+if "bgzip_location" not in options:
+    print("bgzip_location is not specified in the manifest file. Exiting...")
+    sys.exit()
 
-MT_SEQUENCE = options['MT_SEQUENCE'] if 'MT_SEQUENCE' in options else ''
-filtered_gene_biotypes = options['filtered_gene_biotypes'] if 'filtered_gene_biotypes' in options else 'processed_pseudogene,unprocessed_pseudogene,transcribed_unprocessed_pseudogene,pseudogene,IG_V_pseudogene,transcribed_processed_pseudogene,TR_J_pseudogene,TR_V_pseudogene,unitary_pseudogene,polymorphic_pseudogene,IG_D_pseudogene,translated_processed_pseudogene,translated_unprocessed_pseudogene,IG_C_pseudogene'
+if "shell_script" not in options:
+    print("shell_script is not specified in the manifest file. Exiting...")
+    sys.exit()
+
+reference_fasta = options["reference_fasta"]
+gtf = options["gtf"]
+name = options["name"]
+output_folder = options["output_folder"]
+dropseq_folder = options["dropseq_folder"]
+picard_folder = options["picard_folder"]
+STAR_folder = options["STAR_folder"]
+bgzip_location = options["bgzip_location"]
+submission_script = options["shell_script"]
+
+MT_SEQUENCE = options["MT_SEQUENCE"] if "MT_SEQUENCE" in options else ""
+filtered_gene_biotypes = (
+    options["filtered_gene_biotypes"]
+    if "filtered_gene_biotypes" in options
+    else (
+        "processed_pseudogene,unprocessed_pseudogene,transcribed_unprocessed_pseudogene,"
+        "pseudogene,IG_V_pseudogene,transcribed_processed_pseudogene,TR_J_pseudogene,"
+        "TR_V_pseudogene,unitary_pseudogene,polymorphic_pseudogene,IG_D_pseudogene,"
+        "translated_processed_pseudogene,translated_unprocessed_pseudogene,IG_C_pseudogene"
+    )
+)
 
 # Check if input folders and files exist
 if not os.path.isdir(dropseq_folder):
@@ -112,25 +112,44 @@ if not os.path.isfile(submission_script):
 
 print("Creating genome reference...")
 
-filtered_gene_biotypes2 = ''
+filtered_gene_biotypes2 = ""
 if len(filtered_gene_biotypes) > 0:
-    types = filtered_gene_biotypes.split(',')
-    for type in types:
-        filtered_gene_biotypes2 += 'G={} '.format(type)
+    types = filtered_gene_biotypes.split(",")
+    for gene_type in types:
+        filtered_gene_biotypes2 += "G={} ".format(gene_type)
 
 # Create directories
 if not os.path.isdir(output_folder):
-    call(['mkdir', output_folder])
-if not os.path.isdir('{}/STAR'.format(output_folder)):
-    call(['mkdir', '{}/STAR'.format(output_folder)])
+    call(["mkdir", output_folder])
+if not os.path.isdir("{}/STAR".format(output_folder)):
+    call(["mkdir", "{}/STAR".format(output_folder)])
 
-sequence_dictionary = '{}/{}.dict'.format(output_folder, name)
+sequence_dictionary = "{}/{}.dict".format(output_folder, name)
 if os.path.isdir(sequence_dictionary):
-    call(['rm', '-r', sequence_dictionary])
+    call(["rm", "-r", sequence_dictionary])
 
-output_file = '{}/run.log'.format(output_folder)
-call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=50g', '-l', 'h_rt=10:0:0', '-j', 'y', submission_script, 
-             picard_folder, dropseq_folder, STAR_folder, bgzip_location, output_folder, reference_fasta, gtf, name, filtered_gene_biotypes2, MT_SEQUENCE]
+output_file = "{}/run.log".format(output_folder)
+call_args = [
+    "qsub",
+    "-o",
+    output_file,
+    "-l",
+    "h_vmem=50g",
+    "-l",
+    "h_rt=10:0:0",
+    "-j",
+    "y",
+    submission_script,
+    picard_folder,
+    dropseq_folder,
+    STAR_folder,
+    bgzip_location,
+    output_folder,
+    reference_fasta,
+    gtf,
+    name,
+    filtered_gene_biotypes2,
+    MT_SEQUENCE,
+]
 print(call_args)
 call(call_args)
-
