@@ -87,7 +87,16 @@ def main():
         # out_stat = list(set(out_stat) & set(out_stat_2))
 
         # remove headers
-        out_stat = list(filter(lambda l: len(l)>0 and not re.match("^(job-ID)|(---)", l), out_stat))
+        out_stat = list(
+            filter(
+                lambda ln: len(ln) > 0
+                and not re.match("^(job-ID)|(---)", ln)
+                and "taskrunner" not in ln
+                and "QRLOGIN" not in ln,
+                out_stat,
+            )
+        )
+        print(out_stat)
 
         # len(l)>0 above so [0] is safe
         running_jnumbers = [ln.strip().split()[0] for ln in out_stat]
@@ -102,12 +111,20 @@ def main():
             print("No files=no new jobs")
 
             # if there are no qstats running or all qstats aren't in jobs I submitted, wait 15 minutes then kill
-             if len(set(running_jnumbers) & set(all_submitted_jobs)) == 0: 
-            #if len(set(running_jnumbers)) == 0:
-                print("AND NO JOBS WE'RE WAITING ON *{}".format(num_times_nothing_to_do))
-                num_times_nothing_to_do+=1
-            if num_times_nothing_to_do > 25: #90: # 45 mintes/30 second intervals
-                print("Welp it was a good run, but enough is enough (also there's nothin' else to do) :-)")
+            if len(set(running_jnumbers) & set(all_submitted_jobs)) == 0:
+                # if len(set(running_jnumbers)) == 0:
+                print(
+                    "AND NO JOBS WE'RE WAITING ON {}/{}".format(
+                        num_times_nothing_to_do, max_times_wait
+                    )
+                )
+                num_times_nothing_to_do += 1
+            if (
+                num_times_nothing_to_do > max_times_wait
+            ):  # 90: # 45 mintes/30 second intervals
+                print(
+                    "Welp it was a good run, but enough is enough (also there's nothin' else to do) :-)"
+                )
                 sys.exit(0)
         else:
 
