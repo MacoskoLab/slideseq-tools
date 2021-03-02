@@ -12,6 +12,7 @@ if len(sys.argv) != 4:
 
 FROM = "slideseq@gmail.com"
 TO = sys.argv[1].split(',')
+TO = [t.strip() for t in TO]
 SUBJECT = sys.argv[2]
 TEXT = sys.argv[3]
 

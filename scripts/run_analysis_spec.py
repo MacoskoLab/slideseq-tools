@@ -269,7 +269,7 @@ def main():
             for i in range(0, 9, 1):
                 output_file = '{}/logs/gen_downsample_dge_{}_{}_{}.log'.format(output_folder, library, reference2, str(ratio[i]))
                 submission_script = '{}/gen_downsample_dge.sh'.format(scripts_folder)
-                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=37G', '-notify', '-l', 'h_rt=14:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, str(ratio[i]), output_folder, downsample_folder]
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=47G', '-notify', '-l', 'h_rt=14:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, locus_function_list, str(ratio[i]), output_folder, downsample_folder]
                 call_to_taskrunner(output_folder, call_args)
         
             # Call generate_plot_downsampling

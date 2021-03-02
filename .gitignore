@@ -1,0 +1,4 @@
+*.pyc
+*.~undo-tree~
+__pycache__/
+*.swp

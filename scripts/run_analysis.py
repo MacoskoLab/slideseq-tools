@@ -347,7 +347,7 @@ def main():
             # Call run_analysis_spec
             output_file = '{}/logs/run_analysis_spec_{}_{}.log'.format(output_folder, library, l)
             submission_script = '{}/run_analysis_spec.sh'.format(scripts_folder)
-            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=45G', '-notify', '-l', 'h_rt=24:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, l, output_folder, '{}/{}.{}'.format(analysis_folder, referencePure, l)]
+            call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=60G', '-notify', '-l', 'h_rt=24:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script, manifest_file, library, scripts_folder, l, output_folder, '{}/{}.{}'.format(analysis_folder, referencePure, l)]
             call_to_taskrunner(output_folder, call_args)
         
         for i in range(len(lanes)):
