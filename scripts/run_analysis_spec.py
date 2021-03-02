@@ -286,6 +286,11 @@ def main():
                 content = "The Slide-seq workflow for "+library+"_"+locus_function_list+" is finished. Please check the output folder for the results. Thank you for using the Slide-seq tools! "
                 call_args = ['python', '{}/send_email.py'.format(scripts_folder), email_address, subject, content]
                 call(call_args)
+
+                output_file = '{}/logs/give_group_{}_{}.log'.format(output_folder, library, reference2)
+                submission_script = '{}/give_all_group_write.sh'.format(scripts_folder)
+                call_args = ['qsub', '-o', output_file, '-l', 'h_vmem=5G', '-notify', '-l', 'h_rt=10:0:0', '-j', 'y', '-P', 'macosko_lab', '-l', 'os=RedHat7', submission_script]
+                call_to_taskrunner(output_folder, call_args)
         
         now = datetime.now()
         dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
