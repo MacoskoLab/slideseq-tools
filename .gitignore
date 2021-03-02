@@ -1,4 +1,14 @@
+# Compiled files from within pipelin
+scripts/WriteBijectiveMapping/WriteBijectiveMapping
+scripts/check_alignments_quality
+scripts/cmatcher
+scripts/cmatcher_beads
+scripts/degenerate_beads
+scripts/puckcaller/ExtractBeadBarcode
+
+# Misc normal files
 *.pyc
 *.~undo-tree~
 __pycache__/
 *.swp
+
