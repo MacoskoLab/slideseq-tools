@@ -25,7 +25,7 @@ def generate_rand(random_chars=12, alphabet="0123456789abcdefghijklmnopqrstuvwxy
     return ''.join([r.choice(alphabet) for i in range(random_chars)])
 
 def main():
-    MAX_NUM_JOBS = 890
+    MAX_NUM_JOBS = 970
 
     all_submitted_jobs = []
     already_submitted_jobs = set()
@@ -43,7 +43,7 @@ def main():
     while True:
 
         # put at top so if continue in the loop, still sleeps not a fast while loop
-        sleep(45) 
+        sleep(45)
         print("->")
         # oldest one on top
         out_ls, err_ls, status = subproc_res(["ls", "-rt1", taskrunner_dir])
@@ -58,6 +58,10 @@ def main():
         out_ls = list(filter(lambda x: x!="done", out_ls))
 
 
+        # if gets out of control/doesn't stop on other user's account. This can force it
+        if "stopme" in out_ls:
+            print("HAS STOPME. STOPPING NOW! Bye!")
+            sys.exit(0)
 
         out_stat, err_stat, status = subproc_res(["qstat"])
         if err_stat != [] or status!=0:
