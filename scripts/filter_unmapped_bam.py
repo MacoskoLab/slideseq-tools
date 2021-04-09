@@ -28,11 +28,6 @@ def get_bead_structure_range(bs, structure_type):
     return res[:-1]
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()

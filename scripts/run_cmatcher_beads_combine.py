@@ -13,11 +13,6 @@ from datetime import datetime
 from subprocess import call
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()

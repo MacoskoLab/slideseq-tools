@@ -12,11 +12,6 @@ from subprocess import call
 from new_submit_to_taskrunner import call_to_taskrunner
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()

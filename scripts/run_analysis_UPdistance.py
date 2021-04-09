@@ -38,10 +38,6 @@ def levenshtein(seq1, seq2):
     return matrix[size_x - 1, size_y - 1]
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
 
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):

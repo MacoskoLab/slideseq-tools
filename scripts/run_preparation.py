@@ -13,43 +13,7 @@ from subprocess import call
 
 from new_submit_to_taskrunner import call_to_taskrunner
 
-
-# Get read structure from RunInfo.xml
-def get_read_structure(x):
-    posts = "TBT"
-    i = 0
-    str = ""
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Read ", 0):
-                l = line.split("=")[2]
-                str += l.split('"')[1] + posts[i]
-                i += 1
-                if i >= 3:
-                    break
-
-    return str
-
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Tile>", 0):
-                l = line[6:].split("<")[0]
-                if l.split("_")[0] == lane:
-                    tiles.append(l.split("_")[1])
-
-    tiles.sort()
-    return tiles
-
-
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
+from slideseq.util import get_tiles, get_read_structure, str2bool
 
 
 # Write to log file
