@@ -2,26 +2,15 @@
 
 # This script is to convert Illumina barcodes to unmapped.bam
 
+import logging
 import os
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
+from slideseq.logging import create_logger
 
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -29,7 +18,7 @@ def main():
         print(
             "Please provide four arguments: manifest file, commandStr, lane ID and slice ID!"
         )
-        sys.exit()
+        sys.exit(1)
 
     manifest_file = sys.argv[1]
     commandStr = sys.argv[2]
@@ -38,8 +27,8 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
-        sys.exit()
+        print(f"File {manifest_file} does not exist. Exiting...")
+        sys.exit(1)
 
     # Read manifest file
     options = {}
@@ -56,69 +45,49 @@ def main():
         else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
     email_address = options["email_address"] if "email_address" in options else ""
-    log_file = "{}/logs/workflow.log".format(output_folder)
+    log_file = f"{output_folder}/logs/workflow.log"
+    create_logger(log_file, logging.INFO)
 
-    folder_running = "{}/status/running.barcodes2sam_lane_{}_{}".format(
-        output_folder, lane, lane_slice
+    folder_running = (
+        f"{output_folder}/status/running.barcodes2sam_lane_{lane}_{lane_slice}"
     )
-    folder_finished = "{}/status/finished.barcodes2sam_lane_{}_{}".format(
-        output_folder, lane, lane_slice
+    folder_finished = (
+        f"{output_folder}/status/finished.barcodes2sam_lane_{lane}_{lane_slice}"
     )
-    folder_failed = "{}/status/failed.barcodes2sam_lane_{}_{}".format(
-        output_folder, lane, lane_slice
+    folder_failed = (
+        f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{lane_slice}"
     )
 
     try:
         call(["mkdir", "-p", folder_running])
 
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # Convert Illumina base calls to sam (unmapped.bam)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "IlluminaBasecallsToSam for Lane "
-            + lane
-            + "_"
-            + lane_slice
-            + " Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - IlluminaBasecallsToSam for Lane {lane}_{lane_slice}"
         )
+        log.info(f"{flowcell_barcode} - Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "IlluminaBasecallsToSam for Lane " + lane + "_" + lane_slice + " is done. ",
-        )
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
+        log.info(f"{flowcell_barcode} - IlluminaBasecallsToSam is done.")
 
         call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
+    except:
+        log.exception("EXCEPTION")
+
         if os.path.isdir(folder_running):
             call(["mv", folder_running, folder_failed])
         else:
             call(["mkdir", "-p", folder_failed])
 
         if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
+            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
             content = (
-                "The Slide-seq workflow for lane "
-                + lane
-                + " slice "
-                + lane_slice
-                + " failed at the step of converting barcodes to sam. Please check the log file for the issues. "
+                f"The Slide-seq workflow for lane {lane} slice {lane_slice} failed at"
+                f" the step of converting barcodes to sam."
+                f" Please check the log file for the issues."
             )
             call_args = [
                 "python",
-                "{}/send_email.py".format(scripts_folder),
+                f"{scripts_folder}/send_email.py",
                 email_address,
                 subject,
                 content,

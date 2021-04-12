@@ -16,25 +16,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Tile>", 0):
-                tile_line = line[6:].split("<")[0]
-                if tile_line.split("_")[0] == lane:
-                    tiles.append(tile_line.split("_")[1])
-
-    tiles.sort()
-    return tiles
-
-
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
+from slideseq.util import get_tiles, str2bool
 
 
 # Write to log file

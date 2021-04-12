@@ -14,7 +14,6 @@ import scipy.io
 import scipy.sparse
 
 
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()

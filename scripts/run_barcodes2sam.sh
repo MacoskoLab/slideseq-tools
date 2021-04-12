@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=150G
+#$ -l h_rt=80:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call run_barcodes2sam.py
 

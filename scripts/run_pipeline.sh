@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=10g
+#$ -l h_rt=3:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call run_pipeline.py
 

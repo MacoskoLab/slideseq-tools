@@ -42,63 +42,35 @@ def main(argv):
             outputfile = arg
 
     with open(inputfile, "r") as fin, open(outputfile, "w") as fout:
-        reader = csv.reader(fin, delimiter="\t")
-        idx_LANE = -1
-        idx_SAMPLE = -1
-        idx_LIBRARY = -1
-        idx_SAMPLE_BARCODE = -1
-        i = 1
+        reader = csv.DictReader(fin, delimiter="\t")
+        h = list(reader.fieldnames)
+        if "sample" not in h:
+            h.append("sample")
+
+        print("\t".join(h), file=fout)
+
         for row in reader:
-            if i == 1:
-                row1 = [x.lower() for x in row]
-                if "lane" in row1:
-                    idx_LANE = row1.index("lane")
-                if "library" in row1:
-                    idx_LIBRARY = row1.index("library")
-                if "sample" in row1:
-                    idx_SAMPLE = row1.index("sample")
-                if "sample_barcode" in row1:
-                    idx_SAMPLE_BARCODE = row1.index("sample_barcode")
-                if idx_SAMPLE < 0:
-                    row1.append("sample")
-                fout.write("\t".join(row1) + "\n")
+            lane = row.get("lane", "")
+            if lane == "{LANE}":
+                lanes = get_lanes(runinfo_file)
             else:
-                lane = ""
-                sample = ""
-                sample_barcode = ""
+                lanes = lane.split(",")
 
-                if idx_LANE >= 0:
-                    lane = row[idx_LANE]
-                if idx_SAMPLE >= 0:
-                    sample = row[idx_SAMPLE]
-                elif idx_LIBRARY >= 0:
-                    sample = row[idx_LIBRARY]
-                if idx_SAMPLE_BARCODE >= 0:
-                    sample_barcode = row[idx_SAMPLE_BARCODE]
+            sample = row.get("sample", row.get("library", ""))
+            row["sample"] = sample
 
-                if idx_SAMPLE >= 0:
-                    row[idx_SAMPLE] = sample
+            sample_barcode = row.get("sample_barcode", "")
+            barcodes = sample_barcode.strip().split(",")
+
+            for lane in lanes:
+                if sample_barcode:
+                    for b in barcodes:
+                        row["lane"] = lane
+                        row["sample_barcode"] = b
+                        print("\t".join(row[c] for c in h), file=fout)
                 else:
-                    row.append(sample)
-
-                if lane == "{LANE}":
-                    lanes = get_lanes(runinfo_file)
-                else:
-                    lanes = lane.split(",")
-
-                barcodes = sample_barcode.strip(" \t\n").split(",")
-
-                for lane in lanes:
-                    if sample_barcode:
-                        for b in barcodes:
-                            row[idx_LANE] = lane
-                            row[idx_SAMPLE_BARCODE] = b
-                            fout.write("\t".join(row) + "\n")
-                    else:
-                        row[idx_LANE] = lane
-                        fout.write("\t".join(row) + "\n")
-
-            i = i + 1
+                    row["lane"] = lane
+                    print("\t".join(row[c] for c in h), file=fout)
 
 
 if __name__ == "__main__":

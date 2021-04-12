@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=62G
+#$ -l h_rt=23:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call run_alignment.py
 

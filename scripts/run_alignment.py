@@ -10,6 +10,8 @@ import traceback
 from datetime import datetime
 from subprocess import call
 
+from slideseq.util import str2bool
+
 
 # Get bead structure range
 def get_bead_structure_range(bs, structure_type):
@@ -28,24 +30,9 @@ def get_bead_structure_range(bs, structure_type):
     return res[:-1]
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+    ...
 
 
 def main():

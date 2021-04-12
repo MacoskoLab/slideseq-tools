@@ -3,62 +3,33 @@
 # This script is to call the alignment step
 
 import csv
+import logging
 import os
 import sys
 import time
-import traceback
-from datetime import datetime
+
 from subprocess import call
 
 from new_submit_to_taskrunner import call_to_taskrunner
 
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Tile>", 0):
-                l = line[6:].split("<")[0]
-                if l.split("_")[0] == lane:
-                    tiles.append(l.split("_")[1])
-
-    tiles.sort()
-    return tiles
+from slideseq.logging import create_logger
+from slideseq.util import get_tiles, str2bool
 
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
     if len(sys.argv) != 2:
         print("Please provide one argument: manifest file!")
-        sys.exit()
+        sys.exit(1)
 
     manifest_file = sys.argv[1]
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
-        sys.exit()
+        print(f"File {manifest_file} does not exist. Exiting...")
+        sys.exit(1)
 
     # Read manifest file
     options = {}
@@ -98,23 +69,24 @@ def main():
     email_address = options["email_address"] if "email_address" in options else ""
     resubmit = str2bool(options["resubmit"]) if "resubmit" in options else False
 
-    runinfo_file = "{}/RunInfo.xml".format(flowcell_directory)
-    log_file = "{}/logs/workflow.log".format(output_folder)
+    runinfo_file = f"{flowcell_directory}/RunInfo.xml"
+    log_file = f"{output_folder}/logs/workflow.log"
+    create_logger(log_file, logging.INFO)
 
     # Parse metadata file
-    if resubmit:
-        write_log(log_file, flowcell_barcode, "Parse metadata file. ")
-        commandStr = (
-            "python "
-            + scripts_folder
-            + "/parse_metadata.py -i "
-            + metadata_file
-            + " -r "
-            + runinfo_file
-            + " -o "
-            + "{}/parsed_metadata.txt".format(output_folder)
-        )
-        os.system(commandStr)
+    # if resubmit:
+    #     write_log(log_file, flowcell_barcode, "Parse metadata file. ")
+    #     commandStr = (
+    #         "python "
+    #         + scripts_folder
+    #         + "/parse_metadata.py -i "
+    #         + metadata_file
+    #         + " -r "
+    #         + runinfo_file
+    #         + " -o "
+    #         + "{}/parsed_metadata.txt".format(output_folder)
+    #     )
+    #     os.system(commandStr)
 
     # Read info from metadata file
     lanes = []
@@ -129,7 +101,7 @@ def main():
     experiment_date = []
     run_barcodematching = []
     puckcaller_path = []
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -178,10 +150,10 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_waiting = "{}/status/waiting.mergebarcodes".format(output_folder)
-    folder_running = "{}/status/running.mergebarcodes".format(output_folder)
-    folder_finished = "{}/status/finished.mergebarcodes".format(output_folder)
-    folder_failed = "{}/status/failed.mergebarcodes".format(output_folder)
+    folder_waiting = f"{output_folder}/status/waiting.mergebarcodes"
+    folder_running = f"{output_folder}/status/running.mergebarcodes"
+    folder_finished = f"{output_folder}/status/finished.mergebarcodes"
+    folder_failed = f"{output_folder}/status/failed.mergebarcodes"
 
     call(["mkdir", "-p", folder_waiting])
 
@@ -190,38 +162,28 @@ def main():
         all_failed_1 = True
         all_failed_2 = True
         for lane in lanes_unique:
-            failed_1 = "{}/status/failed.processbarcodes_lane_{}".format(
-                output_folder, lane
-            )
+            failed_1 = f"{output_folder}/status/failed.processbarcodes_lane_{lane}"
             if not os.path.isdir(failed_1):
                 all_failed_1 = False
             for i in range(len(slice_id[lane])):
-                failed_2 = "{}/status/failed.barcodes2sam_lane_{}_{}".format(
-                    output_folder, lane, slice_id[lane][i]
-                )
+                failed_2 = f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
                 if not os.path.isdir(failed_2):
                     all_failed_2 = False
                     break
         if all_failed_1:
-            write_log(
-                log_file, flowcell_barcode, "All run_processbarcodes failed. Exiting..."
+            log.error(
+                f"{flowcell_barcode} - All run_processbarcodes failed. Exiting..."
             )
-            sys.exit()
+            sys.exit(1)
         if all_failed_2:
-            write_log(
-                log_file, flowcell_barcode, "All run_barcodes2sam failed. Exiting..."
-            )
-            sys.exit()
+            log.error(f"{flowcell_barcode} - All run_barcodes2sam failed. Exiting...")
+            sys.exit(1)
 
         f = True
         for lane in lanes_unique:
             for i in range(len(slice_id[lane])):
-                fol1 = "{}/status/finished.barcodes2sam_lane_{}_{}".format(
-                    output_folder, lane, slice_id[lane][i]
-                )
-                fol2 = "{}/status/failed.barcodes2sam_lane_{}_{}".format(
-                    output_folder, lane, slice_id[lane][i]
-                )
+                fol1 = f"{output_folder}/status/finished.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
+                fol2 = f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
                 if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
                     f = False
                     break
@@ -241,88 +203,40 @@ def main():
             if (not resubmit) or resubmit_unique[j] == "TRUE":
                 library = libraries_unique[j]
 
-                if resubmit:
-                    for i in range(len(lanes)):
-                        if libraries[i] != library:
-                            continue
-                        for lane_slice in slice_id[lanes[i]]:
-                            unmapped_bam = "{}/{}/{}/{}/".format(
-                                output_folder, lanes[i], lane_slice, library
-                            )
-                            if barcodes[i]:
-                                unmapped_bam += "{}/{}.{}.{}.{}.{}.unmapped.bam".format(
-                                    barcodes[i],
-                                    flowcell_barcode,
-                                    lanes[i],
-                                    lane_slice,
-                                    library,
-                                    barcodes[i],
-                                )
-                            else:
-                                unmapped_bam += "{}.{}.{}.{}.unmapped.bam".format(
-                                    flowcell_barcode, lanes[i], lane_slice, library
-                                )
-                            unmapped_bam2 = "{}/{}_{}/{}.{}.{}.{}".format(
-                                library_folder,
-                                experiment_date[j],
-                                library,
-                                flowcell_barcode,
-                                lanes[i],
-                                lane_slice,
-                                library,
-                            )
-                            if barcodes[i]:
-                                unmapped_bam2 += "." + barcodes[i]
-                            unmapped_bam2 += ".unmapped.bam"
-                            if os.path.isfile(unmapped_bam2):
-                                os.system("mv " + unmapped_bam2 + " " + unmapped_bam)
-                    if os.path.isdir(
-                        "{}/{}_{}".format(library_folder, experiment_date[j], library)
-                    ):
-                        os.system(
-                            "rm -r "
-                            + "{}/{}_{}".format(
-                                library_folder, experiment_date[j], library
-                            )
-                        )
-                    os.system("rm " + "{}/logs/*{}*".format(output_folder, library))
-                    os.system(
-                        "rm -r " + "{}/status/*{}*".format(output_folder, library)
-                    )
+                # if resubmit:
+                #     for i in range(len(lanes)):
+                #         if libraries[i] != library:
+                #             continue
+                #         for lane_slice in slice_id[lanes[i]]:
+                #             unmapped_bam = f"{output_folder}/{lanes[i]}/{lane_slice}/{library}/"
+                #             if barcodes[i]:
+                #                 unmapped_bam += f"{barcodes[i]}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.{barcodes[i]}.unmapped.bam"
+                #             else:
+                #                 unmapped_bam += f"{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.unmapped.bam"
+                #             unmapped_bam2 = f"{library_folder}/{experiment_date[j]}_{library}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
+                #             if barcodes[i]:
+                #                 unmapped_bam2 += "." + barcodes[i]
+                #             unmapped_bam2 += ".unmapped.bam"
+                #             if os.path.isfile(unmapped_bam2):
+                #                 os.system("mv " + unmapped_bam2 + " " + unmapped_bam)
+                #     if os.path.isdir(f"{library_folder}/{experiment_date[j]}_{library}"):
+                #         os.system(f"rm -r {library_folder}/{experiment_date[j]}_{library}")
+                #     os.system(f"rm {output_folder}/logs/*{library}*")
+                #     os.system(f"rm -r {output_folder}/status/*{library}*")
 
-                os.system(
-                    "mkdir -p "
-                    + "{}/{}_{}".format(library_folder, experiment_date[j], library)
-                )
+                os.system(f"mkdir -p {library_folder}/{experiment_date[j]}_{library}")
                 for i in range(len(lanes)):
                     if libraries[i] != library:
                         continue
                     for lane_slice in slice_id[lanes[i]]:
-                        unmapped_bam = "{}/{}/{}/{}/".format(
-                            output_folder, lanes[i], lane_slice, library
+                        unmapped_bam = (
+                            f"{output_folder}/{lanes[i]}/{lane_slice}/{library}/"
                         )
                         if barcodes[i]:
-                            unmapped_bam += "{}/{}.{}.{}.{}.{}.unmapped.bam".format(
-                                barcodes[i],
-                                flowcell_barcode,
-                                lanes[i],
-                                lane_slice,
-                                library,
-                                barcodes[i],
-                            )
+                            unmapped_bam += f"{barcodes[i]}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.{barcodes[i]}.unmapped.bam"
                         else:
-                            unmapped_bam += "{}.{}.{}.{}.unmapped.bam".format(
-                                flowcell_barcode, lanes[i], lane_slice, library
-                            )
-                        unmapped_bam2 = "{}/{}_{}/{}.{}.{}.{}".format(
-                            library_folder,
-                            experiment_date[j],
-                            library,
-                            flowcell_barcode,
-                            lanes[i],
-                            lane_slice,
-                            library,
-                        )
+                            unmapped_bam += f"{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.unmapped.bam"
+                        unmapped_bam2 = f"{library_folder}/{experiment_date[j]}_{library}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
                         if barcodes[i]:
                             unmapped_bam2 += "." + barcodes[i]
                         unmapped_bam2 += ".unmapped.bam"
@@ -330,25 +244,12 @@ def main():
                             os.system("mv " + unmapped_bam + " " + unmapped_bam2)
 
                         # Call run_alignment
-                        output_file = "{}/logs/run_alignment_{}_{}_{}_{}.log".format(
-                            output_folder, library, lanes[i], lane_slice, barcodes[i]
-                        )
-                        submission_script = "{}/run_alignment.sh".format(scripts_folder)
+                        output_file = f"{output_folder}/logs/run_alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}.log"
+                        submission_script = f"{scripts_folder}/run_alignment.sh"
                         call_args = [
                             "qsub",
                             "-o",
                             output_file,
-                            "-l",
-                            "h_vmem=62g",
-                            "-notify",
-                            "-l",
-                            "h_rt=23:0:0",
-                            "-j",
-                            "y",
-                            "-P",
-                            "macosko_lab",
-                            "-l",
-                            "os=RedHat7",
                             submission_script,
                             manifest_file,
                             library,
@@ -357,45 +258,30 @@ def main():
                             barcodes[i],
                             scripts_folder,
                             output_folder,
-                            "{}/{}_{}".format(
-                                library_folder, experiment_date[j], library
-                            ),
+                            f"{library_folder}/{experiment_date[j]}_{library}",
                         ]
                         call_to_taskrunner(output_folder, call_args)
 
                 if run_barcodematching[j]:
                     puckcaller_path1 = puckcaller_path[j]
-                    file1 = "{}/AnalysisOutputs-selected.mat".format(puckcaller_path1)
-                    file2 = "{}/BeadBarcodes.txt".format(puckcaller_path1)
-                    file3 = "{}/BeadLocations.txt".format(puckcaller_path1)
+                    file1 = f"{puckcaller_path1}/AnalysisOutputs-selected.mat"
+                    file2 = f"{puckcaller_path1}/BeadBarcodes.txt"
+                    file3 = f"{puckcaller_path1}/BeadLocations.txt"
                     if puckcaller_path1[-1] != "/":
                         puckcaller_path1 += "/"
                     if (not os.path.isfile(file2)) or (not os.path.isfile(file3)):
-                        print("{} and/or {} are not found!".format(file2, file3))
+                        log.error(f"{file2} and/or {file3} are not found!")
                         if os.path.isfile(file1):
-                            output_file = "{}/logs/ExtractBeadBarcode_{}.log".format(
-                                output_folder, library
+                            output_file = (
+                                f"{output_folder}/logs/ExtractBeadBarcode_{library}.log"
                             )
                             submission_script = (
-                                "{}/puckcaller/run_ExtractBeadBarcode.sh".format(
-                                    scripts_folder
-                                )
+                                f"{scripts_folder}/puckcaller/run_ExtractBeadBarcode.sh"
                             )
                             call_args = [
                                 "qsub",
                                 "-o",
                                 output_file,
-                                "-l",
-                                "h_vmem=10g",
-                                "-notify",
-                                "-l",
-                                "h_rt=5:0:0",
-                                "-j",
-                                "y",
-                                "-P",
-                                "macosko_lab",
-                                "-l",
-                                "os=RedHat7",
                                 submission_script,
                                 "/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a",
                                 puckcaller_path1,
@@ -404,7 +290,7 @@ def main():
                             ]
                             call_to_taskrunner(output_folder, call_args)
                         else:
-                            print("{} is not found!".format(file1))
+                            log.error(f"{file1} is not found!")
 
                 if is_NovaSeq or is_NovaSeq_S4:
                     time.sleep(1800)
@@ -412,39 +298,25 @@ def main():
                     time.sleep(600)
 
                 # Call run_analysis
-                output_file = "{}/logs/run_analysis_{}.log".format(
-                    output_folder, library
-                )
-                submission_script = "{}/run_analysis.sh".format(scripts_folder)
+                output_file = f"{output_folder}/logs/run_analysis_{library}.log"
+                submission_script = f"{scripts_folder}/run_analysis.sh"
                 call_args = [
                     "qsub",
                     "-o",
                     output_file,
-                    "-l",
-                    "h_vmem=30g",
-                    "-notify",
-                    "-l",
-                    "h_rt=100:0:0",
-                    "-j",
-                    "y",
-                    "-P",
-                    "macosko_lab",
-                    "-l",
-                    "os=RedHat7",
                     submission_script,
                     manifest_file,
                     library,
                     scripts_folder,
                     output_folder,
-                    "{}/{}_{}".format(library_folder, experiment_date[j], library),
+                    f"{library_folder}/{experiment_date[j]}_{library}",
                 ]
                 call_to_taskrunner(output_folder, call_args)
 
         call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
+    except:
+        log.exception("EXCEPTION!")
+
         if os.path.isdir(folder_running):
             call(["mv", folder_running, folder_failed])
         elif os.path.isdir(folder_waiting):
@@ -460,14 +332,14 @@ def main():
             )
             call_args = [
                 "python",
-                "{}/send_email.py".format(scripts_folder),
+                f"{scripts_folder}/send_email.py",
                 email_address,
                 subject,
                 content,
             ]
             call(call_args)
 
-        sys.exit()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

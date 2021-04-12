@@ -18,7 +18,7 @@ def get_read_structure(run_info_file: pathlib.Path):
     assert len(read_elems) == 3
 
     # I guess Picard wants this string format for some reason
-    return "{}T{}B{}T".format(*el.get("NumCycles") for el in read_elems)
+    return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
 
 
 def get_tiles(run_info_file: pathlib.Path, lane: str) -> List[str]:

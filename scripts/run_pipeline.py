@@ -2,28 +2,17 @@
 
 # This script is to run the Slide-seq flowcell alignment pipeline
 
+import logging
 import os
 import sys
-import traceback
-from datetime import datetime
+
 from subprocess import call
 
 from new_submit_to_taskrunner import call_to_taskrunner
 
+from slideseq.logging import create_logger
 
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -35,7 +24,7 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
+        print(f"File {manifest_file} does not exist. Exiting...")
         sys.exit()
 
     # Read manifest file
@@ -89,83 +78,68 @@ def main():
     email_address = options["email_address"] if "email_address" in options else ""
 
     if not os.path.isdir(flowcell_directory):
-        print("Folder {} does not exist. Exiting...".format(flowcell_directory))
+        print(f"Folder {flowcell_directory} does not exist. Exiting...")
         sys.exit()
 
     if not os.path.isfile(metadata_file):
-        print("File {} does not exist. Exiting...".format(metadata_file))
+        print(f"File {metadata_file} does not exist. Exiting...")
         sys.exit()
 
     if not os.path.isdir(dropseq_folder):
-        print("Folder {} does not exist. Exiting...".format(dropseq_folder))
+        print(f"Folder {dropseq_folder} does not exist. Exiting...")
         sys.exit()
 
     if not os.path.isdir(picard_folder):
-        print("Folder {} does not exist. Exiting...".format(picard_folder))
+        print(f"Folder {picard_folder} does not exist. Exiting...")
         sys.exit()
 
     if not os.path.isdir(STAR_folder):
-        print("Folder {} does not exist. Exiting...".format(STAR_folder))
+        print(f"Folder {STAR_folder} does not exist. Exiting...")
         sys.exit()
 
     if not os.path.isdir(scripts_folder):
-        print("Folder {} does not exist. Exiting...".format(scripts_folder))
+        print(f"Folder {scripts_folder} does not exist. Exiting...")
         sys.exit()
 
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
 
-    runinfo_file = "{}/RunInfo.xml".format(flowcell_directory)
+    runinfo_file = f"{flowcell_directory}/RunInfo.xml"
     if not os.path.isfile(runinfo_file):
-        print("File {} does not exist. Exiting...".format(runinfo_file))
+        print(f"File {runinfo_file} does not exist. Exiting...")
         sys.exit()
 
     try:
         # Create directories
         if not os.path.isdir(output_folder):
             call(["mkdir", "-p", output_folder])
-        if not os.path.isdir("{}/logs".format(output_folder)):
-            call(["mkdir", "-p", "{}/logs".format(output_folder)])
-        call(["mkdir", "-p", "{}/status".format(output_folder)])
+        if not os.path.isdir(f"{output_folder}/logs"):
+            call(["mkdir", "-p", f"{output_folder}/logs"])
+        call(["mkdir", "-p", f"{output_folder}/status"])
         if not os.path.isdir(library_folder):
             call(["mkdir", "-p", library_folder])
         if "temp_folder" not in options:
-            call(["mkdir", "-p", "{}/tmp".format(output_folder)])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        print("Folder {} cannot be created. Exiting...".format(output_folder))
-        sys.exit()
+            call(["mkdir", "-p", f"{output_folder}/tmp"])
+    except:
+        log.exception("EXCEPTION")
+        log.error(f"Folder {output_folder} cannot be created. Exiting...")
+        sys.exit(1)
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-    write_log(
-        log_file,
-        flowcell_barcode,
-        "The Slide-seq alignment pipeline is starting to run. ",
-    )
+    log_file = f"{output_folder}/logs/workflow.log"
+    create_logger(log_file, logging.INFO)
+
+    log.info(f"{flowcell_barcode} - starting SlideSeq alignment pipeline")
 
     # Call run_preparation
-    output_file = "{}/logs/run_preparation.log".format(output_folder)
-    submission_script = "{}/run_preparation.sh".format(scripts_folder)
+    output_file = f"{output_folder}/logs/run_preparation.log"
+    submission_script = f"{scripts_folder}/run_preparation.sh"
     call_args = [
         "qsub",
         "-o",
         output_file,
-        "-l",
-        "h_vmem=20g",
-        "-notify",
-        "-l",
-        "h_rt=5:0:0",
-        "-j",
-        "y",
-        "-P",
-        "macosko_lab",
-        "-l",
-        "os=RedHat7",
         submission_script,
         manifest_file,
         scripts_folder,
@@ -176,12 +150,13 @@ def main():
     if len(email_address) > 1:
         subject = f"Submission received for {flowcell_barcode}"
         content = (
-            "Thank you for your interest on the Slide-seq tools! We received your request. "
-            "An email will be sent to you once the workflow finishes. "
+            "Thank you for your interest on the Slide-seq tools! "
+            "We received your request. An email will be sent to you "
+            "once the workflow finishes. "
         )
         call_args = [
             "python",
-            "{}/send_email.py".format(scripts_folder),
+            f"{scripts_folder}/send_email.py",
             email_address,
             subject,
             content,

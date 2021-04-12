@@ -3,6 +3,7 @@
 # This script is to combine bam files from slice alignments
 
 import csv
+import logging
 import os
 import sys
 import time
@@ -11,6 +12,12 @@ from datetime import datetime
 from subprocess import call
 
 from new_submit_to_taskrunner import call_to_taskrunner
+
+from slideseq.logging import create_logger
+from slideseq.util import get_tiles, str2bool
+
+
+log = logging.getLogger(__name__)
 
 
 # Number of input reads |	3979435
@@ -26,26 +33,6 @@ def get_val(line):
     res = line.split("|")[1]
     res = res.strip()
     return res
-
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Tile>", 0):
-                j = line[6:].split("<")[0]
-                if j.split("_")[0] == lane:
-                    tiles.append(j.split("_")[1])
-
-    tiles.sort()
-    return tiles
-
-
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
 
 
 # Write to log file
@@ -73,8 +60,8 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
-        sys.exit()
+        print(f"File {manifest_file} does not exist. Exiting...")
+        sys.exit(1)
 
     # Read manifest file
     options = {}
@@ -91,7 +78,7 @@ def main():
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
     tmpdir = (
         options["temp_folder"]
@@ -370,12 +357,12 @@ def main():
                         call_to_taskrunner(output_folder, call_args)
                         f = False
                     else:
-                        write_log(
-                            log_file,
-                            flowcell_barcode,
-                            "MergeSamFiles error: " + star_bamfile + " does not exist!",
+                        log.error(
+                            f"{flowcell_barcode} MergeSamFiles error: {star_bamfile}"
+                            f" does not exist!"
                         )
-                        raise Exception(star_bamfile + " does not exist!")
+
+                        raise Exception(f"{star_bamfile} does not exist!")
         if f:
             break
         time.sleep(60)

@@ -31,6 +31,9 @@ from plotnine import (
 )
 
 
+from slideseq.util import get_tiles, str2bool
+
+
 # Get read 1 length
 def get_read1_len(bs):
     # 12C8M|*T
@@ -41,26 +44,6 @@ def get_read1_len(bs):
         if it:
             i += int(it)
     return i
-
-
-# Get tile information from RunInfo.xml
-def get_tiles(x, lane):
-    tiles = []
-    with open(x, "r") as fin:
-        for line in fin:
-            line = line.strip(" \t\n")
-            if line.startswith("<Tile>", 0):
-                tile = line[6:].split("<")[0]
-                if tile.split("_")[0] == lane:
-                    tiles.append(tile.split("_")[1])
-
-    tiles.sort()
-    return tiles
-
-
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
 
 
 # Write to log file

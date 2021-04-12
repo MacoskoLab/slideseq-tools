@@ -79,7 +79,7 @@ else:
 if args.dryrun:
     print("DRY RUN ONLY -- No files will be written and no submissions made.")
 
-print("Beginning submission for {} flowcells".format(len(flowcells)))
+print(f"Beginning submission for {len(flowcells)} flowcells")
 
 # convert non-decimals
 non_decimal = re.compile(r"[^\d.]+")
@@ -132,7 +132,9 @@ for flowcell in flowcells:
     ]
     submit_df = pd.DataFrame(
         submit_meta,
-        columns=[cell.value for cell in wks.range(1, lib_i, 1, gen_downsampling_i)],
+        columns=[
+            cell.value.lower() for cell in wks.range(1, lib_i, 1, gen_downsampling_i)
+        ],
     )
     submit_df.drop(submit_df.columns[[1, 2]], axis=1, inplace=True)
 
@@ -321,44 +323,23 @@ for flowcell in flowcells:
 
     # Call run pipeline
     if args.resubmit:
-        output_file = "{}/logs/run_mergebarcodes.log".format(output_dir)
+        # TODO: this is probably broken
+        output_file = f"{output_dir}/logs/run_mergebarcodes.log"
         call_args = [
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=10G",
-            "-notify",
-            "-l",
-            "h_rt=90:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             scripts_folder,
             output_dir,
         ]
     else:
-        output_file = "{}/logs/run_pipeline.log".format(output_dir)
+        output_file = f"{output_dir}/logs/run_pipeline.log"
         call_args = [
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=10G",
-            "-notify",
-            "-l",
-            "h_rt=3:00:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             scripts_folder,

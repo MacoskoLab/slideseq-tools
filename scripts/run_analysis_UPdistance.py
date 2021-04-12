@@ -38,7 +38,6 @@ def levenshtein(seq1, seq2):
     return matrix[size_x - 1, size_y - 1]
 
 
-
 # Write to log file
 def write_log(log_file, flowcell_barcode, log_string):
     now = datetime.now()
