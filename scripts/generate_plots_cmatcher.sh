@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=33G
+#$ -l h_rt=40:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call generate_plots_cmatcher.py
 

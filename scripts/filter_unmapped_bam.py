@@ -181,7 +181,7 @@ def main():
         if os.path.isfile(unmapped_sam):
             call(["rm", unmapped_sam])
 
-        commandStr = "samtools view -S -b " + filtered_sam + " > " + filtered_bam
+        commandStr = f"samtools view -S -b {filtered_sam} > {filtered_bam}"
         os.system(commandStr)
 
         if os.path.isfile(filtered_sam):

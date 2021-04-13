@@ -40,7 +40,7 @@ def main():
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
     scripts_folder = (
         options["scripts_folder"]
@@ -59,7 +59,7 @@ def main():
     puckcaller_path = ""
     email_address = ""
     experiment_date = ""
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]

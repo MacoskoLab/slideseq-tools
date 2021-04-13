@@ -237,9 +237,7 @@ def main():
                     call(["rm", filtered_bam])
 
         # matched_raw_bam_file
-        matched_raw_bam_file = "{}/{}_matched_raw.bam".format(
-            barcode_matching_folder, library
-        )
+        matched_raw_bam_file = f"{barcode_matching_folder}/{library}_matched_raw.bam"
         commandStr = (
             f"java -Djava.io.tmpdir={tmpdir}"
             " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"

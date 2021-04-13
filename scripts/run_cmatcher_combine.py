@@ -7,12 +7,10 @@ import csv
 import logging
 import os
 import sys
-import time
 from subprocess import call
 
 import numpy as np
 
-from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
 
 log = logging.getLogger(__name__)
@@ -428,17 +426,6 @@ def main():
                         "qsub",
                         "-o",
                         output_file,
-                        "-l",
-                        "h_vmem=10g",
-                        "-notify",
-                        "-l",
-                        "h_rt=10:0:0",
-                        "-j",
-                        "y",
-                        "-P",
-                        "macosko_lab",
-                        "-l",
-                        "os=RedHat7",
                         submission_script,
                         manifest_file,
                         library,
@@ -461,17 +448,6 @@ def main():
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=33g",
-            "-notify",
-            "-l",
-            "h_rt=40:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             library,

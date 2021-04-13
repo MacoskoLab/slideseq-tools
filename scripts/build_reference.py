@@ -121,14 +121,14 @@ if len(filtered_gene_biotypes) > 0:
 # Create directories
 if not os.path.isdir(output_folder):
     call(["mkdir", output_folder])
-if not os.path.isdir("{}/STAR".format(output_folder)):
-    call(["mkdir", "{}/STAR".format(output_folder)])
+if not os.path.isdir(f"{output_folder}/STAR"):
+    call(["mkdir", f"{output_folder}/STAR"])
 
-sequence_dictionary = "{}/{}.dict".format(output_folder, name)
+sequence_dictionary = f"{output_folder}/{name}.dict"
 if os.path.isdir(sequence_dictionary):
     call(["rm", "-r", sequence_dictionary])
 
-output_file = "{}/run.log".format(output_folder)
+output_file = f"{output_folder}/run.log"
 call_args = [
     "qsub",
     "-o",
