@@ -111,8 +111,6 @@ def main():
     reference2 = referencePure + "." + locus_function_list
 
     runinfo_file = f"{flowcell_directory}/RunInfo.xml"
-    log_file = f"{output_folder}/logs/workflow.log"
-    create_logger(log_file)
 
     # Get tile information from RunInfo.xml
     slice_id = {}

@@ -98,39 +98,44 @@ def main():
 
     try:
         # UniqueMappedIlluminaBarcodes
-        unique_bci_file = "{}/{}_unique_matched_illumina_barcodes.txt".format(
-            barcode_matching_folder, library
-        )
+        unique_bci_file = f"{barcode_matching_folder}/{library}_unique_matched_illumina_barcodes.txt"
 
         if not os.path.isfile(dge_file):
-            os.system("gunzip -c {} > {}".format(dge_gzfile, dge_file))
+            os.system(f"gunzip -c {dge_gzfile} > {dge_file}")
 
-        location_file = "{}/{}_matched_bead_locations.txt".format(
-            barcode_matching_folder, library
-        )
-        genename_file = "{}/{}_genenames.txt".format(barcode_matching_folder, library)
-        bcb_file = "{}/{}_unique_matched_beads.txt".format(
-            barcode_matching_folder, library
-        )
-        commandStr = (
-            "perl "
-            + scripts_folder
-            + "/get_unique_mapped_dge.pl "
-            + dge_file
-            + " "
-            + uniqueMappedDge_file
-            + " "
-            + genename_file
-            + " "
-            + bcb_file
-        )
-        os.system(commandStr)
+        location_file = f"{barcode_matching_folder}/{library}_matched_bead_locations.txt"
+        genename_file = f"{barcode_matching_folder}/{library}_genenames.txt"
+        bcb_file = f"{barcode_matching_folder}/{library}_unique_matched_beads.txt"
+
+        # split dge_file into three files, plus a csv for R
+
+        with open(dge_file) as fh:
+            rdr = csv.reader(fh, delimiter="\t")
+            rows = [row for row in rdr if row and row[0][0] != "#"]
+
+            # write bead barcodes (columns of the tsv)
+            with open(bcb_file, "w") as out:
+                print("\n".join(rows[0][1:]), file=out)
+
+            # write gene names (row labels)
+            with open(genename_file, "w") as out:
+                print("\n".join(row[0] for row in rows[1:]), file=out)
+
+            # print out the values separately (???)
+            with open(uniqueMappedDge_file, "w") as out:
+                for row in rows[1:]:
+                    print("\t".join(row[1:]), file=out)
+
+            # convert the tsv to csv for R (but R can read tsvs...?)
+            with open(MappedDGEForR_file, "w") as out:
+                for row in rows:
+                    print(",".join(row), file=out)
+
+        # this matlab script
 
         # Call run_WriteBijectiveMapping
         # 'UniqueMappedBeads','UniqueMappedDGE','UniqueMappedIlluminaBarcodes','GeneNames'
-        output_file = "{}/logs/run_WriteBijectiveMapping_{}_{}.log".format(
-            output_folder, library, locus_function_list
-        )
+        output_file = f"{output_folder}/logs/run_WriteBijectiveMapping_{library}_{locus_function_list}.log"
         submission_script = "/broad/macosko/jilong/slideseq_pipeline/scripts/run_WriteBijectiveMapping.sh"
         call_args = [
             "qsub",
@@ -149,20 +154,7 @@ def main():
         ]
         call(call_args)
 
-        # converting a text file to a csv file by calling perl because we're maniacs
-        commandStr = (
-            "perl "
-            + scripts_folder
-            + "/txt2csv.pl "
-            + dge_file
-            + " "
-            + MappedDGEForR_file
-        )
-        os.system(commandStr)
-
-        if os.path.isfile(dge_file):
-            call(["rm", dge_file])
-
+        os.remove(dge_file)
     except:
         log.exception("EXCEPTION!")
 

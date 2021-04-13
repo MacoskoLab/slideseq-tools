@@ -125,9 +125,6 @@ def main():
         log.error(f"Folder {output_folder} cannot be created. Exiting...")
         sys.exit(1)
 
-    log_file = f"{output_folder}/logs/workflow.log"
-    create_logger(log_file, logging.INFO)
-
     log.info(f"{flowcell_barcode} - starting SlideSeq alignment pipeline")
 
     # Call run_preparation

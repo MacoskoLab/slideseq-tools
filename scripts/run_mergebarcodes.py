@@ -62,11 +62,8 @@ def main():
         if "num_slice_NovaSeq_S4" in options
         else 40
     )
-    email_address = options["email_address"] if "email_address" in options else ""
 
     runinfo_file = f"{flowcell_directory}/RunInfo.xml"
-    log_file = f"{output_folder}/logs/workflow.log"
-    create_logger(log_file, logging.INFO)
 
     # Read info from metadata file
     lanes = []

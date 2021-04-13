@@ -124,7 +124,6 @@ def main():
     ribosomal_intervals = "{}/{}.rRNA.intervals".format(reference_folder, referencePure)
 
     runinfo_file = "{}/RunInfo.xml".format(flowcell_directory)
-    log_file = "{}/logs/workflow.log".format(output_folder)
 
     # Get tile information from RunInfo.xml
     slice_id = {}

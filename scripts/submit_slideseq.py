@@ -102,10 +102,7 @@ for flowcell in flowcells:
     flow_cells = wks.findall(flowcell)
     if len(np.unique([cell.col for cell in flow_cells])) > 1:
         warnings.warn(
-            (
-                "Flowcell {} found in multiple columns;"
-                + " not running until resolved."
-            ).format(flowcell)
+            f"Flowcell {flowcell} found in multiple columns; not running until resolved."
         )
         continue
     elif len(flow_cells) < 1:

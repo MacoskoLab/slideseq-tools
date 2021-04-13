@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=70G
+#$ -l h_rt=6:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call gen_sparse_matrix.py
 

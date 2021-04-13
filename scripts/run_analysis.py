@@ -89,7 +89,6 @@ def main():
     )
 
     runinfo_file = f"{flowcell_directory}/RunInfo.xml"
-    log_file = f"{output_folder}/logs/workflow.log"
 
     # Read info from metadata file
     lanes = []

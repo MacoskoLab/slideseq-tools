@@ -152,13 +152,12 @@ def main():
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
 
-    annotations_file = "{}/{}.gtf".format(reference_folder, referencePure)
-    ref_flat = "{}/{}.refFlat".format(reference_folder, referencePure)
-    ribosomal_intervals = "{}/{}.rRNA.intervals".format(reference_folder, referencePure)
+    annotations_file = f"{reference_folder}/{referencePure}.gtf"
+    ref_flat = f"{reference_folder}/{referencePure}.refFlat"
+    ribosomal_intervals = f"{reference_folder}/{referencePure}.rRNA.intervals"
     reference2 = referencePure + "." + locus_function_list
 
-    runinfo_file = "{}/RunInfo.xml".format(flowcell_directory)
-    log_file = "{}/logs/workflow.log".format(output_folder)
+    runinfo_file = f"{flowcell_directory}/RunInfo.xml"
 
     # Get tile information from RunInfo.xml
     slice_id = {}
@@ -565,17 +564,6 @@ def main():
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=70G",
-            "-notify",
-            "-l",
-            "h_rt=6:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             library,
@@ -589,32 +577,19 @@ def main():
         call(call_args)
 
         # Call write_bijective_mapping.sh
-        output_file = "{}/logs/write_bijective_mapping_{}_{}.log".format(
-            output_folder, library, locus_function_list
-        )
-        submission_script = "{}/write_bijective_mapping.sh".format(scripts_folder)
+        output_file = f"{output_folder}/logs/write_bijective_mapping_{library}_{locus_function_list}.log"
+        submission_script = f"{scripts_folder}/write_bijective_mapping.sh"
         call_args = [
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=45G",
-            "-notify",
-            "-l",
-            "h_rt=2:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             library,
             scripts_folder,
             locus_function_list,
             output_folder,
-            "{}/{}".format(analysis_folder, reference2),
+            f"{analysis_folder}/{reference2}",
         ]
         call(call_args)
 

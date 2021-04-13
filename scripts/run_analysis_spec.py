@@ -68,8 +68,6 @@ def main():
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
     )
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-
     # Read info from metadata file
     lanes = []
     lanes_unique = []
@@ -466,7 +464,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

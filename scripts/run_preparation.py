@@ -68,8 +68,6 @@ def main():
     email_address = options["email_address"] if "email_address" in options else ""
 
     basecalls_dir = f"{flowcell_directory}/Data/Intensities/BaseCalls"
-    log_file = f"{output_folder}/logs/workflow.log"
-    create_logger(log_file, logging.INFO)
 
     # Get read structure from RunInfo.xml
     runinfo_file = f"{flowcell_directory}/RunInfo.xml"

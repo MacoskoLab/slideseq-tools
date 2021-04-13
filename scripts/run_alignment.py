@@ -95,8 +95,6 @@ def main():
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
     )
 
-    log_file = f"{output_folder}/logs/workflow.log"
-
     # Read info from metadata file
     bead_structure = ""
     reference = ""
