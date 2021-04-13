@@ -142,7 +142,7 @@ def main():
             f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id}"
         )
 
-        commandStr = "samtools view -h -o " + unmapped_sam + " " + unmapped_bam
+        commandStr = f"samtools view -h -o {unmapped_sam} {unmapped_bam}"
         os.system(commandStr)
 
         dict1 = {}
@@ -194,21 +194,14 @@ def main():
         log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
+            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
             content = (
-                "The Slide-seq workflow for "
-                + library
-                + " "
-                + reference2
-                + " in lane "
-                + lane
-                + " slice "
-                + slice_id
-                + " failed at the step of filtering unmapped bam. Please check the log file for the issues. "
+                f"The Slide-seq workflow for {library} {reference2} in lane {lane} slice {slice_id}"
+                " failed at the step of filtering unmapped bam. Please check the log file for the issues."
             )
             call_args = [
                 "python",
-                "{}/send_email.py".format(scripts_folder),
+                f"{scripts_folder}/send_email.py",
                 email_address,
                 subject,
                 content,

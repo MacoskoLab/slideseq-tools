@@ -60,45 +60,37 @@ def main():
     referencePure = referencePure[: referencePure.rfind(".")]
     reference2 = referencePure + "." + locus_function_list
 
-    analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
-    alignment_folder = "{}/{}/alignment".format(analysis_folder, reference2)
-    barcode_matching_folder = "{}/{}/barcode_matching".format(
-        analysis_folder, reference2
-    )
+    analysis_folder = f"{library_folder}/{experiment_date}_{library}"
+    alignment_folder = f"{analysis_folder}/{reference2}/alignment"
+    barcode_matching_folder = f"{analysis_folder}/{reference2}/barcode_matching"
 
     readme_file = "{}/readme.txt".format(alignment_folder)
     with open(readme_file, "w") as fout:
-        fout.write("\n")
+        print(file=fout)
 
-        f1 = "{}/BeadBarcodes.txt".format(analysis_folder)
+        f1 = f"{analysis_folder}/BeadBarcodes.txt"
         if os.path.isfile(f1):
-            fout.write(f1 + "\n")
-            fout.write("-bead barcodes from PuckCaller folder\n")
-            fout.write("\n")
+            print(f"{f1}\n-bead barcodes from PuckCaller folder\n", file=fout)
 
-        f1 = "{}/BeadLocations.txt".format(analysis_folder)
+        f1 = f"{analysis_folder}/BeadLocations.txt"
         if os.path.isfile(f1):
-            fout.write(f1 + "\n")
-            fout.write("-bead locations from PuckCaller folder\n")
-            fout.write("\n")
+            print(f"{f1}\n-bead locations from PuckCaller folder\n", file=fout)
 
-        f1 = "{}/{}_barcode_matching_01.txt".format(analysis_folder, library)
+        f1 = f"{analysis_folder}/{library}_barcode_matching_01.txt"
         if os.path.isfile(f1):
-            fout.write(f1 + "\n")
-            fout.write(
-                "-barcode matching results (hamming distance <= 1) within beads for degenerate barcodes\n"
+            print(
+                f"{f1}\n-barcode matching results (hamming distance <= 1) within beads for degenerate barcodes\n",
+                file=fout,
             )
-            fout.write("\n")
 
-        f1 = "{}/{}_barcode_matching_2.txt".format(analysis_folder, library)
+        f1 = f"{analysis_folder}/{library}_barcode_matching_2.txt"
         if os.path.isfile(f1):
-            fout.write(f1 + "\n")
-            fout.write(
-                "-barcode matching results (hamming distance >= 2) within beads\n"
+            print(
+                f"{f1}\n-barcode matching results (hamming distance >= 2) within beads\n",
+                file=fout,
             )
-            fout.write("\n")
 
-        f1 = "{}/BeadBarcodes_degenerate.txt".format(analysis_folder)
+        f1 = f"{analysis_folder}/BeadBarcodes_degenerate.txt"
         if os.path.isfile(f1):
             fout.write(f1 + "\n")
             fout.write(

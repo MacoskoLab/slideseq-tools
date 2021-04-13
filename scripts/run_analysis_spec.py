@@ -164,26 +164,16 @@ def main():
             commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
         elif locus_function_list == "intronic":
             commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SelectCellsByNumTranscripts for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - SelectCellsByNumTranscripts for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SelectCellsByNumTranscripts for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - SelectCellsByNumTranscripts for {library} is done"
         )
 
         # Call run_cmatcher
         if run_barcodematching:
-            finish_file = "{}/BeadBarcodes_degenerate.finished".format(analysis_folder)
-            while 1:
-                if os.path.isfile(finish_file):
-                    call(["rm", finish_file])
-                    break
-                time.sleep(30)
+            # wait for BeadBarcodes_degenerate for finish...
 
             bead_barcode_file = "{}/BeadBarcodes_degenerate.txt".format(analysis_folder)
             select_cell_gzfile = (
@@ -282,31 +272,21 @@ def main():
                     barcode_matching_folder,
                 ]
                 call(call_args)
-                write_log(
-                    log_file,
-                    flowcell_barcode,
-                    "Run CMatcher for " + library + " " + reference2 + " " + str(i + 1),
+                log.info(
+                    f"{flowcell_barcode} - Run CMatcher for {library} {reference2} {i+1}"
                 )
 
                 # shuffled barcodes
-                infile2 = "{}/{}_{}.txt".format(
-                    alignment_folder, name_shuffled, str(i + 1)
-                )
+                infile2 = f"{alignment_folder}/{name_shuffled}_{str(i + 1)}.txt"
                 commandStr = "awk 'NR >= {} && NR <= {}' {} > {}".format(
                     str(i * k + 1), str((i + 1) * k), select_cell_shuffled_file, infile2
                 )
                 os.system(commandStr)
 
-                file4 = "{}/{}_barcode_matching_distance_shuffled_{}.txt".format(
-                    barcode_matching_folder, library, str(i + 1)
-                )
-                file5 = "{}/{}_barcode_matching_shuffled_{}.txt".format(
-                    barcode_matching_folder, library, str(i + 1)
-                )
-                output_file = "{}/logs/run_cmatcher_{}_{}_shuffled_{}.log".format(
-                    output_folder, library, locus_function_list, str(i + 1)
-                )
-                submission_script = "{}/run_cmatcher.sh".format(scripts_folder)
+                file4 = f"{barcode_matching_folder}/{library}_barcode_matching_distance_shuffled_{str(i + 1)}.txt"
+                file5 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.txt"
+                output_file = f"{output_folder}/logs/run_cmatcher_{library}_{locus_function_list}_shuffled_{str(i + 1)}.log"
+                submission_script = f"{scripts_folder}/run_cmatcher.sh"
                 call_args = [
                     "qsub",
                     "-o",
@@ -322,17 +302,13 @@ def main():
                     barcode_matching_folder,
                 ]
                 call(call_args)
-                write_log(
-                    log_file,
-                    flowcell_barcode,
-                    "Run CMatcher for " + library + " " + reference2 + " " + str(i + 1),
+                log.info(
+                    f"{flowcell_barcode} - Run CMatcher for {library} {reference2} {i + 1}"
                 )
 
             # Call run_cmatcher_combine
-            output_file = "{}/logs/run_cmatcher_combine_{}_{}.log".format(
-                output_folder, library, locus_function_list
-            )
-            submission_script = "{}/run_cmatcher_combine.sh".format(scripts_folder)
+            output_file = f"{output_folder}/logs/run_cmatcher_combine_{library}_{locus_function_list}.log"
+            submission_script = f"{scripts_folder}/run_cmatcher_combine.sh"
             call_args = [
                 "qsub",
                 "-o",
@@ -343,7 +319,7 @@ def main():
                 scripts_folder,
                 locus_function_list,
                 output_folder,
-                "{}/{}".format(analysis_folder, reference2),
+                f"{analysis_folder}/{reference2}",
             ]
             call(call_args)
 
@@ -388,19 +364,13 @@ def main():
             commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
         elif locus_function_list == "intronic":
             commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "DigitalExpression for "
-            + library
-            + " for all Illumina barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - DigitalExpression for {library} for all Illumina barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "DigitalExpression for " + library + " for all Illumina barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - DigitalExpression for {library} for all Illumina barcodes is done."
         )
 
         if gen_downsampling:

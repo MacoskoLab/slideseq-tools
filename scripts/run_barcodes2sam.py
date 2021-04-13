@@ -50,7 +50,7 @@ def main():
         log.info(
             f"{flowcell_barcode} - IlluminaBasecallsToSam for Lane {lane}_{lane_slice}"
         )
-        log.info(f"{flowcell_barcode} - Command = {commandStr}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
         log.info(f"{flowcell_barcode} - IlluminaBasecallsToSam is done.")
     except:

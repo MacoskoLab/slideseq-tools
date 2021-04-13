@@ -193,10 +193,8 @@ def main():
 
     try:
         log.info("Merge tagged matched bam files...")
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Merge tagged matched bam files for " + library + " " + reference2,
+        log.info(
+            f"{flowcell_barcode} - Merge tagged matched bam files for {library} {reference2}"
         )
 
         # matched bam
@@ -226,7 +224,8 @@ def main():
                 else:
                     log.error(f"{filtered_bam} not found!")
 
-        log.info(f"{flowcell_barcode} MergeSamFiles for {library} Command={commandStr}")
+        log.info(f"{flowcell_barcode} MergeSamFiles for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
         log.info(f"{flowcell_barcode} - MergeSamFiles for {library} is done.")
 
@@ -310,10 +309,8 @@ def main():
                 if os.path.isfile(filtered_bam):
                     call(["rm", filtered_bam])
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Merge tagged matched bam files for "
+        log.info(
+            f"{flowcell_barcode} - Merge tagged matched bam files for "
             + library
             + " "
             + reference2
@@ -549,19 +546,13 @@ def main():
             commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
         elif locus_function_list == "intronic":
             commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "DigitalExpression for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - DigitalExpression for {library} on matched barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "DigitalExpression for " + library + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - DigitalExpression for {library} on matched barcodes is done."
         )
 
         # Call gen_sparse_matrix
@@ -593,7 +584,7 @@ def main():
             file_name,
             scripts_folder,
             output_folder,
-            "{}/{}_{}/{}".format(library_folder, experiment_date, library, reference2),
+            f"{library_folder}/{experiment_date}_{library}/{reference2}",
         ]
         call(call_args)
 
@@ -687,19 +678,11 @@ def main():
             + base_quality
             + " VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BamTagHistogram for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - BamTagHistogram for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BamTagHistogram for " + library + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - BamTagHistogram for {library} on matched barcodes is done."
         )
 
         # Bam tag histogram on UMI
@@ -721,19 +704,13 @@ def main():
             + base_quality
             + " VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BamTagHistogram on UMI for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - BamTagHistogram on UMI for {library} on matched barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BamTagHistogram on UMI for " + library + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - BamTagHistogram on UMI for {library} on matched barcodes is done."
         )
 
         # Collect RnaSeq metrics
@@ -762,19 +739,13 @@ def main():
             + ".fracIntronicExonic.txt RIBOSOMAL_INTERVALS="
             + ribosomal_intervals
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "CollectRnaSeqMetrics for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - CollectRnaSeqMetrics for {library} on matched barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "CollectRnaSeqMetrics for " + library + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - CollectRnaSeqMetrics for {library} on matched barcodes is done."
         )
 
         # Base distribution at read position for cellular
@@ -791,21 +762,13 @@ def main():
             + tmpdir
             + " TAG=XC VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Cellular for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Cellular for {library}"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Cellular for "
-            + library
-            + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Cellular for {library} on matched barcodes is done."
         )
 
         # Base distribution at read position for molecular
@@ -822,21 +785,13 @@ def main():
             + tmpdir
             + " TAG=XM VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Molecular for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Molecular for {library} on matched barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Molecular for "
-            + library
-            + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Molecular for {library} on matched barcodes is done."
         )
 
         if os.path.isfile(matched_raw_bam_file):
@@ -859,21 +814,13 @@ def main():
             + library
             + ".ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "GatherReadQualityMetrics for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - GatherReadQualityMetrics for {library} on matched barcodes"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "GatherReadQualityMetrics for "
-            + library
-            + " on matched barcodes is done. ",
+        log.info(
+            f"{flowcell_barcode} - GatherReadQualityMetrics for {library} on matched barcodes is done.",
         )
 
         # Single cell RnaSeq metrics collector
@@ -900,19 +847,11 @@ def main():
             + matched_bead_barcode_gzfile
             + " VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SingleCellRnaSeqMetricsCollector for "
-            + library
-            + " on matched barcodes Command="
-            + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - SingleCellRnaSeqMetricsCollector for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SingleCellRnaSeqMetricsCollector for "
+        log.info(
+            f"{flowcell_barcode} - SingleCellRnaSeqMetricsCollector for "
             + library
             + " on matched barcodes is done. ",
         )
@@ -934,12 +873,9 @@ def main():
             call(["rm", matched_bead_barcode_gzfile])
 
         log.info("generating plots...")
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Generate plots for matched barcodes for " + library + " " + reference2,
+        log.info(
+            f"{flowcell_barcode} - Generate plots for matched barcodes for {library} {reference2}"
         )
-
         pp = PdfPages("{}/{}_{}.pdf".format(alignment_folder, library, reference2))
 
         file = "{}/{}.ReadQualityMetrics.txt".format(analysis_folder, library)
@@ -1560,9 +1496,8 @@ def main():
                         commandStr += " INPUT=" + filtered_bam
                     else:
                         log.error(f"{filtered_bam} not found!")
-            log.info(
-                f"{flowcell_barcode} MergeSamFiles for {library} Command={commandStr}"
-            )
+            log.info(f"{flowcell_barcode} MergeSamFiles for {library}")
+            log.debug(f"Command = {commandStr}")
             os.system(commandStr)
             log.info(f"{flowcell_barcode} MergeSamFiles for {library} is done.")
 
@@ -1580,10 +1515,8 @@ def main():
                     if os.path.isfile(filtered_bam):
                         call(["rm", filtered_bam])
 
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "Merge filtered unmapped bam files for "
+            log.info(
+                f"{flowcell_barcode} - Merge filtered unmapped bam files for "
                 + library
                 + " "
                 + reference2
@@ -1830,10 +1763,8 @@ def main():
             verbose=False,
         )
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Generate plots for matched barcodes for "
+        log.info(
+            f"{flowcell_barcode} - Generate plots for matched barcodes for "
             + library
             + " "
             + reference2

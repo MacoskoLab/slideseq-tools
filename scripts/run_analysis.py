@@ -256,22 +256,17 @@ def main():
                     star_bamfile += "." + barcodes[i]
                 star_bamfile += ".star_gene_exon_tagged2.bam"
                 if not os.path.isfile(star_bamfile):
-                    write_log(
-                        log_file,
-                        flowcell_barcode,
-                        "MergeSamFiles error: " + star_bamfile + " does not exist!",
+                    log.error(
+                        f"{flowcell_barcode} - MergeSamFiles error: {star_bamfile} does not exist!",
                     )
-                    raise Exception(star_bamfile + " does not exist!")
+                    raise Exception(
+                        f"MergeSamFiles error: {star_bamfile} does not exist!"
+                    )
                 commandStr += " INPUT=" + star_bamfile
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "MergeSamFiles for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - MergeSamFiles for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file, flowcell_barcode, "MergeSamFiles for " + library + " is done. "
-        )
+        log.info(f"{flowcell_barcode} - MergeSamFiles for {library} is done. ")
 
         # Validate bam file
         commandStr = (
@@ -283,15 +278,10 @@ def main():
         commandStr += "INPUT=" + combined_bamfile + " MODE=SUMMARY"
         if (not is_NovaSeq) and (not is_NovaSeq_S4):
             commandStr += " IGNORE=MISSING_PLATFORM_VALUE IGNORE=INVALID_VERSION_NUMBER"
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "ValidateSamFile for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - ValidateSamFile for " + library)
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file, flowcell_barcode, "ValidateSamFile for " + library + " is done. "
-        )
+        log.info(f"{flowcell_barcode} - ValidateSamFile for {library} is done.")
 
         # Call generate_plots
         output_file = "{}/logs/generate_plots_{}.log".format(output_folder, library)
@@ -634,12 +624,10 @@ def main():
                         bamfile += "." + barcodes[i]
                     bamfile += ".unmapped.bam"
                     if not os.path.isfile(bamfile):
-                        write_log(
-                            log_file,
-                            flowcell_barcode,
-                            "MergeSamFiles error: " + bamfile + " does not exist!",
+                        log.error(
+                            f"{flowcell_barcode} - MergeSamFiles error: {bamfile} does not exist!"
                         )
-                        raise Exception(bamfile + " does not exist!")
+                        raise Exception(f"{bamfile} does not exist!")
                     commandStr += " INPUT=" + bamfile
                 os.system(commandStr)
 

@@ -177,15 +177,10 @@ def main():
             + base_quality
             + " VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BamTagHistogram for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - BamTagHistogram for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file, flowcell_barcode, "BamTagHistogram for " + library + " is done. "
-        )
+        log.info(f"{flowcell_barcode} - BamTagHistogram for {library} is done.")
 
         # Collect RnaSeq metrics
         commandStr = (
@@ -217,17 +212,10 @@ def main():
             + ".fracIntronicExonic.txt RIBOSOMAL_INTERVALS="
             + ribosomal_intervals
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "CollectRnaSeqMetrics for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - CollectRnaSeqMetrics for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "CollectRnaSeqMetrics for " + library + " is done. ",
-        )
+        log.info(f"{flowcell_barcode} - CollectRnaSeqMetrics for {library} is done.")
 
         # Base distribution at read position for cellular
         commandStr = dropseq_folder + "/BaseDistributionAtReadPosition "
@@ -245,19 +233,13 @@ def main():
             + tmpdir
             + " TAG=XC VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Cellular for "
-            + library
-            + " Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Cellular for {library}"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Cellular for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Cellular for {library} is done."
         )
 
         # Base distribution at read position for molecular
@@ -276,19 +258,13 @@ def main():
             + tmpdir
             + " TAG=XM VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Molecular for "
-            + library
-            + " Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Molecular for {library}"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "BaseDistributionAtReadPosition Molecular for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - BaseDistributionAtReadPosition Molecular for {library} is done."
         )
 
         # Gather read quality metrics
@@ -307,22 +283,17 @@ def main():
             + library
             + ".ReadQualityMetrics.txt VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "GatherReadQualityMetrics for " + library + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - GatherReadQualityMetrics for {library}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "GatherReadQualityMetrics for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - GatherReadQualityMetrics for {library} is done."
         )
 
         if not run_barcodematching:
-            pp1 = PdfPages("{}/{}.pdf".format(alignment_folder, library))
+            pp1 = PdfPages(f"{alignment_folder}/{library}.pdf")
 
-            file = "{}/{}.ReadQualityMetrics.txt".format(alignment_folder, library)
+            file = f"{alignment_folder}/{library}.ReadQualityMetrics.txt"
             mat = np.loadtxt(
                 file,
                 delimiter="\t",

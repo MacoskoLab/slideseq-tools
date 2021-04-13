@@ -174,7 +174,7 @@ def main():
         log.info(
             f"{flowcell_barcode} TagBamWithReadSequenceExtended Cellular for {library} in lane {lane}"
         )
-        log.debug(f"Command={commandStr}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
         log.info(
             f"{flowcell_barcode} TagBamWithReadSequenceExtended Cellular for {library} in lane {lane} is done"
@@ -185,16 +185,10 @@ def main():
         )
         if not os.path.isfile(unaligned_cellular_file):
             log.error(
-                log_file,
-                flowcell_barcode,
-                "TagBamWithReadSequenceExtended error: "
-                + unaligned_cellular_file
-                + " does not exist!",
+                f"{flowcell_barcode} - TagBamWithReadSequenceExtended error: {unaligned_cellular_file} does not exist"
             )
             raise Exception(
-                "TagBamWithReadSequenceExtended error: "
-                + unaligned_cellular_file
-                + " does not exist!"
+                f"TagBamWithReadSequenceExtended error: {unaligned_cellular_file} does not exist"
             )
 
         # Tag bam with read sequence extended molecular
@@ -218,54 +212,29 @@ def main():
             + prefix_libraries
             + ".unaligned_tagged_Cellular.bam VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagBamWithReadSequenceExtended Molecular for "
-            + library
-            + " in Lane "
-            + lane
-            + " Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} - TagBamWithReadSequenceExtended Molecular for {library} in lane {lane}"
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagBamWithReadSequenceExtended Molecular for "
-            + library
-            + " in Lane "
-            + lane
-            + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - TagBamWithReadSequenceExtended Molecular for {library} in lane {lane} done"
         )
 
-        unaligned_molecular_file = "{}.unaligned_tagged_Molecular.bam".format(
-            prefix_libraries
-        )
+        unaligned_molecular_file = f"{prefix_libraries}.unaligned_tagged_Molecular.bam"
         if not os.path.isfile(unaligned_molecular_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "TagBamWithReadSequenceExtended error: "
-                + unaligned_molecular_file
-                + " does not exist!",
+            log.error(
+                f"TagBamWithReadSequenceExtended error: {unaligned_molecular_file} does not exist!"
             )
             raise Exception(
-                "TagBamWithReadSequenceExtended error: "
-                + unaligned_molecular_file
-                + " does not exist!"
+                f"TagBamWithReadSequenceExtended error: {unaligned_molecular_file} does not exist!"
             )
 
         if os.path.isfile(unaligned_cellular_file):
             call(["rm", unaligned_cellular_file])
 
         # Filter low-quality reads
-        commandStr = (
-            dropseq_folder
-            + "/FilterBam TAG_REJECT=XQ I="
-            + prefix_libraries
-            + ".unaligned_tagged_Molecular.bam "
-        )
+        commandStr = f"{dropseq_folder}/FilterBam TAG_REJECT=XQ I={prefix_libraries}.unaligned_tagged_Molecular.bam "
         commandStr += (
             "O="
             + prefix_libraries
@@ -273,27 +242,16 @@ def main():
             + tmpdir
             + " OPTIONS_FILE=/broad/macosko/jilong/slideseq_pipeline/options.txt"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "FilterBam for " + library + " in Lane " + lane + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - FilterBam for " + library + " in Lane " + lane)
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "FilterBam for " + library + " in Lane " + lane + " is done. ",
-        )
+        log.info(f"{flowcell_barcode} - FilterBam for {library} in Lane {lane} is done")
 
-        unaligned_filtered_file = "{}.unaligned.filtered.bam".format(prefix_libraries)
+        unaligned_filtered_file = f"{prefix_libraries}.unaligned.filtered.bam"
         if not os.path.isfile(unaligned_filtered_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "FilterBam error: " + unaligned_filtered_file + " does not exist!",
-            )
+            log.error(f"FilterBam error: {unaligned_filtered_file} does not exist!")
             raise Exception(
-                "FilterBam error: " + unaligned_filtered_file + " does not exist!"
+                f"FilterBam error: {unaligned_filtered_file} does not exist!"
             )
 
         if os.path.isfile(unaligned_molecular_file):
@@ -317,34 +275,27 @@ def main():
             + sequence
             + " MISMATCHES=0 NUM_BASES=5 VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TrimStartingSequence for "
+        log.info(
+            f"{flowcell_barcode} - TrimStartingSequence for "
             + library
             + " in Lane "
             + lane
-            + " Command="
-            + commandStr,
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TrimStartingSequence for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - TrimStartingSequence for {library} in lane {lane} is done."
         )
 
-        adapter_trim_file = "{}.unaligned_trimstartingsequence.filtered.bam".format(
-            prefix_libraries
+        adapter_trim_file = (
+            f"{prefix_libraries}.unaligned_trimstartingsequence.filtered.bam"
         )
         if not os.path.isfile(adapter_trim_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "TrimStartingSequence error: " + adapter_trim_file + " does not exist!",
+            log.error(
+                f"{flowcell_barcode} - TrimStartingSequence error: {adapter_trim_file} does not exist!"
             )
             raise Exception(
-                "TrimStartingSequence error: " + adapter_trim_file + " does not exist!"
+                f"TrimStartingSequence error: {adapter_trim_file} does not exist!"
             )
 
         if os.path.isfile(unaligned_filtered_file):
@@ -366,34 +317,22 @@ def main():
             + prefix_libraries
             + ".polyA_trimming_report.txt MISMATCHES=0 NUM_BASES=6 VALIDATION_STRINGENCY=SILENT USE_NEW_TRIMMER=true"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "PolyATrimmer for "
-            + library
-            + " in Lane "
-            + lane
-            + " Command="
-            + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - PolyATrimmer for {library} in Lane {lane}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "PolyATrimmer for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - PolyATrimmer for {library} in Lane {lane} is done."
         )
 
         polyA_trim_file = "{}.unaligned_mc_tagged_polyA_filtered.bam".format(
             prefix_libraries
         )
         if not os.path.isfile(polyA_trim_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "PolyATrimmer error: " + polyA_trim_file + " does not exist!",
+            log.info(
+                f"{flowcell_barcode} - PolyATrimmer error: {polyA_trim_file} does not exist!"
             )
             raise Exception(
-                "PolyATrimmer error: " + polyA_trim_file + " does not exist!"
+                f"PolyATrimmer error: {polyA_trim_file} does not exist!",
             )
 
         if os.path.isfile(adapter_trim_file):
@@ -414,26 +353,19 @@ def main():
             + prefix_libraries
             + ".fastq VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SamToFastq for " + library + " in Lane " + lane + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - SamToFastq for {library} in Lane {lane}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SamToFastq for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - SamToFastq for {library} in Lane {lane} is done."
         )
 
-        fastq_file = "{}.fastq".format(prefix_libraries)
+        fastq_file = f"{prefix_libraries}.fastq"
         if not os.path.isfile(fastq_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "SamToFastq error: " + fastq_file + " does not exist!",
+            log.error(
+                f"{flowcell_barcode} - SamToFastq error: {fastq_file} does not exist!"
             )
-            raise Exception("SamToFastq error: " + fastq_file + " does not exist!")
+            raise Exception(f"SamToFastq error: {fastq_file} does not exist!")
 
         # Map reads to genome sequence using STAR
         commandStr = (
@@ -451,31 +383,22 @@ def main():
         )
         if is_NovaSeq or is_NovaSeq_S4:
             commandStr += " --limitOutSJcollapsed 5000000"
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Mapping using STAR for "
+        log.info(
+            f"{flowcell_barcode} - Mapping using STAR for "
             + library
             + " in Lane "
             + lane
-            + " Command="
-            + commandStr,
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Mapping using STAR for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Mapping using STAR for {library} in lane {lane} is done."
         )
 
         star_file = "{}.star.Aligned.out.bam".format(prefix_libraries)
         if not os.path.isfile(star_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "STAR error: " + star_file + " does not exist!",
-            )
-            raise Exception("STAR error: " + star_file + " does not exist!")
+            log.error(f"{flowcell_barcode} - STAR error: {star_file} does not exist!")
+            raise Exception(f"STAR error: {star_file} does not exist!")
 
         if os.path.isfile(fastq_file):
             call(["rm", fastq_file])
@@ -485,21 +408,16 @@ def main():
         commandStr = "samtools view -h -o " + star_file2 + " " + star_file
         os.system(commandStr)
         commandStr = "{}/check_alignments_quality {}".format(scripts_folder, star_file2)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Check alignments quality for "
+        log.info(
+            f"{flowcell_barcode} - Check alignments quality for "
             + library
             + " in Lane "
             + lane
-            + " Command="
-            + commandStr,
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Check alignments quality for "
+        log.info(
+            f"{flowcell_barcode} - Check alignments quality for "
             + library
             + " in Lane "
             + lane
@@ -526,26 +444,17 @@ def main():
             + ".aligned.sorted.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR="
             + tmpdir
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SortSam for " + library + " in Lane " + lane + " Command=" + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - SortSam for {library} in lane {lane}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "SortSam for " + library + " in Lane " + lane + " is done. ",
-        )
+        log.info(f"{flowcell_barcode} - SortSam for {library} in lane {lane} is done.")
 
         sortsam_file = "{}.aligned.sorted.bam".format(prefix_libraries)
         if not os.path.isfile(sortsam_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "SortSam error: " + sortsam_file + " does not exist!",
+            log.error(
+                f"{flowcell_barcode} - SortSam error: {sortsam_file} does not exist!"
             )
-            raise Exception("SortSam error: " + sortsam_file + " does not exist!")
+            raise Exception(f"SortSam error: {sortsam_file} does not exist!")
 
         if os.path.isfile(star_file):
             call(["rm", star_file])
@@ -573,32 +482,20 @@ def main():
             + ".merged.bam COMPRESSION_LEVEL=0 INCLUDE_SECONDARY_ALIGNMENTS=false CLIP_ADAPTERS=false "
         )
         commandStr += "VALIDATION_STRINGENCY=SILENT TMP_DIR=" + tmpdir
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "MergeBamAlignment for "
-            + library
-            + " in Lane "
-            + lane
-            + " Command="
-            + commandStr,
-        )
+        log.info(f"{flowcell_barcode} - MergeBamAlignment for {library} in lane {lane}")
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "MergeBamAlignment for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - MergeBamAlignment for {library} in Lane {lane} is done."
         )
 
         mergedbam_file = "{}.merged.bam".format(prefix_libraries)
         if not os.path.isfile(mergedbam_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "MergeBamAlignment error: " + mergedbam_file + " does not exist!",
+            log.info(
+                f"{flowcell_barcode} - MergeBamAlignment error: {mergedbam_file} does not exist!",
             )
             raise Exception(
-                "MergeBamAlignment error: " + mergedbam_file + " does not exist!"
+                f"MergeBamAlignment error: {mergedbam_file} does not exist!"
             )
 
         if os.path.isfile(polyA_trim_file):
@@ -622,31 +519,28 @@ def main():
             + intervals
             + " TAG=XG VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagReadWithInterval for "
+        log.info(
+            f"{flowcell_barcode} - TagReadWithInterval for "
             + library
             + " in Lane "
             + lane
-            + " Command="
-            + commandStr,
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagReadWithInterval for " + library + " in Lane " + lane + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - TagReadWithInterval for "
+            + library
+            + " in Lane "
+            + lane
+            + " is done. ",
         )
 
         merged_taginterval_file = "{}.merged.TagReadWithInterval.bam".format(
             prefix_libraries
         )
         if not os.path.isfile(merged_taginterval_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "TagReadWithInterval error: "
+            log.info(
+                f"{flowcell_barcode} - TagReadWithInterval error: "
                 + merged_taginterval_file
                 + " does not exist!",
             )
@@ -675,21 +569,16 @@ def main():
             + tmpdir
             + " VALIDATION_STRINGENCY=SILENT CREATE_INDEX=false"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagReadWithGeneFunction for "
+        log.info(
+            f"{flowcell_barcode} - TagReadWithGeneFunction for "
             + library
             + " in Lane "
             + lane
-            + " Command="
-            + commandStr,
         )
+        log.debug(f"Command = {commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagReadWithGeneFunction for "
+        log.info(
+            f"{flowcell_barcode} - TagReadWithGeneFunction for "
             + library
             + " in Lane "
             + lane
@@ -700,10 +589,8 @@ def main():
             prefix_libraries
         )
         if not os.path.isfile(merged_taggenefunc_file):
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "TagReadWithGeneFunction error: "
+            log.info(
+                f"{flowcell_barcode} - TagReadWithGeneFunction error: "
                 + merged_taggenefunc_file
                 + " does not exist!",
             )

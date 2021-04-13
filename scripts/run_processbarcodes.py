@@ -110,7 +110,7 @@ def main():
             " COMPRESS_OUTPUTS=true NUM_PROCESSORS=4"
         )
         log.info(f"{flowcell_barcode} - ExtractIlluminaBarcodes for Lane {lane}")
-        log.info(f"Command= {commandStr}")
+        log.debug(f"Command = {commandStr}")
 
         os.system(commandStr)
 
