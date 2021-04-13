@@ -1,6 +1,6 @@
 #!/bin/bash
 #$ -l h_vmem=10G
-#$ -l h_rt=30:0:0
+#$ -l h_rt=40:0:0
 #$ -l os=RedHat7
 #$ -notify
 #$ -P macosko_lab

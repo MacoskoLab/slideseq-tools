@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=37G
+#$ -l h_rt=15:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call gen_downsample_dge.py
 
