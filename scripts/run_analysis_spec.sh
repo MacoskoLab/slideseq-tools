@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -l h_vmem=45G
+#$ -l h_rt=25:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
 
 # This script is to call run_analysis_spec.py
 

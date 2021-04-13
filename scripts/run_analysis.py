@@ -83,7 +83,7 @@ def main():
     tmpdir = (
         options["temp_folder"]
         if "temp_folder" in options
-        else "{}/tmp".format(output_folder)
+        else f"{output_folder}/tmp"
     )
 
     picard_folder = (
@@ -110,8 +110,8 @@ def main():
         else 40
     )
 
-    runinfo_file = "{}/RunInfo.xml".format(flowcell_directory)
-    log_file = "{}/logs/workflow.log".format(output_folder)
+    runinfo_file = f"{flowcell_directory}/RunInfo.xml"
+    log_file = f"{output_folder}/logs/workflow.log"
 
     # Read info from metadata file
     lanes = []
@@ -128,7 +128,7 @@ def main():
     email_address = ""
     experiment_date = ""
     gen_updistance_plot = False
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -179,18 +179,18 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_waiting = "{}/status/waiting.analysis_{}".format(output_folder, library)
-    folder_running = "{}/status/running.analysis_{}".format(output_folder, library)
-    folder_finished = "{}/status/finished.analysis_{}".format(output_folder, library)
-    folder_failed = "{}/status/failed.analysis_{}".format(output_folder, library)
+    folder_waiting = f"{output_folder}/status/waiting.analysis_{library}"
+    folder_running = f"{output_folder}/status/running.analysis_{library}"
+    folder_finished = f"{output_folder}/status/finished.analysis_{library}"
+    folder_failed = f"{output_folder}/status/failed.analysis_{library}"
 
-    analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
+    analysis_folder = f"{library_folder}/{experiment_date}_{library}"
 
     call(["mkdir", "-p", folder_waiting])
 
     if run_barcodematching:
-        file2 = "{}/BeadBarcodes.txt".format(puckcaller_path)
-        file3 = "{}/BeadLocations.txt".format(puckcaller_path)
+        file2 = f"{puckcaller_path}/BeadBarcodes.txt"
+        file3 = f"{puckcaller_path}/BeadLocations.txt"
         while 1:
             if os.path.isfile(file2) and os.path.isfile(file3):
                 break
@@ -198,8 +198,8 @@ def main():
 
         call(["cp", file2, analysis_folder + "/"])
         call(["cp", file3, analysis_folder + "/"])
-        bead_barcode_file = "{}/BeadBarcodes.txt".format(analysis_folder)
-        bead_location_file = "{}/BeadLocations.txt".format(analysis_folder)
+        bead_barcode_file = f"{analysis_folder}/BeadBarcodes.txt"
+        bead_location_file = f"{analysis_folder}/BeadLocations.txt"
 
         with open(bead_barcode_file, "r") as fin:
             j = sum(1 for _ in fin)
@@ -211,37 +211,20 @@ def main():
             if i * k >= j:
                 break
 
-            infile2 = "{}/BeadBarcodes_{}.txt".format(analysis_folder, str(i + 1))
+            infile2 = f"{analysis_folder}/BeadBarcodes_{str(i + 1)}.txt"
             commandStr = "awk 'NR >= {} && NR <= {}' {} > {}".format(
                 str(i * k + 1), str((i + 1) * k), bead_barcode_file, infile2
             )
             os.system(commandStr)
 
-            file4 = "{}/{}_barcode_matching_01_{}.txt".format(
-                analysis_folder, library, str(i + 1)
-            )
-            file5 = "{}/{}_barcode_matching_2_{}.txt".format(
-                analysis_folder, library, str(i + 1)
-            )
-            output_file = "{}/logs/run_cmatcher_beads_{}.log".format(
-                output_folder, str(i + 1)
-            )
-            submission_script = "{}/run_cmatcher_beads.sh".format(scripts_folder)
+            file4 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
+            file5 = f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
+            output_file = f"{output_folder}/logs/run_cmatcher_beads_{str(i + 1)}.log"
+            submission_script = f"{scripts_folder}/run_cmatcher_beads.sh"
             call_args = [
                 "qsub",
                 "-o",
                 output_file,
-                "-l",
-                "h_vmem=10G",
-                "-notify",
-                "-l",
-                "h_rt=5:0:0",
-                "-j",
-                "y",
-                "-P",
-                "macosko_lab",
-                "-l",
-                "os=RedHat7",
                 submission_script,
                 scripts_folder,
                 infile2,
@@ -256,25 +239,12 @@ def main():
             call_to_taskrunner(output_folder, call_args)
 
         # Call run_cmatcher_beads_combine
-        output_file = "{}/logs/run_cmatcher_beads_combine_{}.log".format(
-            output_folder, library
-        )
-        submission_script = "{}/run_cmatcher_beads_combine.sh".format(scripts_folder)
+        output_file = f"{output_folder}/logs/run_cmatcher_beads_combine_{library}.log"
+        submission_script = f"{scripts_folder}/run_cmatcher_beads_combine.sh"
         call_args = [
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=10g",
-            "-notify",
-            "-l",
-            "h_rt=30:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             library,
@@ -292,17 +262,11 @@ def main():
             if libraries[i] != library:
                 continue
             for lane_slice in slice_id[lanes[i]]:
-                fol1 = "{}/status/finished.alignment_{}_{}_{}_{}".format(
-                    output_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
-                fol2 = "{}/status/failed.alignment_{}_{}_{}_{}".format(
-                    output_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
+                fol1 = f"{output_folder}/status/finished.alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}"
+                fol2 = f"{output_folder}/status/failed.alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}"
                 if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
                     f = False
-                prefix_libraries = "{}/{}.{}.{}.{}".format(
-                    analysis_folder, flowcell_barcode, lanes[i], lane_slice, library
-                )
+                prefix_libraries = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
                 if barcodes[i]:
                     prefix_libraries += "." + barcodes[i]
                 star_bamfile = prefix_libraries + ".star_gene_exon_tagged2.bam"
@@ -333,17 +297,6 @@ def main():
                             "qsub",
                             "-o",
                             output_file,
-                            "-l",
-                            "h_vmem=62G",
-                            "-notify",
-                            "-l",
-                            "h_rt=23:0:0",
-                            "-j",
-                            "y",
-                            "-P",
-                            "macosko_lab",
-                            "-l",
-                            "os=RedHat7",
                             submission_script,
                             manifest_file,
                             library,
@@ -449,17 +402,6 @@ def main():
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=45G",
-            "-notify",
-            "-l",
-            "h_rt=10:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             manifest_file,
             library,
@@ -515,17 +457,6 @@ def main():
                 "qsub",
                 "-o",
                 output_file,
-                "-l",
-                "h_vmem=45g",
-                "-notify",
-                "-l",
-                "h_rt=25:0:0",
-                "-j",
-                "y",
-                "-P",
-                "macosko_lab",
-                "-l",
-                "os=RedHat7",
                 submission_script,
                 manifest_file,
                 library,

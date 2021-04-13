@@ -99,7 +99,7 @@ def main():
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
     )
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
+    log_file = f"{output_folder}/logs/workflow.log"
 
     # Read info from metadata file
     bead_structure = ""
@@ -109,7 +109,7 @@ def main():
     base_quality = "10"
     email_address = ""
     experiment_date = ""
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -130,48 +130,30 @@ def main():
     if referencePure.endswith(".gz"):
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
-    genome_dir = "{}/STAR".format(reference_folder)
-    intervals = "{}/{}.genes.intervals".format(reference_folder, referencePure)
-    annotations_file = "{}/{}.gtf".format(reference_folder, referencePure)
+    genome_dir = f"{reference_folder}/STAR"
+    intervals = f"{reference_folder}/{referencePure}.genes.intervals"
+    annotations_file = f"{reference_folder}/{referencePure}.gtf"
 
-    prefix_libraries = "{}/{}_{}/{}.{}.{}.{}".format(
-        library_folder,
-        experiment_date,
-        library,
-        flowcell_barcode,
-        lane,
-        lane_slice,
-        library,
-    )
+    prefix_libraries = f"{library_folder}/{experiment_date}_{library}/{flowcell_barcode}.{lane}.{lane_slice}.{library}"
     if barcode:
         prefix_libraries += "." + barcode
 
     unmapped_bam = prefix_libraries + ".unmapped.bam"
     if not os.path.isfile(unmapped_bam):
-        unmapped_bam1 = "{}/{}/{}/{}/".format(output_folder, lane, lane_slice, library)
+        unmapped_bam1 = f"{output_folder}/{lane}/{lane_slice}/{library}/"
         if barcode:
-            unmapped_bam1 += "{}/{}.{}.{}.{}.{}.unmapped.bam".format(
-                barcode, flowcell_barcode, lane, lane_slice, library, barcode
-            )
+            unmapped_bam1 += f"{barcode}/{flowcell_barcode}.{lane}.{lane_slice}.{library}.{barcode}.unmapped.bam"
         else:
-            unmapped_bam1 += "{}.{}.{}.{}.unmapped.bam".format(
-                flowcell_barcode, lane, lane_slice, library
-            )
+            unmapped_bam1 += f"{flowcell_barcode}.{lane}.{lane_slice}.{library}.unmapped.bam"
         if os.path.isfile(unmapped_bam1):
             os.system("mv " + unmapped_bam1 + " " + unmapped_bam)
 
     bs_range1 = get_bead_structure_range(bead_structure, "C")
     bs_range2 = get_bead_structure_range(bead_structure, "M")
 
-    folder_running = "{}/status/running.alignment_{}_{}_{}_{}".format(
-        output_folder, library, lane, lane_slice, barcode
-    )
-    folder_finished = "{}/status/finished.alignment_{}_{}_{}_{}".format(
-        output_folder, library, lane, lane_slice, barcode
-    )
-    folder_failed = "{}/status/failed.alignment_{}_{}_{}_{}".format(
-        output_folder, library, lane, lane_slice, barcode
-    )
+    folder_running = f"{output_folder}/status/running.alignment_{library}_{lane}_{lane_slice}_{barcode}"
+    folder_finished = f"{output_folder}/status/finished.alignment_{library}_{lane}_{lane_slice}_{barcode}"
+    folder_failed = f"{output_folder}/status/failed.alignment_{library}_{lane}_{lane_slice}_{barcode}"
 
     try:
         call(["mkdir", "-p", folder_running])
