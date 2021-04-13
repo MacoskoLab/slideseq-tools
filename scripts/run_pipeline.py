@@ -8,8 +8,6 @@ import sys
 
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
-
 from slideseq.logging import create_logger
 
 log = logging.getLogger(__name__)
@@ -145,7 +143,7 @@ def main():
         scripts_folder,
         output_folder,
     ]
-    call_to_taskrunner(output_folder, call_args)
+    call(call_args)
 
     if len(email_address) > 1:
         subject = f"Submission received for {flowcell_barcode}"

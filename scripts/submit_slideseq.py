@@ -11,7 +11,7 @@ from subprocess import call
 import gspread
 import numpy as np
 import pandas as pd
-from new_submit_to_taskrunner import call_to_taskrunner
+
 from oauth2client.service_account import ServiceAccountCredentials
 
 scope = [
@@ -50,13 +50,6 @@ parser.add_argument(
     type=int,
     default=0,
     help="Which worksheet to open in spreadsheet (0-indexed) (default 0)",
-)
-parser.add_argument(
-    "--resubmit",
-    dest="resubmit",
-    default=False,
-    action="store_true",
-    help="Whether these flowcells are being resubmitted",
 )
 parser.add_argument(
     "--dryrun",
@@ -234,33 +227,10 @@ for flowcell in flowcells:
     metadata_file = "{}/me.metadata".format(output_dir)
 
     submission_script = "{}/run_pipeline.sh".format(scripts_folder)
-    if args.resubmit:
-        submission_script = "{}/run_mergebarcodes.sh".format(scripts_folder)
-        if not os.path.isdir(output_dir):
-            warnings.warn(
-                (
-                    "Folder {} does not exist; please do not use"
-                    + " --resubmit flag for this flowcell."
-                ).format(output_dir),
-                stacklevel=2,
-            )
-            continue
-    else:
-        if os.path.isdir(output_dir):
-            warnings.warn(
-                (
-                    "Folder {} exists; please remove the folder or use --resubmit flag."
-                ).format(output_dir),
-                stacklevel=2,
-            )
-            continue
 
     if not args.dryrun:
-        if not args.resubmit:
-            call(["mkdir", "-p", output_dir])
-            call(["mkdir", "-p", "{}/logs".format(output_dir)])
-            call(["mkdir", "-p", "{}/tmp_taskrunner".format(output_dir)])
-            call(["mkdir", "-p", "{}/tmp_taskrunner/done".format(output_dir)])
+        call(["mkdir", "-p", output_dir])
+        call(["mkdir", "-p", "{}/logs".format(output_dir)])
 
         # write to me.manifest
         with open(manifest_file, "w") as f:
@@ -284,8 +254,6 @@ for flowcell in flowcells:
             elif submit_df.IlluminaPlatform[0] == "NovaSeqS4":
                 f.write("is_NovaSeq_S4=True" + "\n")
             f.write("email_address=" + ",".join(np.unique(submit_df.email)) + "\n")
-            if args.resubmit:
-                f.write("resubmit=True" + "\n")
 
     # round num_expected_cells to integers
     submit_df = submit_df.round({"num_expected_cells": 0})
@@ -296,61 +264,23 @@ for flowcell in flowcells:
     else:
         submit_df.to_csv(metadata_file, sep="\t", header=True, index=False)
 
-    output_file = "{}/logs/taskrunner.log".format(output_dir)
-    # yes 20 days is huge but needs to stay alive for everything else, also 2g only
+    output_file = f"{output_dir}/logs/run_pipeline.log"
 
-    taskrunner_script = "{}/new_taskrunner.sh".format(scripts_folder)
     call_args = [
         "qsub",
         "-o",
         output_file,
-        "-l",
-        "h_vmem=2g",
-        "-notify",
-        "-l",
-        "h_rt=480:00:0",
-        "-j",
-        "y",
-        "-P",
-        "macosko_lab",
-        "-l",
-        "os=RedHat7",
-        taskrunner_script,
+        submission_script,
+        manifest_file,
         scripts_folder,
         output_dir,
     ]
-    call(call_args)
-
-    # Call run pipeline
-    if args.resubmit:
-        # TODO: this is probably broken
-        output_file = f"{output_dir}/logs/run_mergebarcodes.log"
-        call_args = [
-            "qsub",
-            "-o",
-            output_file,
-            submission_script,
-            manifest_file,
-            scripts_folder,
-            output_dir,
-        ]
-    else:
-        output_file = f"{output_dir}/logs/run_pipeline.log"
-        call_args = [
-            "qsub",
-            "-o",
-            output_file,
-            submission_script,
-            manifest_file,
-            scripts_folder,
-            output_dir,
-        ]
 
     print("Command issued:")
     print(" ".join(call_args))
 
     if not args.dryrun:
-        call_to_taskrunner(output_dir, call_args)
+        call(call_args)
 
     submitted.append(flowcell)
 

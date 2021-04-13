@@ -11,7 +11,6 @@ import time
 from subprocess import call
 
 import numpy as np
-from new_submit_to_taskrunner import call_to_taskrunner
 
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
@@ -457,7 +456,7 @@ def main():
                     output_folder,
                     analysis_folder,
                 ]
-                call_to_taskrunner(output_folder, call_args)
+                call(call_args)
 
                 # Call filter_unmapped_bam
                 if gen_read1_plot:
@@ -489,7 +488,7 @@ def main():
                         output_folder,
                         analysis_folder,
                     ]
-                    call_to_taskrunner(output_folder, call_args)
+                    call(call_args)
 
         # Call generate_plots_cmatcher
         output_file = (
@@ -519,7 +518,7 @@ def main():
             output_folder,
             f"{analysis_folder}/{reference2}",
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         call(["mv", folder_running, folder_finished])
     except:

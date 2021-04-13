@@ -10,8 +10,6 @@ import os
 import sys
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
-
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, get_read_structure, str2bool
 
@@ -233,7 +231,7 @@ def main():
                 output_folder,
                 f"{output_folder}/{lane}",
             ]
-            call_to_taskrunner(output_folder, call_args)
+            call(call_args)
 
         # Call run_mergebarcodes
         output_file = f"{output_folder}/logs/run_mergebarcodes.log"
@@ -247,7 +245,7 @@ def main():
             scripts_folder,
             output_folder,
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         call(["mv", folder_running, folder_finished])
     except:

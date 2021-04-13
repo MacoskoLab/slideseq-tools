@@ -10,8 +10,6 @@ import time
 
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
-
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
 
@@ -67,26 +65,10 @@ def main():
         else 40
     )
     email_address = options["email_address"] if "email_address" in options else ""
-    resubmit = str2bool(options["resubmit"]) if "resubmit" in options else False
 
     runinfo_file = f"{flowcell_directory}/RunInfo.xml"
     log_file = f"{output_folder}/logs/workflow.log"
     create_logger(log_file, logging.INFO)
-
-    # Parse metadata file
-    # if resubmit:
-    #     write_log(log_file, flowcell_barcode, "Parse metadata file. ")
-    #     commandStr = (
-    #         "python "
-    #         + scripts_folder
-    #         + "/parse_metadata.py -i "
-    #         + metadata_file
-    #         + " -r "
-    #         + runinfo_file
-    #         + " -o "
-    #         + "{}/parsed_metadata.txt".format(output_folder)
-    #     )
-    #     os.system(commandStr)
 
     # Read info from metadata file
     lanes = []
@@ -97,7 +79,6 @@ def main():
     bead_structures = []
     references_unique = []
     locus_function_list_unique = []
-    resubmit_unique = []
     experiment_date = []
     run_barcodematching = []
     puckcaller_path = []
@@ -117,7 +98,6 @@ def main():
                 locus_function_list_unique.append(
                     row[row0.index("locus_function_list")]
                 )
-                resubmit_unique.append(row[row0.index("resubmit")])
                 experiment_date.append(row[row0.index("date")])
                 run_barcodematching.append(
                     str2bool(row[row0.index("run_barcodematching")])
@@ -197,149 +177,6 @@ def main():
         call(["mv", folder_waiting, folder_running])
     else:
         call(["mkdir", "-p", folder_running])
-
-    try:
-        for j in range(len(libraries_unique)):
-            if (not resubmit) or resubmit_unique[j] == "TRUE":
-                library = libraries_unique[j]
-
-                # if resubmit:
-                #     for i in range(len(lanes)):
-                #         if libraries[i] != library:
-                #             continue
-                #         for lane_slice in slice_id[lanes[i]]:
-                #             unmapped_bam = f"{output_folder}/{lanes[i]}/{lane_slice}/{library}/"
-                #             if barcodes[i]:
-                #                 unmapped_bam += f"{barcodes[i]}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.{barcodes[i]}.unmapped.bam"
-                #             else:
-                #                 unmapped_bam += f"{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.unmapped.bam"
-                #             unmapped_bam2 = f"{library_folder}/{experiment_date[j]}_{library}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
-                #             if barcodes[i]:
-                #                 unmapped_bam2 += "." + barcodes[i]
-                #             unmapped_bam2 += ".unmapped.bam"
-                #             if os.path.isfile(unmapped_bam2):
-                #                 os.system("mv " + unmapped_bam2 + " " + unmapped_bam)
-                #     if os.path.isdir(f"{library_folder}/{experiment_date[j]}_{library}"):
-                #         os.system(f"rm -r {library_folder}/{experiment_date[j]}_{library}")
-                #     os.system(f"rm {output_folder}/logs/*{library}*")
-                #     os.system(f"rm -r {output_folder}/status/*{library}*")
-
-                os.system(f"mkdir -p {library_folder}/{experiment_date[j]}_{library}")
-                for i in range(len(lanes)):
-                    if libraries[i] != library:
-                        continue
-                    for lane_slice in slice_id[lanes[i]]:
-                        unmapped_bam = (
-                            f"{output_folder}/{lanes[i]}/{lane_slice}/{library}/"
-                        )
-                        if barcodes[i]:
-                            unmapped_bam += f"{barcodes[i]}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.{barcodes[i]}.unmapped.bam"
-                        else:
-                            unmapped_bam += f"{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}.unmapped.bam"
-                        unmapped_bam2 = f"{library_folder}/{experiment_date[j]}_{library}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
-                        if barcodes[i]:
-                            unmapped_bam2 += "." + barcodes[i]
-                        unmapped_bam2 += ".unmapped.bam"
-                        if os.path.isfile(unmapped_bam):
-                            os.system("mv " + unmapped_bam + " " + unmapped_bam2)
-
-                        # Call run_alignment
-                        output_file = f"{output_folder}/logs/run_alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}.log"
-                        submission_script = f"{scripts_folder}/run_alignment.sh"
-                        call_args = [
-                            "qsub",
-                            "-o",
-                            output_file,
-                            submission_script,
-                            manifest_file,
-                            library,
-                            lanes[i],
-                            lane_slice,
-                            barcodes[i],
-                            scripts_folder,
-                            output_folder,
-                            f"{library_folder}/{experiment_date[j]}_{library}",
-                        ]
-                        call_to_taskrunner(output_folder, call_args)
-
-                if run_barcodematching[j]:
-                    puckcaller_path1 = puckcaller_path[j]
-                    file1 = f"{puckcaller_path1}/AnalysisOutputs-selected.mat"
-                    file2 = f"{puckcaller_path1}/BeadBarcodes.txt"
-                    file3 = f"{puckcaller_path1}/BeadLocations.txt"
-                    if puckcaller_path1[-1] != "/":
-                        puckcaller_path1 += "/"
-                    if (not os.path.isfile(file2)) or (not os.path.isfile(file3)):
-                        log.error(f"{file2} and/or {file3} are not found!")
-                        if os.path.isfile(file1):
-                            output_file = (
-                                f"{output_folder}/logs/ExtractBeadBarcode_{library}.log"
-                            )
-                            submission_script = (
-                                f"{scripts_folder}/puckcaller/run_ExtractBeadBarcode.sh"
-                            )
-                            call_args = [
-                                "qsub",
-                                "-o",
-                                output_file,
-                                submission_script,
-                                "/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a",
-                                puckcaller_path1,
-                                scripts_folder,
-                                output_folder,
-                            ]
-                            call_to_taskrunner(output_folder, call_args)
-                        else:
-                            log.error(f"{file1} is not found!")
-
-                if is_NovaSeq or is_NovaSeq_S4:
-                    time.sleep(1800)
-                else:
-                    time.sleep(600)
-
-                # Call run_analysis
-                output_file = f"{output_folder}/logs/run_analysis_{library}.log"
-                submission_script = f"{scripts_folder}/run_analysis.sh"
-                call_args = [
-                    "qsub",
-                    "-o",
-                    output_file,
-                    submission_script,
-                    manifest_file,
-                    library,
-                    scripts_folder,
-                    output_folder,
-                    f"{library_folder}/{experiment_date[j]}_{library}",
-                ]
-                call_to_taskrunner(output_folder, call_args)
-
-        call(["mv", folder_running, folder_finished])
-    except:
-        log.exception("EXCEPTION!")
-
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        elif os.path.isdir(folder_waiting):
-            call(["mv", folder_waiting, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
-
-        if len(email_address) > 1:
-            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
-            content = (
-                "The Slide-seq workflow failed at the step of merging barcode matrics."
-                " Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                f"{scripts_folder}/send_email.py",
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        sys.exit(1)
 
 
 if __name__ == "__main__":

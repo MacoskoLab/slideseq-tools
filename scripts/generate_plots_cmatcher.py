@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
-from new_submit_to_taskrunner import call_to_taskrunner
+
 from plotnine import (
     aes,
     geom_histogram,
@@ -680,7 +680,7 @@ def main():
             output_folder,
             "{}/{}_{}/{}".format(library_folder, experiment_date, library, reference2),
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         # Call write_bijective_mapping.sh
         output_file = "{}/logs/write_bijective_mapping_{}_{}.log".format(
@@ -710,7 +710,7 @@ def main():
             output_folder,
             "{}/{}".format(analysis_folder, reference2),
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         # Generate libraryID_XYUMIs.txt
         matched_barcodes = np.loadtxt(
@@ -1998,7 +1998,7 @@ def main():
             output_folder,
             alignment_folder,
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow finished for " + flowcell_barcode

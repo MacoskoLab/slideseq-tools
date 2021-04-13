@@ -11,8 +11,6 @@ import traceback
 from datetime import datetime
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
-
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
 
@@ -236,7 +234,7 @@ def main():
                 output_folder,
                 analysis_folder,
             ]
-            call_to_taskrunner(output_folder, call_args)
+            call(call_args)
 
         # Call run_cmatcher_beads_combine
         output_file = f"{output_folder}/logs/run_cmatcher_beads_combine_{library}.log"
@@ -252,7 +250,7 @@ def main():
             output_folder,
             analysis_folder,
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
     # Wait for all of run_alignment finish
     failed_list = []
@@ -307,7 +305,7 @@ def main():
                             output_folder,
                             analysis_folder,
                         ]
-                        call_to_taskrunner(output_folder, call_args)
+                        call(call_args)
                         f = False
                     else:
                         log.error(
@@ -409,7 +407,7 @@ def main():
             output_folder,
             analysis_folder,
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
         lists = locus_function_list.split(",")
         referencePure = reference[reference.rfind("/") + 1 :]
@@ -465,7 +463,7 @@ def main():
                 output_folder,
                 "{}/{}.{}".format(analysis_folder, referencePure, j),
             ]
-            call_to_taskrunner(output_folder, call_args)
+            call(call_args)
 
         for i in range(len(lanes)):
             if libraries[i] != library:
@@ -799,7 +797,7 @@ def main():
                     output_folder,
                     analysis_folder,
                 ]
-                call_to_taskrunner(output_folder, call_args)
+                call(call_args)
 
                 break
 

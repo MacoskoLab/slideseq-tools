@@ -11,8 +11,6 @@ import traceback
 from datetime import datetime
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
-
 
 # Convert string to boolean
 def str2bool(s):
@@ -316,7 +314,7 @@ def main():
                     output_folder,
                     barcode_matching_folder,
                 ]
-                call_to_taskrunner(output_folder, call_args)
+                call(call_args)
                 write_log(
                     log_file,
                     flowcell_barcode,
@@ -356,7 +354,7 @@ def main():
                     output_folder,
                     barcode_matching_folder,
                 ]
-                call_to_taskrunner(output_folder, call_args)
+                call(call_args)
                 write_log(
                     log_file,
                     flowcell_barcode,
@@ -380,7 +378,7 @@ def main():
                 output_folder,
                 "{}/{}".format(analysis_folder, reference2),
             ]
-            call_to_taskrunner(output_folder, call_args)
+            call(call_args)
 
         # Generate digital expression files for all Illumina barcodes
         commandStr = dropseq_folder + "/DigitalExpression "
@@ -470,7 +468,7 @@ def main():
                     output_folder,
                     downsample_folder,
                 ]
-                call_to_taskrunner(output_folder, call_args)
+                call(call_args)
 
             # Call generate_plot_downsampling
             output_file = "{}/logs/generate_plot_downsampling_{}_{}.log".format(
@@ -491,7 +489,7 @@ def main():
                 output_folder,
                 barcode_matching_folder,
             ]
-            call_to_taskrunner(output_folder, call_args)
+            call(call_args)
 
         if not run_barcodematching:
             if os.path.isdir(barcode_matching_folder):

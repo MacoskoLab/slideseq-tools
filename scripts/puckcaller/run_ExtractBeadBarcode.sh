@@ -1,4 +1,11 @@
 #!/bin/sh
+#$ -l h_vmem=10G
+#$ -l h_rt=5:0:0
+#$ -l os=RedHat7
+#$ -notify
+#$ -P macosko_lab
+#$ -j y
+
 # script for execution of deployed applications
 #
 # Sets up the MATLAB Runtime environment for the current $ARCH and executes 

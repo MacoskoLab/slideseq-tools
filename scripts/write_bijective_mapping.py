@@ -3,13 +3,14 @@
 # This script is to generate BijectiveMapping.mat
 
 import csv
+import logging
 import os
 import sys
 import traceback
 from datetime import datetime
 from subprocess import call
 
-from new_submit_to_taskrunner import call_to_taskrunner
+log = logging.getLogger(__name__)
 
 
 # Write to log file
@@ -168,17 +169,6 @@ def main():
             "qsub",
             "-o",
             output_file,
-            "-l",
-            "h_vmem=40g",
-            "-notify",
-            "-l",
-            "h_rt=5:0:0",
-            "-j",
-            "y",
-            "-P",
-            "macosko_lab",
-            "-l",
-            "os=RedHat7",
             submission_script,
             "/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a",
             scripts_folder,
@@ -190,8 +180,9 @@ def main():
             puckcaller_path,
             output_folder,
         ]
-        call_to_taskrunner(output_folder, call_args)
+        call(call_args)
 
+        # converting a text file to a csv file by calling perl because we're maniacs
         commandStr = (
             "perl "
             + scripts_folder
