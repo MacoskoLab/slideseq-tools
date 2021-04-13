@@ -3,17 +3,18 @@
 # This script is to calculate UP distance and generate plot
 
 import csv
+import logging
 import os
 import random
 import sys
-import traceback
-from datetime import datetime
 from random import sample
 from subprocess import call
 
 import numpy as np
 import pandas as pd
 from plotnine import aes, geom_histogram, ggplot, ggsave, ggtitle, xlab, ylab
+
+log = logging.getLogger(__name__)
 
 
 def levenshtein(seq1, seq2):
@@ -36,21 +37,6 @@ def levenshtein(seq1, seq2):
                     matrix[x - 1, y] + 1, matrix[x - 1, y - 1] + 1, matrix[x, y - 1] + 1
                 )
     return matrix[size_x - 1, size_y - 1]
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -90,8 +76,6 @@ def main():
         else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-
     # Read info from metadata file
     lanes = []
     lanes_unique = []
@@ -102,7 +86,7 @@ def main():
 
     email_address = ""
     experiment_date = ""
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -120,27 +104,9 @@ def main():
                 email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
 
-    folder_running = "{}/status/running.analysis_UPdistance_{}_{}".format(
-        output_folder, library, this_lane
-    )
-    folder_finished = "{}/status/finished.analysis_UPdistance_{}_{}".format(
-        output_folder, library, this_lane
-    )
-    folder_failed = "{}/status/failed.analysis_UPdistance_{}_{}".format(
-        output_folder, library, this_lane
-    )
-
     try:
-        call(["mkdir", "-p", folder_running])
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Start to calculate UP distance for " + library + " in lane " + this_lane,
+        log.info(
+            f"{flowcell_barcode} - Start to calculate UP distance for {library} in lane {this_lane}"
         )
 
         analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
@@ -258,29 +224,11 @@ def main():
         if os.path.isfile(UPbases_file):
             call(["rm", UPbases_file])
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Calculating UP distance for "
-            + library
-            + " in lane "
-            + this_lane
-            + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Calculating UP distance for {library} in lane {this_lane} is done"
         )
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

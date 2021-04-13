@@ -155,19 +155,7 @@ def main():
         log.error(f"{flowcell_barcode} - {select_cell_file} does not exist!")
         raise FileNotFoundError(f"{select_cell_file} does not exist!")
 
-    folder_running = (
-        f"{output_folder}/status/running.cmatcher_combine_{library}_{reference2}"
-    )
-    folder_finished = (
-        f"{output_folder}/status/finished.cmatcher_combine_{library}_{reference2}"
-    )
-    folder_failed = (
-        f"{output_folder}/status/failed.cmatcher_combine_{library}_{reference2}"
-    )
-
     try:
-        call(["mkdir", "-p", folder_running])
-
         with open(select_cell_file, "r") as fin:
             j = sum(1 for _ in fin)
 
@@ -176,31 +164,7 @@ def main():
 
         log.info("# selected cells: " + str(j))
 
-        while 1:
-            f = True
-            for i in range(ls + 1):
-                if i * k >= j:
-                    break
-                file2 = f"{barcode_matching_folder}/{library}_barcode_matching_{str(i + 1)}.finished"
-                if not os.path.isfile(file2):
-                    f = False
-                    break
-            if f:
-                break
-            time.sleep(30)
-
-        while 1:
-            f = True
-            for i in range(ls + 1):
-                if i * k >= j:
-                    break
-                file2 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.finished"
-                if not os.path.isfile(file2):
-                    f = False
-                    break
-            if f:
-                break
-            time.sleep(30)
+        # wait for barcode matching and shuffled matching
 
         log.info(
             f"{flowcell_barcode} - Combine CMatcher outputs for {library} + {reference2}"
@@ -519,15 +483,8 @@ def main():
             f"{analysis_folder}/{reference2}",
         ]
         call(call_args)
-
-        call(["mv", folder_running, folder_finished])
     except:
         log.exception("Exception!")
-
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

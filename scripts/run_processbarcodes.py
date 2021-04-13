@@ -10,7 +10,6 @@ from subprocess import call
 from slideseq.logging import create_logger
 from slideseq.util import get_read_structure, get_tiles, str2bool
 
-
 log = logging.getLogger(__name__)
 
 
@@ -96,13 +95,7 @@ def main():
             slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
             slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_running = f"{output_folder}/status/running.processbarcodes_lane_{lane}"
-    folder_finished = f"{output_folder}/status/finished.processbarcodes_lane_{lane}"
-    folder_failed = f"{output_folder}/status/failed.processbarcodes_lane_{lane}"
-
     try:
-        call(["mkdir", "-p", folder_running])
-
         log.info(f"{flowcell_barcode} - Running ExtractIlluminaBarcodes")
         # Extract Illumina barcodes
         commandStr = (
@@ -161,15 +154,8 @@ def main():
                 f"{output_folder}/{lane}",
             ]
             call(call_args)
-
-        call(["mv", folder_running, folder_finished])
     except:
         log.exception("EXCEPTION!")
-
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

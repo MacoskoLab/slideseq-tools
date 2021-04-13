@@ -3,29 +3,13 @@
 # This script is to combine outputs from cmatcher_beads
 
 import csv
+import logging
 import os
 import sys
 import time
-import traceback
-
-# silence warnings for pandas below
-from datetime import datetime
 from subprocess import call
 
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -89,39 +73,19 @@ def main():
                 email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-
     analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
     bead_barcode_file = "{}/BeadBarcodes.txt".format(analysis_folder)
     bead_location_file = "{}/BeadLocations.txt".format(analysis_folder)
 
     if not os.path.isfile(bead_barcode_file):
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "run_cmatcher_beads_combine error: "
-            + bead_barcode_file
-            + " does not exist!",
+        log.error(
+            f"{flowcell_barcode} - TagMatchedBam error: {bead_barcode_file} does not exist!",
         )
-        raise Exception(
-            "run_cmatcher_beads_combine error: "
-            + bead_barcode_file
-            + " does not exist!"
+        raise FileNotFoundError(
+            f"TagMatchedBam error: {bead_barcode_file} does not exist!"
         )
-
-    folder_running = "{}/status/running.cmatcher_beads_combine_{}".format(
-        output_folder, library
-    )
-    folder_finished = "{}/status/finished.cmatcher_beads_combine_{}".format(
-        output_folder, library
-    )
-    folder_failed = "{}/status/failed.cmatcher_beads_combine_{}".format(
-        output_folder, library
-    )
 
     try:
-        call(["mkdir", "-p", folder_running])
-
         with open(bead_barcode_file, "r") as fin:
             j = sum(1 for _ in fin)
 
@@ -133,9 +97,7 @@ def main():
             for i in range(ls + 1):
                 if i * k >= j:
                     break
-                file2 = "{}/{}_barcode_matching_01_{}.finished".format(
-                    analysis_folder, library, str(i + 1)
-                )
+                file2 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.finished"
                 if not os.path.isfile(file2):
                     f = False
                     break
@@ -143,33 +105,26 @@ def main():
                 break
             time.sleep(30)
 
-        print("combine cmatcher_beads outputs...")
-        write_log(
-            log_file, flowcell_barcode, "Combine cmatcher_beads outputs for " + library
-        )
-        combined_cmatcher_file = "{}/{}_barcode_matching_01.txt".format(
-            analysis_folder, library
-        )
+        log.info("combine cmatcher_beads outputs...")
+        combined_cmatcher_file = f"{analysis_folder}/{library}_barcode_matching_01.txt"
         with open(combined_cmatcher_file, "w") as fout:
             for i in range(ls + 1):
                 if i * k >= j:
                     break
-                file2 = "{}/{}_barcode_matching_01_{}.txt".format(
-                    analysis_folder, library, str(i + 1)
+                file2 = (
+                    f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
                 )
                 with open(file2, "r") as fin:
                     for line in fin:
                         fout.write(line)
 
-        combined_cmatcher_file2 = "{}/{}_barcode_matching_2.txt".format(
-            analysis_folder, library
-        )
+        combined_cmatcher_file2 = f"{analysis_folder}/{library}_barcode_matching_2.txt"
         with open(combined_cmatcher_file2, "w") as fout:
             for i in range(ls + 1):
                 if i * k >= j:
                     break
-                file2 = "{}/{}_barcode_matching_2_{}.txt".format(
-                    analysis_folder, library, str(i + 1)
+                file2 = (
+                    f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
                 )
                 with open(file2, "r") as fin:
                     for line in fin:
@@ -178,16 +133,12 @@ def main():
         for i in range(ls + 1):
             if i * k >= j:
                 break
-            file1 = "{}/{}_barcode_matching_01_{}.txt".format(
-                analysis_folder, library, str(i + 1)
+            file1 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
+            file2 = (
+                f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.finished"
             )
-            file2 = "{}/{}_barcode_matching_01_{}.finished".format(
-                analysis_folder, library, str(i + 1)
-            )
-            file3 = "{}/BeadBarcodes_{}.txt".format(analysis_folder, str(i + 1))
-            file4 = "{}/{}_barcode_matching_2_{}.txt".format(
-                analysis_folder, library, str(i + 1)
-            )
+            file3 = f"{analysis_folder}/BeadBarcodes_{str(i + 1)}.txt"
+            file4 = f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
             if os.path.isfile(file1):
                 call(["rm", file1])
             if os.path.isfile(file2):
@@ -197,14 +148,12 @@ def main():
             if os.path.isfile(file4):
                 call(["rm", file4])
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Combine cmatcher_beads outputs for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Combine cmatcher_beads outputs for {library} is done."
         )
 
         # Create degenerate bead barcodes
-        print("Create degenerate bead barcodes...")
+        log.info("Create degenerate bead barcodes...")
         combined_cmatcher_file3 = "{}/BeadBarcodes_degenerate.txt".format(
             analysis_folder
         )
@@ -227,21 +176,11 @@ def main():
         with open(file, "w") as fout:
             fout.write("finished")
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Create degenerate bead barcodes for " + library + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Create degenerate bead barcodes for {library} is done."
         )
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -259,7 +198,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

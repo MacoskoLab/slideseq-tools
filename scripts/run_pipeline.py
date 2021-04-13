@@ -5,7 +5,6 @@
 import logging
 import os
 import sys
-
 from subprocess import call
 
 from slideseq.logging import create_logger

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import io
 import glob
+import io
 import os
 
 import setuptools

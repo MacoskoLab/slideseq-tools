@@ -9,7 +9,6 @@ from subprocess import call
 
 from slideseq.logging import create_logger
 
-
 log = logging.getLogger(__name__)
 
 
@@ -45,22 +44,8 @@ def main():
         else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
     email_address = options["email_address"] if "email_address" in options else ""
-    log_file = f"{output_folder}/logs/workflow.log"
-    create_logger(log_file, logging.INFO)
-
-    folder_running = (
-        f"{output_folder}/status/running.barcodes2sam_lane_{lane}_{lane_slice}"
-    )
-    folder_finished = (
-        f"{output_folder}/status/finished.barcodes2sam_lane_{lane}_{lane_slice}"
-    )
-    folder_failed = (
-        f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{lane_slice}"
-    )
 
     try:
-        call(["mkdir", "-p", folder_running])
-
         # Convert Illumina base calls to sam (unmapped.bam)
         log.info(
             f"{flowcell_barcode} - IlluminaBasecallsToSam for Lane {lane}_{lane_slice}"
@@ -68,15 +53,8 @@ def main():
         log.info(f"{flowcell_barcode} - Command = {commandStr}")
         os.system(commandStr)
         log.info(f"{flowcell_barcode} - IlluminaBasecallsToSam is done.")
-
-        call(["mv", folder_running, folder_finished])
     except:
         log.exception("EXCEPTION")
-
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
 
         if len(email_address) > 1:
             subject = f"Slide-seq workflow failed for {flowcell_barcode}"

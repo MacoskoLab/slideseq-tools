@@ -3,31 +3,14 @@
 # This script is to downsample bam file and generate dge
 
 import csv
+import logging
 import os
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
+from slideseq.util import str2bool
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -130,19 +113,7 @@ def main():
     downsample_folder = "{}/{}/downsample/".format(analysis_folder, reference2)
     bam_file = "{}/{}.bam".format(analysis_folder, library)
 
-    folder_running = "{}/status/running.gen_downsample_dge_{}_{}_{}".format(
-        output_folder, library, locus_function_list, ratio
-    )
-    folder_finished = "{}/status/finished.gen_downsample_dge_{}_{}_{}".format(
-        output_folder, library, locus_function_list, ratio
-    )
-    folder_failed = "{}/status/failed.gen_downsample_dge_{}_{}_{}".format(
-        output_folder, library, locus_function_list, ratio
-    )
-
     try:
-        call(["mkdir", "-p", folder_running])
-
         # Down sample reads
         sampled_bam_file = downsample_folder + library + "_" + ratio + ".bam"
         commandStr = (
@@ -292,16 +263,8 @@ def main():
             )
         if os.path.isfile(sampled_bam_file):
             os.system("rm " + sampled_bam_file)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

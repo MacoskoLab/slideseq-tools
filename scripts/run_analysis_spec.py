@@ -3,33 +3,16 @@
 # This script is to generate digital expression and other analysis outputs
 
 import csv
+import logging
 import os
 import random
 import sys
 import time
-import traceback
-from datetime import datetime
 from subprocess import call
 
+from slideseq.util import str2bool
 
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -138,16 +121,6 @@ def main():
 
     reference2 = referencePure + "." + locus_function_list
 
-    folder_running = "{}/status/running.analysis_spec_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_finished = "{}/status/finished.analysis_spec_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_failed = "{}/status/failed.analysis_spec_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-
     analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
     alignment_folder = "{}/{}/alignment/".format(analysis_folder, reference2)
     barcode_matching_folder = "{}/{}/barcode_matching/".format(
@@ -155,13 +128,7 @@ def main():
     )
     combined_bamfile = "{}/{}.bam".format(analysis_folder, library)
 
-    call(["mkdir", "-p", folder_running])
-
     try:
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # Select cells by num transcripts
         commandStr = dropseq_folder + "/SelectCellsByNumTranscripts "
         if is_NovaSeq or is_NovaSeq_S4:
@@ -508,22 +475,8 @@ def main():
                     content,
                 ]
                 call(call_args)
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        # elif os.path.isdir(folder_waiting):
-        #     call(["mv", folder_waiting, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

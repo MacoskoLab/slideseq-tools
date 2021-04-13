@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import pathlib
-
 import xml.etree.ElementTree as et
 from typing import List
 

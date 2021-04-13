@@ -3,16 +3,17 @@
 # This script is to generate PDF for downsampling and projection
 
 import csv
+import logging
 import os
 import sys
 import time
-import traceback
-from datetime import datetime
 from subprocess import call
 
 import numpy as np
 import pandas as pd
 import plotnine
+
+log = logging.getLogger(__name__)
 
 
 def my_smoother(data, xseq, **params):
@@ -21,21 +22,6 @@ def my_smoother(data, xseq, **params):
     ffit = np.polynomial.polynomial.polyval(np.log(xseq), coefs)
     data = pd.DataFrame({"x": xseq, "y": ffit})
     return data
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -117,42 +103,7 @@ def main():
         library_folder, experiment_date, library, reference2
     )
 
-    folder_running = "{}/status/running.gen_downsampling_plot_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_finished = "{}/status/finished.gen_downsampling_plot_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_failed = "{}/status/failed.gen_downsampling_plot_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-
-    # Wait till all of gen_downsample_dge finish
-    ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    while 1:
-        for r in ratio:
-            failed = "{}/status/failed.gen_downsample_dge_{}_{}_{}".format(
-                output_folder, library, locus_function_list, str(r)
-            )
-            if os.path.isdir(failed):
-                print("All gen_downsample_dge failed. Exiting...")
-                sys.exit()
-
-        f = True
-        for r in ratio:
-            finished = "{}/status/finished.gen_downsample_dge_{}_{}_{}".format(
-                output_folder, library, locus_function_list, str(r)
-            )
-            if not os.path.isdir(finished):
-                f = False
-                break
-        if f:
-            break
-        time.sleep(30)
-
     try:
-        call(["mkdir", "-p", folder_running])
-
         ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         df_y = []
         for i in range(0, 10, 1):
@@ -202,16 +153,8 @@ def main():
             path=alignment_folder,
             verbose=False,
         )
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = f"Slide-seq workflow failed for {flowcell_barcode}"
@@ -228,7 +171,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

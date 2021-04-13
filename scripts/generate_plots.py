@@ -4,11 +4,10 @@
 
 import csv
 import gzip
+import logging
 import os
 import shutil
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
 import matplotlib.pyplot as plt
@@ -18,20 +17,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from slideseq.util import get_tiles, str2bool
 
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -164,24 +150,10 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_running = "{}/status/running.generate_plots_{}".format(
-        output_folder, library
-    )
-    folder_finished = "{}/status/finished.generate_plots_{}".format(
-        output_folder, library
-    )
-    folder_failed = "{}/status/failed.generate_plots_{}".format(output_folder, library)
-
     alignment_folder = "{}/{}_{}/".format(library_folder, experiment_date, library)
     combined_bamfile = "{}/{}.bam".format(alignment_folder, library)
 
     try:
-        call(["mkdir", "-p", folder_running])
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # Bam tag histogram
         commandStr = dropseq_folder + "/BamTagHistogram "
         if is_NovaSeq or is_NovaSeq_S4:
@@ -607,20 +579,8 @@ def main():
             plt.savefig(pp1, format="pdf")
 
             pp1.close()
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -638,7 +598,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

@@ -6,26 +6,9 @@ import csv
 import logging
 import os
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
 log = logging.getLogger(__name__)
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -102,16 +85,6 @@ def main():
     referencePure = referencePure[: referencePure.rfind(".")]
     reference2 = referencePure + "." + locus_function_list
 
-    folder_running = "{}/status/running.write_bijective_mapping_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_finished = "{}/status/finished.write_bijective_mapping_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-    folder_failed = "{}/status/failed.write_bijective_mapping_{}_{}".format(
-        output_folder, library, locus_function_list
-    )
-
     alignment_folder = "{}/{}_{}/{}/alignment".format(
         library_folder, experiment_date, library, reference2
     )
@@ -123,13 +96,7 @@ def main():
     uniqueMappedDge_file = "{}/{}.UniqueMappedDge.txt".format(alignment_folder, library)
     MappedDGEForR_file = "{}/MappedDGEForR.csv".format(alignment_folder)
 
-    call(["mkdir", "-p", folder_running])
-
     try:
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # UniqueMappedIlluminaBarcodes
         unique_bci_file = "{}/{}_unique_matched_illumina_barcodes.txt".format(
             barcode_matching_folder, library
@@ -196,19 +163,8 @@ def main():
         if os.path.isfile(dge_file):
             call(["rm", dge_file])
 
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -228,7 +184,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

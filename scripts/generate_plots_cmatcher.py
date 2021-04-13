@@ -4,34 +4,25 @@
 
 import csv
 import gzip
+import logging
 import math
 import os
 import re
 import shutil
 import sys
 import time
-import traceback
-from datetime import datetime
 from subprocess import call
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
-
-from plotnine import (
-    aes,
-    geom_histogram,
-    ggplot,
-    ggsave,
-    ggtitle,
-    scale_x_continuous,
-    xlab,
-    ylab,
-)
-
+from plotnine import (aes, geom_histogram, ggplot, ggsave, ggtitle,
+                      scale_x_continuous, xlab, ylab)
 
 from slideseq.util import get_tiles, str2bool
+
+log = logging.getLogger(__name__)
 
 
 # Get read 1 length
@@ -44,21 +35,6 @@ def get_read1_len(bs):
         if it:
             i += int(it)
     return i
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -215,56 +191,8 @@ def main():
     )
     bead_barcode_file = "{}/BeadBarcodes_degenerate.txt".format(analysis_folder)
 
-    folder_running = "{}/status/running.generate_plots_cmatcher_{}_{}".format(
-        output_folder, library, reference2
-    )
-    folder_finished = "{}/status/finished.generate_plots_cmatcher_{}_{}".format(
-        output_folder, library, reference2
-    )
-    folder_failed = "{}/status/failed.generate_plots_cmatcher_{}_{}".format(
-        output_folder, library, reference2
-    )
-
-    # Wait for all of tag_matched_bam finish
-    while 1:
-        f = True
-        for i in range(len(lanes)):
-            if libraries[i] != library:
-                continue
-            for lane_slice in slice_id[lanes[i]]:
-                fol1 = "{}/status/finished.tag_matched_bam_{}_{}_{}_{}_{}".format(
-                    output_folder,
-                    library,
-                    lanes[i],
-                    lane_slice,
-                    barcodes[i],
-                    reference2,
-                )
-                fol2 = "{}/status/failed.tag_matched_bam_{}_{}_{}_{}_{}".format(
-                    output_folder,
-                    library,
-                    lanes[i],
-                    lane_slice,
-                    barcodes[i],
-                    reference2,
-                )
-                if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
-                    f = False
-                    break
-            if not f:
-                break
-        if f:
-            break
-        time.sleep(60)
-
     try:
-        call(["mkdir", "-p", folder_running])
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        print("Merge tagged matched bam files...")
+        log.info("Merge tagged matched bam files...")
         write_log(
             log_file,
             flowcell_barcode,
@@ -292,30 +220,21 @@ def main():
             if libraries[i] != library:
                 continue
             for lane_slice in slice_id[lanes[i]]:
-                filtered_bam = "{}/{}_{}_{}_{}_tagged.bam".format(
-                    barcode_matching_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
+                filtered_bam = f"{barcode_matching_folder}/{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}_tagged.bam"
                 if os.path.isfile(filtered_bam):
                     commandStr += " INPUT=" + filtered_bam
                 else:
-                    print(filtered_bam + " not found!")
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "MergeSamFiles for " + library + " Command=" + commandStr,
-        )
+                    log.error(f"{filtered_bam} not found!")
+
+        log.info(f"{flowcell_barcode} MergeSamFiles for {library} Command={commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file, flowcell_barcode, "MergeSamFiles for " + library + " is done. "
-        )
+        log.info(f"{flowcell_barcode} - MergeSamFiles for {library} is done.")
 
         for i in range(len(lanes)):
             if libraries[i] != library:
                 continue
             for lane_slice in slice_id[lanes[i]]:
-                filtered_bam = "{}/{}_{}_{}_{}_tagged.bam".format(
-                    barcode_matching_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
+                filtered_bam = f"{barcode_matching_folder}/{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}_tagged.bam"
                 if os.path.isfile(filtered_bam):
                     call(["rm", filtered_bam])
 
@@ -345,7 +264,7 @@ def main():
                 if os.path.isfile(filtered_bam):
                     commandStr += " INPUT=" + filtered_bam
                 else:
-                    print(filtered_bam + " not found!")
+                    log.error(f"{filtered_bam} not found!")
         os.system(commandStr)
 
         for i in range(len(lanes)):
@@ -376,22 +295,18 @@ def main():
             if libraries[i] != library:
                 continue
             for lane_slice in slice_id[lanes[i]]:
-                filtered_bam = "{}/{}_{}_{}_{}_shuffled.bam".format(
-                    barcode_matching_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
+                filtered_bam = f"{barcode_matching_folder}/{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}_shuffled.bam"
                 if os.path.isfile(filtered_bam):
                     commandStr += " INPUT=" + filtered_bam
                 else:
-                    print(filtered_bam + " not found!")
+                    log.error(f"{filtered_bam} not found!")
         os.system(commandStr)
 
         for i in range(len(lanes)):
             if libraries[i] != library:
                 continue
             for lane_slice in slice_id[lanes[i]]:
-                filtered_bam = "{}/{}_{}_{}_{}_shuffled.bam".format(
-                    barcode_matching_folder, library, lanes[i], lane_slice, barcodes[i]
-                )
+                filtered_bam = f"{barcode_matching_folder}/{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}_shuffled.bam"
                 if os.path.isfile(filtered_bam):
                     call(["rm", filtered_bam])
 
@@ -406,7 +321,7 @@ def main():
         )
 
         # Generate digital expression files on shuffled Illumina barcodes
-        print("Generate digital expression files on shuffled Illumina barcodes...")
+        log.info("Generate digital expression files on shuffled Illumina barcodes...")
         shuffled_bci_file = "{}/{}_unique_shuffled_illumina_barcodes.txt.gz".format(
             barcode_matching_folder, library
         )
@@ -451,7 +366,7 @@ def main():
             call(["rm", matched_shuffled_bai_file])
 
         # Generate digital expression files on raw Illumina barcodes
-        print("Generate digital expression files on raw Illumina barcodes...")
+        log.info("Generate digital expression files on raw Illumina barcodes...")
         unique_bci_file = "{}/{}_unique_matched_illumina_barcodes.txt.gz".format(
             barcode_matching_folder, library
         )
@@ -606,7 +521,7 @@ def main():
         )
 
         # Generate digital expression files on matched bead barcodes
-        print("Generate digital expression files on matched bead barcodes...")
+        log.info("Generate digital expression files on matched bead barcodes...")
         commandStr = (
             dropseq_folder
             + "/DigitalExpression -m 7692m I="
@@ -1018,7 +933,7 @@ def main():
         if os.path.isfile(matched_bead_barcode_gzfile):
             call(["rm", matched_bead_barcode_gzfile])
 
-        print("generating plots... \n")
+        log.info("generating plots...")
         write_log(
             log_file,
             flowcell_barcode,
@@ -1608,42 +1523,9 @@ def main():
 
         if gen_read1_plot:
             # Wait for all of filter_unmapped_bam finish
-            while 1:
-                f = True
-                for i in range(len(lanes)):
-                    if libraries[i] != library:
-                        continue
-                    for lane_slice in slice_id[lanes[i]]:
-                        fol1 = "{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}_{}".format(
-                            output_folder,
-                            library,
-                            lanes[i],
-                            lane_slice,
-                            barcodes[i],
-                            reference2,
-                        )
-                        fol2 = "{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}".format(
-                            output_folder,
-                            library,
-                            lanes[i],
-                            lane_slice,
-                            barcodes[i],
-                            reference2,
-                        )
-                        if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
-                            f = False
-                            break
-                    if not f:
-                        break
-                if f:
-                    break
-                time.sleep(60)
 
-            print("Merge filtered unmapped bam files...")
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "Merge filtered unmapped bam files for " + library + " " + reference2,
+            log.info(
+                f"{flowcell_barcode} - Merge filtered unmapped bam files for {library} {reference2}"
             )
 
             unmapped_bam_file = "{}/{}_unmapped.bam".format(
@@ -1673,28 +1555,16 @@ def main():
                 if libraries[i] != library:
                     continue
                 for lane_slice in slice_id[lanes[i]]:
-                    filtered_bam = "{}/{}_{}_{}_{}_filtered.bam".format(
-                        barcode_matching_folder,
-                        library,
-                        lanes[i],
-                        lane_slice,
-                        barcodes[i],
-                    )
+                    filtered_bam = f"{barcode_matching_folder}/{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}_filtered.bam"
                     if os.path.isfile(filtered_bam):
                         commandStr += " INPUT=" + filtered_bam
                     else:
-                        print(filtered_bam + " not found!")
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "MergeSamFiles for " + library + " Command=" + commandStr,
+                        log.error(f"{filtered_bam} not found!")
+            log.info(
+                f"{flowcell_barcode} MergeSamFiles for {library} Command={commandStr}"
             )
             os.system(commandStr)
-            write_log(
-                log_file,
-                flowcell_barcode,
-                "MergeSamFiles for " + library + " is done. ",
-            )
+            log.info(f"{flowcell_barcode} MergeSamFiles for {library} is done.")
 
             for i in range(len(lanes)):
                 if libraries[i] != library:
@@ -2014,20 +1884,8 @@ def main():
                 content,
             ]
             call(call_args)
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -2044,7 +1902,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

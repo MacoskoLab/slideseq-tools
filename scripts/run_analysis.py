@@ -7,13 +7,10 @@ import logging
 import os
 import sys
 import time
-import traceback
-from datetime import datetime
 from subprocess import call
 
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
-
 
 log = logging.getLogger(__name__)
 
@@ -31,21 +28,6 @@ def get_val(line):
     res = line.split("|")[1]
     res = res.strip()
     return res
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -79,9 +61,7 @@ def main():
         else f"{output_folder}/libraries"
     )
     tmpdir = (
-        options["temp_folder"]
-        if "temp_folder" in options
-        else f"{output_folder}/tmp"
+        options["temp_folder"] if "temp_folder" in options else f"{output_folder}/tmp"
     )
 
     picard_folder = (
@@ -177,14 +157,7 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_waiting = f"{output_folder}/status/waiting.analysis_{library}"
-    folder_running = f"{output_folder}/status/running.analysis_{library}"
-    folder_finished = f"{output_folder}/status/finished.analysis_{library}"
-    folder_failed = f"{output_folder}/status/failed.analysis_{library}"
-
     analysis_folder = f"{library_folder}/{experiment_date}_{library}"
-
-    call(["mkdir", "-p", folder_waiting])
 
     if run_barcodematching:
         file2 = f"{puckcaller_path}/BeadBarcodes.txt"
@@ -253,81 +226,8 @@ def main():
         call(call_args)
 
     # Wait for all of run_alignment finish
-    failed_list = []
-    while 1:
-        f = True
-        for i in range(len(lanes)):
-            if libraries[i] != library:
-                continue
-            for lane_slice in slice_id[lanes[i]]:
-                fol1 = f"{output_folder}/status/finished.alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}"
-                fol2 = f"{output_folder}/status/failed.alignment_{library}_{lanes[i]}_{lane_slice}_{barcodes[i]}"
-                if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
-                    f = False
-                prefix_libraries = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
-                if barcodes[i]:
-                    prefix_libraries += "." + barcodes[i]
-                star_bamfile = prefix_libraries + ".star_gene_exon_tagged2.bam"
-                if (os.path.isdir(fol1) or os.path.isdir(fol2)) and (
-                    not os.path.isfile(star_bamfile)
-                ):
-                    if star_bamfile not in failed_list:
-                        failed_list.append(star_bamfile)
-                        if os.path.isdir(fol1):
-                            call(["rm", "-r", fol1])
-                        if os.path.isdir(fol2):
-                            call(["rm", "-r", fol2])
-                        if os.path.isfile(prefix_libraries + ".star.Log.final.out"):
-                            call(["rm", prefix_libraries + ".star.Log.final.out"])
-                        if os.path.isfile(prefix_libraries + ".star.Log.out"):
-                            call(["rm", prefix_libraries + ".star.Log.out"])
-                        if os.path.isfile(prefix_libraries + ".star.Log.progress.out"):
-                            call(["rm", prefix_libraries + ".star.Log.progress.out"])
-                        if os.path.isfile(prefix_libraries + ".star.SJ.out.tab"):
-                            call(["rm", prefix_libraries + ".star.SJ.out.tab"])
-                        if os.path.isdir(prefix_libraries + ".star._STARtmp"):
-                            call(["rm", "-r", prefix_libraries + ".star._STARtmp"])
-                        output_file = "{}/logs/run_alignment_{}_{}_{}.log".format(
-                            output_folder, library, lanes[i], lane_slice
-                        )
-                        submission_script = "{}/run_alignment.sh".format(scripts_folder)
-                        call_args = [
-                            "qsub",
-                            "-o",
-                            output_file,
-                            submission_script,
-                            manifest_file,
-                            library,
-                            lanes[i],
-                            lane_slice,
-                            barcodes[i],
-                            scripts_folder,
-                            output_folder,
-                            analysis_folder,
-                        ]
-                        call(call_args)
-                        f = False
-                    else:
-                        log.error(
-                            f"{flowcell_barcode} MergeSamFiles error: {star_bamfile}"
-                            f" does not exist!"
-                        )
-
-                        raise Exception(f"{star_bamfile} does not exist!")
-        if f:
-            break
-        time.sleep(60)
-
-    if os.path.isdir(folder_waiting):
-        call(["mv", folder_waiting, folder_running])
-    else:
-        call(["mkdir", "-p", folder_running])
 
     try:
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # Merge bam files
         combined_bamfile = "{}/{}.bam".format(analysis_folder, library)
         commandStr = (
@@ -800,22 +700,8 @@ def main():
                 call(call_args)
 
                 break
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        elif os.path.isdir(folder_waiting):
-            call(["mv", folder_waiting, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION:!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -833,7 +719,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

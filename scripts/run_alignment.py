@@ -3,14 +3,15 @@
 # This script is to run the alignment steps
 
 import csv
+import logging
 import os
 import re
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
 from slideseq.util import str2bool
+
+log = logging.getLogger(__name__)
 
 
 # Get bead structure range
@@ -30,14 +31,9 @@ def get_bead_structure_range(bs, structure_type):
     return res[:-1]
 
 
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    ...
-
-
 def main():
     if len(sys.argv) != 6:
-        print(
+        log.error(
             "Please provide five arguments: manifest file, library ID, lane ID, slice ID and barcode!"
         )
         sys.exit()
@@ -50,7 +46,7 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
+        log.error("File {} does not exist. Exiting...".format(manifest_file))
         sys.exit()
 
     # Read manifest file
@@ -144,24 +140,16 @@ def main():
         if barcode:
             unmapped_bam1 += f"{barcode}/{flowcell_barcode}.{lane}.{lane_slice}.{library}.{barcode}.unmapped.bam"
         else:
-            unmapped_bam1 += f"{flowcell_barcode}.{lane}.{lane_slice}.{library}.unmapped.bam"
+            unmapped_bam1 += (
+                f"{flowcell_barcode}.{lane}.{lane_slice}.{library}.unmapped.bam"
+            )
         if os.path.isfile(unmapped_bam1):
             os.system("mv " + unmapped_bam1 + " " + unmapped_bam)
 
     bs_range1 = get_bead_structure_range(bead_structure, "C")
     bs_range2 = get_bead_structure_range(bead_structure, "M")
 
-    folder_running = f"{output_folder}/status/running.alignment_{library}_{lane}_{lane_slice}_{barcode}"
-    folder_finished = f"{output_folder}/status/finished.alignment_{library}_{lane}_{lane_slice}_{barcode}"
-    folder_failed = f"{output_folder}/status/failed.alignment_{library}_{lane}_{lane_slice}_{barcode}"
-
     try:
-        call(["mkdir", "-p", folder_running])
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         # Tag bam with read sequence extended cellular
         commandStr = (
             dropseq_folder
@@ -183,32 +171,20 @@ def main():
             + unmapped_bam
             + " VALIDATION_STRINGENCY=SILENT"
         )
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagBamWithReadSequenceExtended Cellular for "
-            + library
-            + " in Lane "
-            + lane
-            + " Command="
-            + commandStr,
+        log.info(
+            f"{flowcell_barcode} TagBamWithReadSequenceExtended Cellular for {library} in lane {lane}"
         )
+        log.debug(f"Command={commandStr}")
         os.system(commandStr)
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagBamWithReadSequenceExtended Cellular for "
-            + library
-            + " in Lane "
-            + lane
-            + " is done. ",
+        log.info(
+            f"{flowcell_barcode} TagBamWithReadSequenceExtended Cellular for {library} in lane {lane} is done"
         )
 
         unaligned_cellular_file = "{}.unaligned_tagged_Cellular.bam".format(
             prefix_libraries
         )
         if not os.path.isfile(unaligned_cellular_file):
-            write_log(
+            log.error(
                 log_file,
                 flowcell_barcode,
                 "TagBamWithReadSequenceExtended error: "
@@ -753,20 +729,8 @@ def main():
             call(["mv", prefix_libraries + ".star.SJ.out.tab", ToFolder])
         if os.path.isdir(prefix_libraries + ".star._STARtmp"):
             call(["mv", prefix_libraries + ".star._STARtmp", ToFolder])
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -788,7 +752,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

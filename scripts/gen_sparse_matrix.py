@@ -3,30 +3,16 @@
 # This script is to generate mtx files for sparse digital expression matrix
 
 import csv
+import logging
 import os
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
 
 import numpy as np
 import scipy.io
 import scipy.sparse
 
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -80,41 +66,16 @@ def main():
     reference2 = referencePure + "." + locus_function_list
     annotations_file = "{}/{}.gtf".format(reference_folder, referencePure)
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-
     dge_gzfile = "{}/{}.txt.gz".format(input_folder, file_name)
     dge_file = "{}/{}.txt".format(input_folder, file_name)
     mat_file = "{}/{}_matrix.mtx".format(input_folder, file_name)
     barcodes_file = "{}/{}_barcodes.tsv".format(input_folder, file_name)
     genes_file = "{}/{}_features.tsv".format(input_folder, file_name)
 
-    folder_running = "{}/status/running.gen_sparse_matrix_{}_{}_{}".format(
-        output_folder, library, reference2, file_name
-    )
-    folder_finished = "{}/status/finished.gen_sparse_matrix_{}_{}_{}".format(
-        output_folder, library, reference2, file_name
-    )
-    folder_failed = "{}/status/failed.gen_sparse_matrix_{}_{}_{}".format(
-        output_folder, library, reference2, file_name
-    )
-
     try:
-        call(["mkdir", "-p", folder_running])
-
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Generating sparse matrix for "
-            + library
-            + " "
-            + reference2
-            + " "
-            + file_name,
+        log.info(
+            f"{flowcell_barcode} - Generating sparse matrix for {library} {reference2} {file_name}"
         )
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
 
         os.system("gunzip -c {} > {}".format(dge_gzfile, dge_file))
 
@@ -177,31 +138,11 @@ def main():
 
         call(["gzip", mat_file])
 
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Generating sparse matrix "
-            + library
-            + " "
-            + reference2
-            + " "
-            + file_name
-            + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Generating sparse matrix {library} {reference2} {file_name} is done"
         )
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -223,7 +164,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":

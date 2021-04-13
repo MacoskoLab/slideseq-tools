@@ -11,8 +11,7 @@ import sys
 from subprocess import call
 
 from slideseq.logging import create_logger
-from slideseq.util import get_tiles, get_read_structure, str2bool
-
+from slideseq.util import get_read_structure, get_tiles, str2bool
 
 log = logging.getLogger(__name__)
 
@@ -136,13 +135,7 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_running = f"{output_folder}/status/running.run_preparation"
-    folder_finished = f"{output_folder}/status/finished.run_preparation"
-    folder_failed = f"{output_folder}/status/failed.run_preparation"
-
     try:
-        call(["mkdir", "-p", folder_running])
-
         # Check if the input Illumina folder is in correct format
         commandStr = (
             f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
@@ -246,15 +239,8 @@ def main():
             output_folder,
         ]
         call(call_args)
-
-        call(["mv", folder_running, folder_finished])
     except:
         log.exception("EXCEPTION")
-
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode

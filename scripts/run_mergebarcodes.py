@@ -7,12 +7,10 @@ import logging
 import os
 import sys
 import time
-
 from subprocess import call
 
 from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
-
 
 log = logging.getLogger(__name__)
 
@@ -130,53 +128,7 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    folder_waiting = f"{output_folder}/status/waiting.mergebarcodes"
-    folder_running = f"{output_folder}/status/running.mergebarcodes"
-    folder_finished = f"{output_folder}/status/finished.mergebarcodes"
-    folder_failed = f"{output_folder}/status/failed.mergebarcodes"
-
-    call(["mkdir", "-p", folder_waiting])
-
     # Wait till all of run_processbarcodes and run_barcodes2sam finish
-    while 1:
-        all_failed_1 = True
-        all_failed_2 = True
-        for lane in lanes_unique:
-            failed_1 = f"{output_folder}/status/failed.processbarcodes_lane_{lane}"
-            if not os.path.isdir(failed_1):
-                all_failed_1 = False
-            for i in range(len(slice_id[lane])):
-                failed_2 = f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
-                if not os.path.isdir(failed_2):
-                    all_failed_2 = False
-                    break
-        if all_failed_1:
-            log.error(
-                f"{flowcell_barcode} - All run_processbarcodes failed. Exiting..."
-            )
-            sys.exit(1)
-        if all_failed_2:
-            log.error(f"{flowcell_barcode} - All run_barcodes2sam failed. Exiting...")
-            sys.exit(1)
-
-        f = True
-        for lane in lanes_unique:
-            for i in range(len(slice_id[lane])):
-                fol1 = f"{output_folder}/status/finished.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
-                fol2 = f"{output_folder}/status/failed.barcodes2sam_lane_{lane}_{slice_id[lane][i]}"
-                if (not os.path.isdir(fol1)) and (not os.path.isdir(fol2)):
-                    f = False
-                    break
-            if not f:
-                break
-        if f:
-            break
-        time.sleep(30)
-
-    if os.path.isdir(folder_waiting):
-        call(["mv", folder_waiting, folder_running])
-    else:
-        call(["mkdir", "-p", folder_running])
 
 
 if __name__ == "__main__":

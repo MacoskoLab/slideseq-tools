@@ -3,12 +3,13 @@
 # This script is to filter unmapped bam using matched barcodes
 
 import csv
+import logging
 import os
 import re
 import sys
-import traceback
-from datetime import datetime
 from subprocess import call
+
+log = logging.getLogger(__name__)
 
 
 # Get bead structure range
@@ -26,21 +27,6 @@ def get_bead_structure_range(bs, structure_type):
                 res += str(i) + "-" + str(i + int(it) - 1) + ":"
             i += int(it)
     return res[:-1]
-
-
-# Write to log file
-def write_log(log_file, flowcell_barcode, log_string):
-    now = datetime.now()
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a") as logfile:
-        logfile.write(
-            dt_string
-            + " [Slide-seq Flowcell Alignment Workflow - "
-            + flowcell_barcode
-            + "]: "
-            + log_string
-            + "\n"
-        )
 
 
 def main():
@@ -108,8 +94,6 @@ def main():
     referencePure = referencePure[: referencePure.rfind(".")]
     reference2 = referencePure + "." + locus_function_list
 
-    log_file = "{}/logs/workflow.log".format(output_folder)
-
     prefix_libraries = "{}/{}_{}/{}.{}.{}.{}".format(
         library_folder,
         experiment_date,
@@ -140,52 +124,23 @@ def main():
     )
 
     if not os.path.isfile(unmapped_bam):
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagMatchedBam error: " + unmapped_bam + " does not exist!",
+        log.error(
+            f"{flowcell_barcode} - TagMatchedBam error: {unmapped_sam} does not exist!",
         )
-        raise Exception("TagMatchedBam error: " + unmapped_bam + " does not exist!")
+        raise FileNotFoundError(f"TagMatchedBam error: {unmapped_bam} does not exist!")
 
     if not os.path.isfile(combined_cmatcher_file):
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "TagMatchedBam error: " + combined_cmatcher_file + " does not exist!",
+        log.error(
+            f"{flowcell_barcode} - TagMatchedBam error: {combined_cmatcher_file} does not exist!",
         )
-        raise Exception(
-            "TagMatchedBam error: " + combined_cmatcher_file + " does not exist!"
+        raise FileNotFoundError(
+            f"TagMatchedBam error: {combined_cmatcher_file} does not exist!"
         )
-
-    folder_running = "{}/status/running.filter_unmapped_bam_{}_{}_{}_{}_{}".format(
-        output_folder, library, lane, slice_id, barcode, reference2
-    )
-    folder_finished = "{}/status/finished.filter_unmapped_bam_{}_{}_{}_{}_{}".format(
-        output_folder, library, lane, slice_id, barcode, reference2
-    )
-    folder_failed = "{}/status/failed.filter_unmapped_bam_{}_{}_{}_{}_{}".format(
-        output_folder, library, lane, slice_id, barcode, reference2
-    )
 
     try:
-        call(["mkdir", "-p", folder_running])
-
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Filter unmapped bam for "
-            + library
-            + " "
-            + reference2
-            + " in lane "
-            + lane
-            + " slice "
-            + slice_id,
+        log.info(
+            f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id}"
         )
-
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
 
         commandStr = "samtools view -h -o " + unmapped_sam + " " + unmapped_bam
         os.system(commandStr)
@@ -229,36 +184,14 @@ def main():
         commandStr = "samtools view -S -b " + filtered_sam + " > " + filtered_bam
         os.system(commandStr)
 
-        now = datetime.now()
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(dt_string)
-
         if os.path.isfile(filtered_sam):
             call(["rm", filtered_sam])
 
-        write_log(
-            log_file,
-            flowcell_barcode,
-            "Filter unmapped bam for "
-            + library
-            + " "
-            + reference2
-            + " in lane "
-            + lane
-            + " slice "
-            + slice_id
-            + " is done. ",
+        log.info(
+            f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id} done"
         )
-
-        call(["mv", folder_running, folder_finished])
-    except Exception as exp:
-        print("EXCEPTION:!")
-        print(exp)
-        traceback.print_tb(exp.__traceback__, file=sys.stdout)
-        if os.path.isdir(folder_running):
-            call(["mv", folder_running, folder_failed])
-        else:
-            call(["mkdir", "-p", folder_failed])
+    except:
+        log.exception("EXCEPTION!")
 
         if len(email_address) > 1:
             subject = "Slide-seq workflow failed for " + flowcell_barcode
@@ -282,7 +215,7 @@ def main():
             ]
             call(call_args)
 
-        sys.exit()
+        raise
 
 
 if __name__ == "__main__":
