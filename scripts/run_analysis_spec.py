@@ -231,22 +231,14 @@ def main():
                 break
 
             # real barcodes
-            infile2 = "{}/{}_{}.txt".format(alignment_folder, name, str(i + 1))
-            commandStr = "awk 'NR >= {} && NR <= {}' {} > {}".format(
-                str(i * k + 1), str((i + 1) * k), select_cell_file, infile2
-            )
+            infile2 = f"{alignment_folder}/{name}_{str(i + 1)}.txt"
+            commandStr = f"awk 'NR >= {str(i * k + 1)} && NR <= {str((i + 1) * k)}' {select_cell_file} > {infile2}"
             os.system(commandStr)
 
-            file4 = "{}/{}_barcode_matching_distance_{}.txt".format(
-                barcode_matching_folder, library, str(i + 1)
-            )
-            file5 = "{}/{}_barcode_matching_{}.txt".format(
-                barcode_matching_folder, library, str(i + 1)
-            )
-            output_file = "{}/logs/run_cmatcher_{}_{}_{}.log".format(
-                output_folder, library, locus_function_list, str(i + 1)
-            )
-            submission_script = "{}/run_cmatcher.sh".format(scripts_folder)
+            file4 = f"{barcode_matching_folder}/{library}_barcode_matching_distance_{str(i + 1)}.txt"
+            file5 = f"{barcode_matching_folder}/{library}_barcode_matching_{str(i + 1)}.txt"
+            output_file = f"{output_folder}/logs/run_cmatcher_{library}_{locus_function_list}_{str(i + 1)}.log"
+            submission_script = f"{scripts_folder}/run_cmatcher.sh"
             call_args = [
                 "qsub",
                 "-o",
@@ -254,9 +246,9 @@ def main():
                 submission_script,
                 scripts_folder,
                 bead_barcode_file,
-                infile2,
-                file4,
-                file5,
+                infile2,  # select_cell_file
+                file4,  # output_distance_file
+                file5,  # output_detail_file
                 bead_type,
                 output_folder,
                 barcode_matching_folder,
