@@ -21,14 +21,5 @@ outputpath=$3
 
 echo ${submission}
 
-# in case of exit, set all permissions 
-function finish {
-    if [ -d ${outputpath} ]; then
-echo "${outputpath}" >> /broad/macosko/jlanglie/tmp/SLIDE_SEQ_GROUP/$(date +"%d-%m-%Y__%H_%M_%S")__$RANDOM
-    fi
-
-}
-trap finish SIGUSR2 EXIT
-
 python ${scriptpath}/run_pipeline.py ${manifest}
 

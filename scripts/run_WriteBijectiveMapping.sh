@@ -35,16 +35,6 @@ exe_name=$0
 exe_dir=`dirname "$0"`
 echo "------------------------------------------"
 
-# in case of exit, set all permissions 
-function finish {
-    log_lib=${output_folder}/logs
-    if [ -d "$log_lib" ]; then
-echo "$log_lib" >> /broad/macosko/jlanglie/tmp/SLIDE_SEQ_GROUP/$(date +"%d-%m-%Y__%H_%M_%S")__$RANDOM
-    fi
-
-}
-trap finish SIGUSR2 EXIT
-
 if [ "x$1" = "x" ]; then
   echo Usage:
   echo    $0 \<deployedMCRroot\> args
