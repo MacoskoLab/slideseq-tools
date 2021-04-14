@@ -53,7 +53,6 @@ def main():
     libraries_unique = []
     barcodes = []
     bead_structures = []
-    email_address = ""
     experiment_date = ""
     with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
@@ -70,7 +69,6 @@ def main():
             barcodes.append(row[row0.index("sample_barcode")])
             bead_structures.append(row[row0.index("bead_structure")])
             if row[row0.index("library")] == library:
-                email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
 
     analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
@@ -85,120 +83,93 @@ def main():
             f"TagMatchedBam error: {bead_barcode_file} does not exist!"
         )
 
-    try:
-        with open(bead_barcode_file, "r") as fin:
-            j = sum(1 for _ in fin)
+    with open(bead_barcode_file, "r") as fin:
+        j = sum(1 for _ in fin)
 
-        k = 10000
-        ls = j // k
+    k = 10000
+    ls = j // k
 
-        while 1:
-            f = True
-            for i in range(ls + 1):
-                if i * k >= j:
-                    break
-                file2 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.finished"
-                if not os.path.isfile(file2):
-                    f = False
-                    break
-            if f:
-                break
-            time.sleep(30)
-
-        log.info("combine cmatcher_beads outputs...")
-        combined_cmatcher_file = f"{analysis_folder}/{library}_barcode_matching_01.txt"
-        with open(combined_cmatcher_file, "w") as fout:
-            for i in range(ls + 1):
-                if i * k >= j:
-                    break
-                file2 = (
-                    f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
-                )
-                with open(file2, "r") as fin:
-                    for line in fin:
-                        fout.write(line)
-
-        combined_cmatcher_file2 = f"{analysis_folder}/{library}_barcode_matching_2.txt"
-        with open(combined_cmatcher_file2, "w") as fout:
-            for i in range(ls + 1):
-                if i * k >= j:
-                    break
-                file2 = (
-                    f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
-                )
-                with open(file2, "r") as fin:
-                    for line in fin:
-                        fout.write(line)
-
+    while 1:
+        f = True
         for i in range(ls + 1):
             if i * k >= j:
                 break
-            file1 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
             file2 = (
                 f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.finished"
             )
-            file3 = f"{analysis_folder}/BeadBarcodes_{str(i + 1)}.txt"
-            file4 = f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
-            if os.path.isfile(file1):
-                call(["rm", file1])
-            if os.path.isfile(file2):
-                call(["rm", file2])
-            if os.path.isfile(file3):
-                call(["rm", file3])
-            if os.path.isfile(file4):
-                call(["rm", file4])
+            if not os.path.isfile(file2):
+                f = False
+                break
+        if f:
+            break
+        time.sleep(30)
 
-        log.info(
-            f"{flowcell_barcode} - Combine cmatcher_beads outputs for {library} is done."
-        )
+    log.info("combine cmatcher_beads outputs...")
+    combined_cmatcher_file = f"{analysis_folder}/{library}_barcode_matching_01.txt"
+    with open(combined_cmatcher_file, "w") as fout:
+        for i in range(ls + 1):
+            if i * k >= j:
+                break
+            file2 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
+            with open(file2, "r") as fin:
+                for line in fin:
+                    fout.write(line)
 
-        # Create degenerate bead barcodes
-        log.info("Create degenerate bead barcodes...")
-        combined_cmatcher_file3 = "{}/BeadBarcodes_degenerate.txt".format(
-            analysis_folder
-        )
-        commandStr = (
-            scripts_folder
-            + "/degenerate_beads "
-            + bead_barcode_file
-            + " "
-            + bead_location_file
-            + " "
-            + combined_cmatcher_file
-            + " "
-            + combined_cmatcher_file2
-            + " "
-            + combined_cmatcher_file3
-        )
-        os.system(commandStr)
+    combined_cmatcher_file2 = f"{analysis_folder}/{library}_barcode_matching_2.txt"
+    with open(combined_cmatcher_file2, "w") as fout:
+        for i in range(ls + 1):
+            if i * k >= j:
+                break
+            file2 = f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
+            with open(file2, "r") as fin:
+                for line in fin:
+                    fout.write(line)
 
-        file = "{}/BeadBarcodes_degenerate.finished".format(analysis_folder)
-        with open(file, "w") as fout:
-            fout.write("finished")
+    for i in range(ls + 1):
+        if i * k >= j:
+            break
+        file1 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.txt"
+        file2 = f"{analysis_folder}/{library}_barcode_matching_01_{str(i + 1)}.finished"
+        file3 = f"{analysis_folder}/BeadBarcodes_{str(i + 1)}.txt"
+        file4 = f"{analysis_folder}/{library}_barcode_matching_2_{str(i + 1)}.txt"
+        if os.path.isfile(file1):
+            call(["rm", file1])
+        if os.path.isfile(file2):
+            call(["rm", file2])
+        if os.path.isfile(file3):
+            call(["rm", file3])
+        if os.path.isfile(file4):
+            call(["rm", file4])
 
-        log.info(
-            f"{flowcell_barcode} - Create degenerate bead barcodes for {library} is done."
-        )
-    except:
-        log.exception("EXCEPTION!")
+    log.info(
+        f"{flowcell_barcode} - Combine cmatcher_beads outputs for {library} is done."
+    )
 
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                "The Slide-seq workflow for "
-                + library
-                + " failed at the step of running cmatcher beads combine. Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                "{}/send_email.py".format(scripts_folder),
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
+    # Create degenerate bead barcodes
+    log.info("Create degenerate bead barcodes...")
+    combined_cmatcher_file3 = "{}/BeadBarcodes_degenerate.txt".format(analysis_folder)
+    commandStr = (
+        scripts_folder
+        + "/degenerate_beads "
+        + bead_barcode_file
+        + " "
+        + bead_location_file
+        + " "
+        + combined_cmatcher_file
+        + " "
+        + combined_cmatcher_file2
+        + " "
+        + combined_cmatcher_file3
+    )
+    os.system(commandStr)
 
-        raise
+    file = f"{analysis_folder}/BeadBarcodes_degenerate.finished"
+    with open(file, "w") as fout:
+        fout.write("finished")
+
+    log.info(
+        f"{flowcell_barcode} - Create degenerate bead barcodes for {library} is done."
+    )
 
 
 if __name__ == "__main__":

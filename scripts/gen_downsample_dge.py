@@ -6,7 +6,6 @@ import csv
 import logging
 import os
 import sys
-from subprocess import call
 
 from slideseq.util import str2bool
 
@@ -38,7 +37,6 @@ def main():
             options[key] = value
 
     output_folder = options["output_folder"]
-    flowcell_barcode = options["flowcell_barcode"]
 
     library_folder = (
         options["library_folder"]
@@ -60,11 +58,7 @@ def main():
         if "picard_folder" in options
         else "/broad/macosko/bin/dropseq-tools/3rdParty/picard"
     )
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
-    )
+
     is_NovaSeq = str2bool(options["is_NovaSeq"]) if "is_NovaSeq" in options else False
     is_NovaSeq_S4 = (
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
@@ -80,7 +74,6 @@ def main():
     reference = ""
     base_quality = "10"
     min_transcripts_per_cell = "10"
-    email_address = ""
     experiment_date = ""
     with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
@@ -100,7 +93,6 @@ def main():
                 reference = row[row0.index("reference")]
                 base_quality = row[row0.index("base_quality")]
                 min_transcripts_per_cell = row[row0.index("min_transcripts_per_cell")]
-                email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
 
     referencePure = reference[reference.rfind("/") + 1 :]
@@ -113,107 +105,116 @@ def main():
     downsample_folder = "{}/{}/downsample/".format(analysis_folder, reference2)
     bam_file = "{}/{}.bam".format(analysis_folder, library)
 
-    try:
-        # Down sample reads
-        sampled_bam_file = downsample_folder + library + "_" + ratio + ".bam"
-        commandStr = (
-            "java -Djava.io.tmpdir="
-            + tmpdir
-            + " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m "
-        )
-        commandStr += (
-            "-jar " + picard_folder + "/picard.jar DownsampleSam TMP_DIR=" + tmpdir
-        )
-        commandStr += " I=" + bam_file + " O=" + sampled_bam_file + " P=" + ratio
-        os.system(commandStr)
+    # Down sample reads
+    sampled_bam_file = downsample_folder + library + "_" + ratio + ".bam"
+    commandStr = (
+        "java -Djava.io.tmpdir="
+        + tmpdir
+        + " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m "
+    )
+    commandStr += (
+        "-jar " + picard_folder + "/picard.jar DownsampleSam TMP_DIR=" + tmpdir
+    )
+    commandStr += " I=" + bam_file + " O=" + sampled_bam_file + " P=" + ratio
+    os.system(commandStr)
 
-        # Select cells by num transcripts
-        commandStr = dropseq_folder + "/SelectCellsByNumTranscripts "
-        if is_NovaSeq or is_NovaSeq_S4:
-            commandStr += (
-                "-m 24076m I="
-                + sampled_bam_file
-                + " MIN_TRANSCRIPTS_PER_CELL="
-                + min_transcripts_per_cell
-                + " READ_MQ="
-                + base_quality
-            )
-        else:
-            commandStr += (
-                "-m 7692m I="
-                + sampled_bam_file
-                + " MIN_TRANSCRIPTS_PER_CELL="
-                + min_transcripts_per_cell
-                + " READ_MQ="
-                + base_quality
-            )
+    # Select cells by num transcripts
+    commandStr = dropseq_folder + "/SelectCellsByNumTranscripts "
+    if is_NovaSeq or is_NovaSeq_S4:
         commandStr += (
-            " OUTPUT="
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.txt.gz TMP_DIR="
-            + tmpdir
-            + " VALIDATION_STRINGENCY=SILENT"
-        )
-        if locus_function_list == "exonic+intronic":
-            commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
-        elif locus_function_list == "intronic":
-            commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
-        os.system(commandStr)
-
-        # Generate digital expression files
-        commandStr = dropseq_folder + "/DigitalExpression -m 7692m "
-        commandStr += (
-            "I="
+            "-m 24076m I="
             + sampled_bam_file
-            + " O="
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + ".digital_expression.txt.gz "
-        )
-        commandStr += (
-            "SUMMARY="
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + ".digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ="
-            + base_quality
-            + " MIN_BC_READ_THRESHOLD=0 "
-        )
-        commandStr += (
-            "CELL_BC_FILE="
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + "."
+            + " MIN_TRANSCRIPTS_PER_CELL="
             + min_transcripts_per_cell
-            + "_transcripts_mq_"
+            + " READ_MQ="
             + base_quality
-            + "_selected_cells.txt.gz TMP_DIR="
-            + tmpdir
-            + " "
         )
+    else:
         commandStr += (
-            "OUTPUT_HEADER=true UEI=" + library + " VALIDATION_STRINGENCY=SILENT"
+            "-m 7692m I="
+            + sampled_bam_file
+            + " MIN_TRANSCRIPTS_PER_CELL="
+            + min_transcripts_per_cell
+            + " READ_MQ="
+            + base_quality
         )
-        if locus_function_list == "exonic+intronic":
-            commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
-        elif locus_function_list == "intronic":
-            commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
-        os.system(commandStr)
+    commandStr += (
+        " OUTPUT="
+        + downsample_folder
+        + library
+        + "_"
+        + ratio
+        + "."
+        + min_transcripts_per_cell
+        + "_transcripts_mq_"
+        + base_quality
+        + "_selected_cells.txt.gz TMP_DIR="
+        + tmpdir
+        + " VALIDATION_STRINGENCY=SILENT"
+    )
+    if locus_function_list == "exonic+intronic":
+        commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
+    elif locus_function_list == "intronic":
+        commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
+    os.system(commandStr)
 
-        if os.path.isfile(
-            downsample_folder
+    # Generate digital expression files
+    commandStr = dropseq_folder + "/DigitalExpression -m 7692m "
+    commandStr += (
+        "I="
+        + sampled_bam_file
+        + " O="
+        + downsample_folder
+        + library
+        + "_"
+        + ratio
+        + ".digital_expression.txt.gz "
+    )
+    commandStr += (
+        "SUMMARY="
+        + downsample_folder
+        + library
+        + "_"
+        + ratio
+        + ".digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ="
+        + base_quality
+        + " MIN_BC_READ_THRESHOLD=0 "
+    )
+    commandStr += (
+        "CELL_BC_FILE="
+        + downsample_folder
+        + library
+        + "_"
+        + ratio
+        + "."
+        + min_transcripts_per_cell
+        + "_transcripts_mq_"
+        + base_quality
+        + "_selected_cells.txt.gz TMP_DIR="
+        + tmpdir
+        + " "
+    )
+    commandStr += "OUTPUT_HEADER=true UEI=" + library + " VALIDATION_STRINGENCY=SILENT"
+    if locus_function_list == "exonic+intronic":
+        commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
+    elif locus_function_list == "intronic":
+        commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
+    os.system(commandStr)
+
+    if os.path.isfile(
+        downsample_folder
+        + library
+        + "_"
+        + ratio
+        + "."
+        + min_transcripts_per_cell
+        + "_transcripts_mq_"
+        + base_quality
+        + "_selected_cells.txt.gz"
+    ):
+        os.system(
+            "rm "
+            + downsample_folder
             + library
             + "_"
             + ratio
@@ -222,69 +223,35 @@ def main():
             + "_transcripts_mq_"
             + base_quality
             + "_selected_cells.txt.gz"
-        ):
-            os.system(
-                "rm "
-                + downsample_folder
-                + library
-                + "_"
-                + ratio
-                + "."
-                + min_transcripts_per_cell
-                + "_transcripts_mq_"
-                + base_quality
-                + "_selected_cells.txt.gz"
-            )
-        if os.path.isfile(
-            downsample_folder
+        )
+    if os.path.isfile(
+        downsample_folder
+        + library
+        + "_"
+        + ratio
+        + ".SelectCellsByNumTranscripts_metrics"
+    ):
+        os.system(
+            "rm "
+            + downsample_folder
             + library
             + "_"
             + ratio
             + ".SelectCellsByNumTranscripts_metrics"
-        ):
-            os.system(
-                "rm "
-                + downsample_folder
-                + library
-                + "_"
-                + ratio
-                + ".SelectCellsByNumTranscripts_metrics"
-            )
-        if os.path.isfile(
-            downsample_folder + library + "_" + ratio + ".digital_expression.txt.gz"
-        ):
-            os.system(
-                "rm "
-                + downsample_folder
-                + library
-                + "_"
-                + ratio
-                + ".digital_expression.txt.gz"
-            )
-        if os.path.isfile(sampled_bam_file):
-            os.system("rm " + sampled_bam_file)
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                "The Slide-seq workflow for "
-                + library
-                + " "
-                + reference2
-                + " failed at the step of generating downsampled dge. Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                "{}/send_email.py".format(scripts_folder),
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        sys.exit()
+        )
+    if os.path.isfile(
+        downsample_folder + library + "_" + ratio + ".digital_expression.txt.gz"
+    ):
+        os.system(
+            "rm "
+            + downsample_folder
+            + library
+            + "_"
+            + ratio
+            + ".digital_expression.txt.gz"
+        )
+    if os.path.isfile(sampled_bam_file):
+        os.system("rm " + sampled_bam_file)
 
 
 if __name__ == "__main__":

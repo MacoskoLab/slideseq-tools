@@ -35,7 +35,6 @@ def main():
             options[key] = value
 
     output_folder = options["output_folder"]
-    flowcell_barcode = options["flowcell_barcode"]
 
     library_folder = (
         options["library_folder"]
@@ -57,7 +56,6 @@ def main():
     bead_structures = []
     reference = ""
     puckcaller_path = ""
-    email_address = ""
     experiment_date = ""
     with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
@@ -75,7 +73,6 @@ def main():
             bead_structures.append(row[row0.index("bead_structure")])
             if row[row0.index("library")] == library:
                 reference = row[row0.index("reference")]
-                email_address = row[row0.index("email")]
                 puckcaller_path = row[row0.index("puckcaller_path")]
                 experiment_date = row[row0.index("date")]
 
@@ -96,87 +93,68 @@ def main():
     uniqueMappedDge_file = "{}/{}.UniqueMappedDge.txt".format(alignment_folder, library)
     MappedDGEForR_file = "{}/MappedDGEForR.csv".format(alignment_folder)
 
-    try:
-        # UniqueMappedIlluminaBarcodes
-        unique_bci_file = f"{barcode_matching_folder}/{library}_unique_matched_illumina_barcodes.txt"
+    # UniqueMappedIlluminaBarcodes
+    unique_bci_file = (
+        f"{barcode_matching_folder}/{library}_unique_matched_illumina_barcodes.txt"
+    )
 
-        if not os.path.isfile(dge_file):
-            os.system(f"gunzip -c {dge_gzfile} > {dge_file}")
+    if not os.path.isfile(dge_file):
+        os.system(f"gunzip -c {dge_gzfile} > {dge_file}")
 
-        location_file = f"{barcode_matching_folder}/{library}_matched_bead_locations.txt"
-        genename_file = f"{barcode_matching_folder}/{library}_genenames.txt"
-        bcb_file = f"{barcode_matching_folder}/{library}_unique_matched_beads.txt"
+    location_file = f"{barcode_matching_folder}/{library}_matched_bead_locations.txt"
+    genename_file = f"{barcode_matching_folder}/{library}_genenames.txt"
+    bcb_file = f"{barcode_matching_folder}/{library}_unique_matched_beads.txt"
 
-        # split dge_file into three files, plus a csv for R
+    # split dge_file into three files, plus a csv for R
 
-        with open(dge_file) as fh:
-            rdr = csv.reader(fh, delimiter="\t")
-            rows = [row for row in rdr if row and row[0][0] != "#"]
+    with open(dge_file) as fh:
+        rdr = csv.reader(fh, delimiter="\t")
+        rows = [row for row in rdr if row and row[0][0] != "#"]
 
-            # write bead barcodes (columns of the tsv)
-            with open(bcb_file, "w") as out:
-                print("\n".join(rows[0][1:]), file=out)
+        # write bead barcodes (columns of the tsv)
+        with open(bcb_file, "w") as out:
+            print("\n".join(rows[0][1:]), file=out)
 
-            # write gene names (row labels)
-            with open(genename_file, "w") as out:
-                print("\n".join(row[0] for row in rows[1:]), file=out)
+        # write gene names (row labels)
+        with open(genename_file, "w") as out:
+            print("\n".join(row[0] for row in rows[1:]), file=out)
 
-            # print out the values separately (???)
-            with open(uniqueMappedDge_file, "w") as out:
-                for row in rows[1:]:
-                    print("\t".join(row[1:]), file=out)
+        # print out the values separately (???)
+        with open(uniqueMappedDge_file, "w") as out:
+            for row in rows[1:]:
+                print("\t".join(row[1:]), file=out)
 
-            # convert the tsv to csv for R (but R can read tsvs...?)
-            with open(MappedDGEForR_file, "w") as out:
-                for row in rows:
-                    print(",".join(row), file=out)
+        # convert the tsv to csv for R (but R can read tsvs...?)
+        with open(MappedDGEForR_file, "w") as out:
+            for row in rows:
+                print(",".join(row), file=out)
 
-        # this matlab script
+    # this matlab script
 
-        # Call run_WriteBijectiveMapping
-        # 'UniqueMappedBeads','UniqueMappedDGE','UniqueMappedIlluminaBarcodes','GeneNames'
-        output_file = f"{output_folder}/logs/run_WriteBijectiveMapping_{library}_{locus_function_list}.log"
-        submission_script = "/broad/macosko/jilong/slideseq_pipeline/scripts/run_WriteBijectiveMapping.sh"
-        call_args = [
-            "qsub",
-            "-o",
-            output_file,
-            submission_script,
-            "/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a",
-            scripts_folder,
-            bcb_file,
-            uniqueMappedDge_file,
-            unique_bci_file,
-            genename_file,
-            location_file,
-            puckcaller_path,
-            output_folder,
-        ]
-        call(call_args)
+    # Call run_WriteBijectiveMapping
+    # 'UniqueMappedBeads','UniqueMappedDGE','UniqueMappedIlluminaBarcodes','GeneNames'
+    output_file = f"{output_folder}/logs/run_WriteBijectiveMapping_{library}_{locus_function_list}.log"
+    submission_script = (
+        "/broad/macosko/jilong/slideseq_pipeline/scripts/run_WriteBijectiveMapping.sh"
+    )
+    call_args = [
+        "qsub",
+        "-o",
+        output_file,
+        submission_script,
+        "/broad/software/nonfree/Linux/redhat_7_x86_64/pkgs/matlab_2019a",
+        scripts_folder,
+        bcb_file,
+        uniqueMappedDge_file,
+        unique_bci_file,
+        genename_file,
+        location_file,
+        puckcaller_path,
+        output_folder,
+    ]
+    call(call_args)
 
-        os.remove(dge_file)
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                "The Slide-seq workflow for "
-                + library
-                + " "
-                + locus_function_list
-                + " failed at the step of generating BijectiveMapping.mat. Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                "{}/send_email.py".format(scripts_folder),
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        raise
+    os.remove(dge_file)
 
 
 if __name__ == "__main__":

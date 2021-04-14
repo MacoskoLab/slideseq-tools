@@ -6,8 +6,6 @@ import csv
 import logging
 import os
 import sys
-import time
-from subprocess import call
 
 import numpy as np
 import pandas as pd
@@ -48,17 +46,11 @@ def main():
             options[key] = value
 
     output_folder = options["output_folder"]
-    flowcell_barcode = options["flowcell_barcode"]
 
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
         else "{}/libraries".format(output_folder)
-    )
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
 
     # Read info of lane, library and barcode
@@ -69,7 +61,6 @@ def main():
     barcodes = []
     bead_structures = []
     reference = ""
-    email_address = ""
     experiment_date = ""
     with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
@@ -87,7 +78,6 @@ def main():
             bead_structures.append(row[row0.index("bead_structure")])
             if row[row0.index("library")] == library:
                 reference = row[row0.index("reference")]
-                email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
 
     referencePure = reference[reference.rfind("/") + 1 :]
@@ -103,75 +93,51 @@ def main():
         library_folder, experiment_date, library, reference2
     )
 
-    try:
-        ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        df_y = []
-        for i in range(0, 10, 1):
-            file = (
-                downsample_folder
-                + library
-                + "_"
-                + str(ratio[i])
-                + ".digital_expression_summary.txt"
-            )
-            mat = np.loadtxt(file, delimiter="\t", dtype="int", skiprows=7, usecols=2)
-            v = int(sum(mat[:10000]) / min(len(mat), 10000))
-            df_y.append(v)
-        df_x = np.tile(np.arange(0.1, 1.1, 0.1), 1)
-        df = pd.DataFrame({"x": df_x, "y": df_y})
-        p = (
-            plotnine.ggplot(plotnine.aes(x="x", y="y"), df)
-            + plotnine.geom_point(
-                size=2.5, color="red", fill="white", show_legend=False
-            )
-            + plotnine.geom_smooth(
-                method=my_smoother,
-                se=False,
-                fullrange=True,
-                size=0.4,
-                color="red",
-                fill="white",
-                show_legend=False,
-            )
-            + plotnine.scale_x_continuous(
-                limits=(0.1, 10),
-                breaks=(0.5, 1.0, 2.0, 5.0, 10.0),
-                labels=[0.5, 1.0, 2.0, 5.0, 10.0],
-            )
-            + plotnine.theme(axis_text_y=plotnine.element_text(rotation=90, hjust=1))
-            + plotnine.xlab("Reads generated (relative to this run)")
-            + plotnine.ylab("Transcripts per cell")
-            + plotnine.ggtitle(
-                "Return to sequencing coverage (downsampling + projection)"
-            )
+    ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    df_y = []
+    for i in range(0, 10, 1):
+        file = (
+            downsample_folder
+            + library
+            + "_"
+            + str(ratio[i])
+            + ".digital_expression_summary.txt"
         )
-        plotnine.ggsave(
-            plot=p,
-            height=9,
-            width=8,
-            filename=library + "_" + reference2 + "_downsampling.pdf",
-            path=alignment_folder,
-            verbose=False,
+        mat = np.loadtxt(file, delimiter="\t", dtype="int", skiprows=7, usecols=2)
+        v = int(sum(mat[:10000]) / min(len(mat), 10000))
+        df_y.append(v)
+    df_x = np.tile(np.arange(0.1, 1.1, 0.1), 1)
+    df = pd.DataFrame({"x": df_x, "y": df_y})
+    p = (
+        plotnine.ggplot(plotnine.aes(x="x", y="y"), df)
+        + plotnine.geom_point(size=2.5, color="red", fill="white", show_legend=False)
+        + plotnine.geom_smooth(
+            method=my_smoother,
+            se=False,
+            fullrange=True,
+            size=0.4,
+            color="red",
+            fill="white",
+            show_legend=False,
         )
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
-            content = (
-                f"The Slide-seq workflow for {library} {reference2} failed at the step of generating plot"
-                " for downsampling and projection. Please check the log file for the issues."
-            )
-            call_args = [
-                "python",
-                "{}/send_email.py".format(scripts_folder),
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        raise
+        + plotnine.scale_x_continuous(
+            limits=(0.1, 10),
+            breaks=(0.5, 1.0, 2.0, 5.0, 10.0),
+            labels=[0.5, 1.0, 2.0, 5.0, 10.0],
+        )
+        + plotnine.theme(axis_text_y=plotnine.element_text(rotation=90, hjust=1))
+        + plotnine.xlab("Reads generated (relative to this run)")
+        + plotnine.ylab("Transcripts per cell")
+        + plotnine.ggtitle("Return to sequencing coverage (downsampling + projection)")
+    )
+    plotnine.ggsave(
+        plot=p,
+        height=9,
+        width=8,
+        filename=library + "_" + reference2 + "_downsampling.pdf",
+        path=alignment_folder,
+        verbose=False,
+    )
 
 
 if __name__ == "__main__":

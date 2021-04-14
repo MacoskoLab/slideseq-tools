@@ -10,7 +10,6 @@ import os
 import sys
 from subprocess import call
 
-from slideseq.logging import create_logger
 from slideseq.util import get_read_structure, get_tiles, str2bool
 
 log = logging.getLogger(__name__)
@@ -65,7 +64,6 @@ def main():
         if "num_slice_NovaSeq_S4" in options
         else 40
     )
-    email_address = options["email_address"] if "email_address" in options else ""
 
     basecalls_dir = f"{flowcell_directory}/Data/Intensities/BaseCalls"
 
@@ -133,129 +131,103 @@ def main():
                 slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
                 slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    try:
-        # Check if the input Illumina folder is in correct format
+    # Check if the input Illumina folder is in correct format
+    commandStr = (
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
+        f" -XX:ParallelGCThreads=1 -XX:GCTimeLimit=5"
+        f" -XX:GCHeapFreeLimit=10 -Xmx8192m "
+        f"-jar {picard_folder}/picard.jar CheckIlluminaDirectory TMP_DIR={tmpdir}"
+        f" VALIDATION_STRINGENCY=SILENT"
+        f" BASECALLS_DIR={basecalls_dir} READ_STRUCTURE={read_structure}"
+    )
+    if is_NovaSeq or is_NovaSeq_S4:
+        commandStr += " LINK_LOCS=false"
+    for lane in lanes_unique:
+        commandStr += " L=" + lane
+    log.info(f"{flowcell_barcode} - CheckIlluminaDirectory Command - {commandStr}")
+    os.system(commandStr)
+    log.info(f"{flowcell_barcode} - CheckIlluminaDirectory done")
+
+    # Create directories
+    log.info(f"{flowcell_barcode} - Creating directories.")
+    for lane in lanes_unique:
+        call(["mkdir", "-p", f"{output_folder}/{lane}"])
+        call(["mkdir", "-p", f"{output_folder}/{lane}/barcodes"])
+        for lane_slice in slice_id[lane]:
+            call(["mkdir", "-p", f"{output_folder}/{lane}/{lane_slice}"])
+    for i, lane in enumerate(lanes):
+        for lane_slice in slice_id[lane]:
+            if not os.path.isdir(f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}"):
+                call(
+                    [
+                        "mkdir",
+                        "-p",
+                        f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}",
+                    ]
+                )
+            if barcodes[i]:
+                call(
+                    [
+                        "mkdir",
+                        "-p",
+                        f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}/{barcodes[i]}",
+                    ]
+                )
+
+    # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
+    for lane in lanes_unique:
+        log.info(f"{flowcell_barcode} - Generating barcode_params.txt for Lane {lane}")
         commandStr = (
-            f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
-            f" -XX:ParallelGCThreads=1 -XX:GCTimeLimit=5"
-            f" -XX:GCHeapFreeLimit=10 -Xmx8192m "
-            f"-jar {picard_folder}/picard.jar CheckIlluminaDirectory TMP_DIR={tmpdir}"
-            f" VALIDATION_STRINGENCY=SILENT"
-            f" BASECALLS_DIR={basecalls_dir} READ_STRUCTURE={read_structure}"
+            f"python {scripts_folder}/gen_barcode_params.py"
+            f" -i {output_folder}/parsed_metadata.txt"
+            f" -o {output_folder}/{lane}/barcode_params.txt -l {lane}"
         )
-        if is_NovaSeq or is_NovaSeq_S4:
-            commandStr += " LINK_LOCS=false"
-        for lane in lanes_unique:
-            commandStr += " L=" + lane
-        log.info(f"{flowcell_barcode} - CheckIlluminaDirectory Command - {commandStr}")
         os.system(commandStr)
-        log.info(f"{flowcell_barcode} - CheckIlluminaDirectory done")
 
-        # Create directories
-        log.info(f"{flowcell_barcode} - Creating directories.")
-        for lane in lanes_unique:
-            call(["mkdir", "-p", f"{output_folder}/{lane}"])
-            call(["mkdir", "-p", f"{output_folder}/{lane}/barcodes"])
-            for lane_slice in slice_id[lane]:
-                call(["mkdir", "-p", f"{output_folder}/{lane}/{lane_slice}"])
-        for i, lane in enumerate(lanes):
-            for lane_slice in slice_id[lane]:
-                if not os.path.isdir(
-                    f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}"
-                ):
-                    call(
-                        [
-                            "mkdir",
-                            "-p",
-                            f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}",
-                        ]
-                    )
-                if barcodes[i]:
-                    call(
-                        [
-                            "mkdir",
-                            "-p",
-                            f"{output_folder}/{lane}/{lane_slice}/{libraries[i]}/{barcodes[i]}",
-                        ]
-                    )
-
-        # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
-        for lane in lanes_unique:
-            log.info(
-                f"{flowcell_barcode} - Generating barcode_params.txt for Lane {lane}"
-            )
+    # Generate library_params that is needed by IlluminaBasecallsToSam
+    for lane in lanes_unique:
+        log.info(f"{flowcell_barcode} - Generating library_params.txt for Lane {lane}")
+        for lane_slice in slice_id[lane]:
             commandStr = (
-                f"python {scripts_folder}/gen_barcode_params.py"
+                f"python {scripts_folder}/gen_library_params.py"
                 f" -i {output_folder}/parsed_metadata.txt"
-                f" -o {output_folder}/{lane}/barcode_params.txt -l {lane}"
+                f" -o {output_folder}/{lane}/{lane_slice}/library_params.txt"
+                f" -b {output_folder}/{lane}/{lane_slice}/"
+                f" -n {flowcell_barcode}.{lane}.{lane_slice}"
+                f" -l {lane}"
             )
             os.system(commandStr)
 
-        # Generate library_params that is needed by IlluminaBasecallsToSam
-        for lane in lanes_unique:
-            log.info(
-                f"{flowcell_barcode} - Generating library_params.txt for Lane {lane}"
-            )
-            for lane_slice in slice_id[lane]:
-                commandStr = (
-                    f"python {scripts_folder}/gen_library_params.py"
-                    f" -i {output_folder}/parsed_metadata.txt"
-                    f" -o {output_folder}/{lane}/{lane_slice}/library_params.txt"
-                    f" -b {output_folder}/{lane}/{lane_slice}/"
-                    f" -n {flowcell_barcode}.{lane}.{lane_slice}"
-                    f" -l {lane}"
-                )
-                os.system(commandStr)
-
-        # Call run_processbarcodes
-        for lane in lanes_unique:
-            output_file = f"{output_folder}/logs/run_processbarcodes_lane_{lane}.log"
-            submission_script = f"{scripts_folder}/run_processbarcodes.sh"
-            call_args = [
-                "qsub",
-                "-o",
-                output_file,
-                submission_script,
-                manifest_file,
-                lane,
-                scripts_folder,
-                output_folder,
-                f"{output_folder}/{lane}",
-            ]
-            call(call_args)
-
-        # Call run_mergebarcodes
-        output_file = f"{output_folder}/logs/run_mergebarcodes.log"
-        submission_script = f"{scripts_folder}/run_mergebarcodes.sh"
+    # Call run_processbarcodes
+    for lane in lanes_unique:
+        output_file = f"{output_folder}/logs/run_processbarcodes_lane_{lane}.log"
+        submission_script = f"{scripts_folder}/run_processbarcodes.sh"
         call_args = [
             "qsub",
             "-o",
             output_file,
             submission_script,
             manifest_file,
+            lane,
             scripts_folder,
             output_folder,
+            f"{output_folder}/{lane}",
         ]
         call(call_args)
-    except:
-        log.exception("EXCEPTION")
 
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                "The Slide-seq workflow failed at the step of preparation."
-                " Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                f"{scripts_folder}/send_email.py",
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        sys.exit(1)
+    # Call run_mergebarcodes
+    output_file = f"{output_folder}/logs/run_mergebarcodes.log"
+    submission_script = f"{scripts_folder}/run_mergebarcodes.sh"
+    call_args = [
+        "qsub",
+        "-o",
+        output_file,
+        submission_script,
+        manifest_file,
+        scripts_folder,
+        output_folder,
+    ]
+    call(call_args)
 
 
 if __name__ == "__main__":

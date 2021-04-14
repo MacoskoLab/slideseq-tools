@@ -6,10 +6,7 @@ import csv
 import logging
 import os
 import sys
-import time
-from subprocess import call
 
-from slideseq.logging import create_logger
 from slideseq.util import get_tiles, str2bool
 
 log = logging.getLogger(__name__)
@@ -36,20 +33,7 @@ def main():
 
     flowcell_directory = options["flowcell_directory"]
     output_folder = options["output_folder"]
-    metadata_file = options["metadata_file"]
-    flowcell_barcode = options["flowcell_barcode"]
 
-    library_folder = (
-        options["library_folder"]
-        if "library_folder" in options
-        else "{}/libraries".format(output_folder)
-    )
-
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
-    )
     is_NovaSeq = str2bool(options["is_NovaSeq"]) if "is_NovaSeq" in options else False
     is_NovaSeq_S4 = (
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False

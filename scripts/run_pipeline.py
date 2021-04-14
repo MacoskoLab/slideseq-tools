@@ -7,8 +7,6 @@ import os
 import sys
 from subprocess import call
 
-from slideseq.logging import create_logger
-
 log = logging.getLogger(__name__)
 
 
@@ -72,7 +70,6 @@ def main():
         if "scripts_folder" in options
         else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
-    email_address = options["email_address"] if "email_address" in options else ""
 
     if not os.path.isdir(flowcell_directory):
         print(f"Folder {flowcell_directory} does not exist. Exiting...")
@@ -109,21 +106,16 @@ def main():
         print(f"File {runinfo_file} does not exist. Exiting...")
         sys.exit()
 
-    try:
-        # Create directories
-        if not os.path.isdir(output_folder):
-            call(["mkdir", "-p", output_folder])
-        if not os.path.isdir(f"{output_folder}/logs"):
-            call(["mkdir", "-p", f"{output_folder}/logs"])
-        call(["mkdir", "-p", f"{output_folder}/status"])
-        if not os.path.isdir(library_folder):
-            call(["mkdir", "-p", library_folder])
-        if "temp_folder" not in options:
-            call(["mkdir", "-p", f"{output_folder}/tmp"])
-    except:
-        log.exception("EXCEPTION")
-        log.error(f"Folder {output_folder} cannot be created. Exiting...")
-        sys.exit(1)
+    # Create directories
+    if not os.path.isdir(output_folder):
+        call(["mkdir", "-p", output_folder])
+    if not os.path.isdir(f"{output_folder}/logs"):
+        call(["mkdir", "-p", f"{output_folder}/logs"])
+    call(["mkdir", "-p", f"{output_folder}/status"])
+    if not os.path.isdir(library_folder):
+        call(["mkdir", "-p", library_folder])
+    if "temp_folder" not in options:
+        call(["mkdir", "-p", f"{output_folder}/tmp"])
 
     log.info(f"{flowcell_barcode} - starting SlideSeq alignment pipeline")
 
@@ -140,22 +132,6 @@ def main():
         output_folder,
     ]
     call(call_args)
-
-    if len(email_address) > 1:
-        subject = f"Submission received for {flowcell_barcode}"
-        content = (
-            "Thank you for your interest on the Slide-seq tools! "
-            "We received your request. An email will be sent to you "
-            "once the workflow finishes. "
-        )
-        call_args = [
-            "python",
-            f"{scripts_folder}/send_email.py",
-            email_address,
-            subject,
-            content,
-        ]
-        call(call_args)
 
 
 if __name__ == "__main__":

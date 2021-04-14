@@ -47,15 +47,9 @@ def main():
         if "library_folder" in options
         else "{}/libraries".format(output_folder)
     )
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
-    )
 
     # Read info from metadata file
     reference = ""
-    email_address = ""
     experiment_date = ""
     base_quality = "10"
     min_transcripts_per_cell = "10"
@@ -67,7 +61,6 @@ def main():
             row = rows[i]
             if row[row0.index("library")] == library:
                 reference = row[row0.index("reference")]
-                email_address = row[row0.index("email")]
                 experiment_date = row[row0.index("date")]
                 base_quality = row[row0.index("base_quality")]
                 min_transcripts_per_cell = row[row0.index("min_transcripts_per_cell")]
@@ -143,137 +136,108 @@ def main():
             f"{flowcell_barcode} - TagMatchedBam error: {combined_cmatcher_shuffled_file} does not exist!"
         )
 
-    try:
-        log.info(
-            f"{flowcell_barcode} - Tag matched bam for {library} {reference2} in lane {lane} slice {lane_slice}"
-        )
+    log.info(
+        f"{flowcell_barcode} - Tag matched bam for {library} {reference2} in lane {lane} slice {lane_slice}"
+    )
 
-        log.info("mapped bam to sam")
-        commandStr = "samtools view -h -o " + mapped_sam + " " + mapped_bam
-        os.system(commandStr)
+    log.info("mapped bam to sam")
+    commandStr = "samtools view -h -o " + mapped_sam + " " + mapped_bam
+    os.system(commandStr)
 
-        call(["rm", mapped_bam])
+    call(["rm", mapped_bam])
 
-        log.info("read combined_cmatcher_file into dict1")
-        dict1 = {}
-        with open(combined_cmatcher_file, "r") as fin:
-            j = 0
-            for line in fin:
-                j += 1
-                if j > 1:
-                    dict1[line.split("\t")[0]] = line.split("\t")[2]
+    log.info("read combined_cmatcher_file into dict1")
+    dict1 = {}
+    with open(combined_cmatcher_file, "r") as fin:
+        j = 0
+        for line in fin:
+            j += 1
+            if j > 1:
+                dict1[line.split("\t")[0]] = line.split("\t")[2]
 
-        log.info("read raw2shuffle into dict2")
-        dict2 = {}
-        select_cell_file = (
-            alignment_folder
-            + library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.txt"
-        )
-        select_cell_shuffled_file = (
-            alignment_folder
-            + library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.shuffled.txt"
-        )
-        bc1 = np.loadtxt(select_cell_file, delimiter="\t", dtype="str", usecols=0)
-        bc2 = np.loadtxt(
-            select_cell_shuffled_file, delimiter="\t", dtype="str", usecols=0
-        )
-        for i in range(len(bc1)):
-            dict2[bc1[i].strip("\n")] = bc2[i].strip("\n")
+    log.info("read raw2shuffle into dict2")
+    dict2 = {}
+    select_cell_file = (
+        alignment_folder
+        + library
+        + "."
+        + min_transcripts_per_cell
+        + "_transcripts_mq_"
+        + base_quality
+        + "_selected_cells.txt"
+    )
+    select_cell_shuffled_file = (
+        alignment_folder
+        + library
+        + "."
+        + min_transcripts_per_cell
+        + "_transcripts_mq_"
+        + base_quality
+        + "_selected_cells.shuffled.txt"
+    )
+    bc1 = np.loadtxt(select_cell_file, delimiter="\t", dtype="str", usecols=0)
+    bc2 = np.loadtxt(select_cell_shuffled_file, delimiter="\t", dtype="str", usecols=0)
+    for i in range(len(bc1)):
+        dict2[bc1[i].strip("\n")] = bc2[i].strip("\n")
 
-        log.info("read combined_cmatcher_shuffled_file into dict3")
-        dict3 = {}
-        with open(combined_cmatcher_shuffled_file, "r") as fin:
-            j = 0
-            for line in fin:
-                j += 1
-                if j > 1:
-                    dict3[line.split("\t")[0]] = line.split("\t")[2]
+    log.info("read combined_cmatcher_shuffled_file into dict3")
+    dict3 = {}
+    with open(combined_cmatcher_shuffled_file, "r") as fin:
+        j = 0
+        for line in fin:
+            j += 1
+            if j > 1:
+                dict3[line.split("\t")[0]] = line.split("\t")[2]
 
-        log.info("gen tagged_sam")
-        with open(tagged_sam, "w") as fout1:
-            with open(raw_sam, "w") as fout2:
-                with open(shuffled_sam, "w") as fout3:
-                    with open(mapped_sam, "r") as fin:
-                        for line in fin:
-                            if line[0] == "@":
-                                fout1.write(line)
+    log.info("gen tagged_sam")
+    with open(tagged_sam, "w") as fout1:
+        with open(raw_sam, "w") as fout2:
+            with open(shuffled_sam, "w") as fout3:
+                with open(mapped_sam, "r") as fin:
+                    for line in fin:
+                        if line[0] == "@":
+                            fout1.write(line)
+                            fout2.write(line)
+                            fout3.write(line)
+                        else:
+                            items1 = line.split("\t")
+                            bc1 = items1[11]
+                            items2 = bc1.split(":")
+                            bc2 = items2[2]
+                            if bc2 in dict1:
                                 fout2.write(line)
-                                fout3.write(line)
-                            else:
-                                items1 = line.split("\t")
-                                bc1 = items1[11]
-                                items2 = bc1.split(":")
-                                bc2 = items2[2]
-                                if bc2 in dict1:
-                                    fout2.write(line)
-                                    items2[2] = dict1[bc2]
-                                    items1[11] = ":".join(items2)
-                                    fout1.write("\t".join(items1))
-                                if (bc2 in dict2) and (dict2[bc2] in dict3):
-                                    items2[2] = dict2[bc2]
-                                    items1[11] = ":".join(items2)
-                                    fout3.write("\t".join(items1))
+                                items2[2] = dict1[bc2]
+                                items1[11] = ":".join(items2)
+                                fout1.write("\t".join(items1))
+                            if (bc2 in dict2) and (dict2[bc2] in dict3):
+                                items2[2] = dict2[bc2]
+                                items1[11] = ":".join(items2)
+                                fout3.write("\t".join(items1))
 
-        if os.path.isfile(mapped_sam):
-            call(["rm", mapped_sam])
+    if os.path.isfile(mapped_sam):
+        call(["rm", mapped_sam])
 
-        commandStr = "samtools view -S -b " + tagged_sam + " > " + tagged_bam
-        os.system(commandStr)
+    commandStr = "samtools view -S -b " + tagged_sam + " > " + tagged_bam
+    os.system(commandStr)
 
-        if os.path.isfile(tagged_sam):
-            call(["rm", tagged_sam])
+    if os.path.isfile(tagged_sam):
+        call(["rm", tagged_sam])
 
-        commandStr = "samtools view -S -b " + raw_sam + " > " + raw_bam
-        os.system(commandStr)
+    commandStr = "samtools view -S -b " + raw_sam + " > " + raw_bam
+    os.system(commandStr)
 
-        if os.path.isfile(raw_sam):
-            call(["rm", raw_sam])
+    if os.path.isfile(raw_sam):
+        call(["rm", raw_sam])
 
-        commandStr = "samtools view -S -b " + shuffled_sam + " > " + shuffled_bam
-        os.system(commandStr)
+    commandStr = "samtools view -S -b " + shuffled_sam + " > " + shuffled_bam
+    os.system(commandStr)
 
-        if os.path.isfile(shuffled_sam):
-            call(["rm", shuffled_sam])
+    if os.path.isfile(shuffled_sam):
+        call(["rm", shuffled_sam])
 
-        log.info(
-            f"{flowcell_barcode} - Tag matched bam for {library} {reference2} in lane {lane} slice {lane_slice} is done"
-        )
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                "The Slide-seq workflow for "
-                + library
-                + " "
-                + reference2
-                + " in lane "
-                + lane
-                + " slice "
-                + lane_slice
-                + " failed at the step of tagging matched bam. Please check the log file for the issues. "
-            )
-            call_args = [
-                "python",
-                "{}/send_email.py".format(scripts_folder),
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        raise
+    log.info(
+        f"{flowcell_barcode} - Tag matched bam for {library} {reference2} in lane {lane} slice {lane_slice} is done"
+    )
 
 
 if __name__ == "__main__":

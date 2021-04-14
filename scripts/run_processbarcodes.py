@@ -7,7 +7,6 @@ import os
 import sys
 from subprocess import call
 
-from slideseq.logging import create_logger
 from slideseq.util import get_read_structure, get_tiles, str2bool
 
 log = logging.getLogger(__name__)
@@ -62,7 +61,6 @@ def main():
         if "num_slice_NovaSeq_S4" in options
         else 40
     )
-    email_address = options["email_address"] if "email_address" in options else ""
 
     basecalls_dir = f"{flowcell_directory}/Data/Intensities/BaseCalls"
 
@@ -93,84 +91,64 @@ def main():
             slice_first_tile[lane].append(str(tile_nums[tile_cou_per_slice * i]))
             slice_tile_limit[lane].append(str(tile_cou_per_slice))
 
-    try:
-        log.info(f"{flowcell_barcode} - Running ExtractIlluminaBarcodes")
-        # Extract Illumina barcodes
+    log.info(f"{flowcell_barcode} - Running ExtractIlluminaBarcodes")
+    # Extract Illumina barcodes
+    commandStr = (
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
+        " -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10"
+        " -Xmx4000m -jar {picard_folder}/picard.jar ExtractIlluminaBarcodes"
+        f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
+        f" BASECALLS_DIR={basecalls_dir} OUTPUT_DIR={output_folder}/{lane}/barcodes"
+        f" LANE={lane} READ_STRUCTURE={read_structure}"
+        f" BARCODE_FILE={output_folder}/{lane}/barcode_params.txt"
+        f" METRICS_FILE={output_folder}/{lane}/{flowcell_barcode}.{lane}.barcode_metrics"
+        " COMPRESS_OUTPUTS=true NUM_PROCESSORS=4"
+    )
+    log.info(f"{flowcell_barcode} - ExtractIlluminaBarcodes for Lane {lane}")
+    log.debug(f"Command = {commandStr}")
+
+    os.system(commandStr)
+
+    log.info(f"{flowcell_barcode} - ExtractIlluminaBarcodes for Lane {lane} is done.")
+
+    # Convert Illumina base calls to sam (unmapped.bam)
+    for i in range(len(slice_id[lane])):
         commandStr = (
-            f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
-            " -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10"
-            " -Xmx4000m -jar {picard_folder}/picard.jar ExtractIlluminaBarcodes"
-            f" TMP_DIR={tmp_dir} VALIDATION_STRINGENCY=SILENT"
-            f" BASECALLS_DIR={basecalls_dir} OUTPUT_DIR={output_folder}/{lane}/barcodes"
-            f" LANE={lane} READ_STRUCTURE={read_structure}"
-            f" BARCODE_FILE={output_folder}/{lane}/barcode_params.txt"
-            f" METRICS_FILE={output_folder}/{lane}/{flowcell_barcode}.{lane}.barcode_metrics"
-            " COMPRESS_OUTPUTS=true NUM_PROCESSORS=4"
-        )
-        log.info(f"{flowcell_barcode} - ExtractIlluminaBarcodes for Lane {lane}")
-        log.debug(f"Command = {commandStr}")
-
-        os.system(commandStr)
-
-        log.info(
-            f"{flowcell_barcode} - ExtractIlluminaBarcodes for Lane {lane} is done."
+            f"java -Djava.io.tmpdir={tmpdir}"
+            " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+            " -XX:GCHeapFreeLimit=10 -Xmx10192m "
+            f" -jar {picard_folder} /picard.jar IlluminaBasecallsToSam"
+            f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
+            f" BASECALLS_DIR={basecalls_dir} LANE={lane}"
+            f" RUN_BARCODE={flowcell_barcode} NUM_PROCESSORS=4"
+            f" READ_STRUCTURE={read_structure}"
+            f" LIBRARY_PARAMS={output_folder}/{lane}/{slice_id[lane][i]}/library_params.txt"
+            " INCLUDE_NON_PF_READS=false APPLY_EAMSS_FILTER=false"
+            " MAX_READS_IN_RAM_PER_TILE=600000 ADAPTERS_TO_CHECK=null"
+            " IGNORE_UNEXPECTED_BARCODES=true SEQUENCING_CENTER=BI"
+            f" BARCODES_DIR={output_folder}/{lane}/barcodes"
+            f" FIRST_TILE={slice_first_tile[lane][i]}"
+            f" TILE_LIMIT={slice_tile_limit[lane][i]}"
         )
 
-        # Convert Illumina base calls to sam (unmapped.bam)
-        for i in range(len(slice_id[lane])):
-            commandStr = (
-                f"java -Djava.io.tmpdir={tmpdir}"
-                " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
-                " -XX:GCHeapFreeLimit=10 -Xmx10192m "
-                f" -jar {picard_folder} /picard.jar IlluminaBasecallsToSam"
-                f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
-                f" BASECALLS_DIR={basecalls_dir} LANE={lane}"
-                f" RUN_BARCODE={flowcell_barcode} NUM_PROCESSORS=4"
-                f" READ_STRUCTURE={read_structure}"
-                f" LIBRARY_PARAMS={output_folder}/{lane}/{slice_id[lane][i]}/library_params.txt"
-                " INCLUDE_NON_PF_READS=false APPLY_EAMSS_FILTER=false"
-                " MAX_READS_IN_RAM_PER_TILE=600000 ADAPTERS_TO_CHECK=null"
-                " IGNORE_UNEXPECTED_BARCODES=true SEQUENCING_CENTER=BI"
-                f" BARCODES_DIR={output_folder}/{lane}/barcodes"
-                f" FIRST_TILE={slice_first_tile[lane][i]}"
-                f" TILE_LIMIT={slice_tile_limit[lane][i]}"
-            )
-
-            output_file = f"{output_folder}/logs/run_barcodes2sam_lane_{lane}_{slice_id[lane][i]}.log"
-            submission_script = f"{scripts_folder}/run_barcodes2sam.sh"
-            call_args = [
-                "qsub",
-                "-o",
-                output_file,
-                submission_script,
-                manifest_file,
-                commandStr,
-                lane,
-                slice_id[lane][i],
-                scripts_folder,
-                output_folder,
-                f"{output_folder}/{lane}",
-            ]
-            call(call_args)
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = "Slide-seq workflow failed for " + flowcell_barcode
-            content = (
-                f"The Slide-seq workflow for lane {lane} failed at the step of"
-                f" processing barcodes. Please check the log file for the issues."
-            )
-            call_args = [
-                "python",
-                f"{scripts_folder}/send_email.py",
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        sys.exit()
+        output_file = (
+            f"{output_folder}/logs/run_barcodes2sam_lane_{lane}_{slice_id[lane][i]}.log"
+        )
+        submission_script = f"{scripts_folder}/run_barcodes2sam.sh"
+        call_args = [
+            "qsub",
+            "-o",
+            output_file,
+            submission_script,
+            manifest_file,
+            commandStr,
+            lane,
+            slice_id[lane][i],
+            scripts_folder,
+            output_folder,
+            f"{output_folder}/{lane}",
+        ]
+        call(call_args)
 
 
 if __name__ == "__main__":

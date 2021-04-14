@@ -5,9 +5,6 @@
 import logging
 import os
 import sys
-from subprocess import call
-
-from slideseq.logging import create_logger
 
 log = logging.getLogger(__name__)
 
@@ -36,43 +33,15 @@ def main():
             key, value = line.rstrip().split("=")
             options[key] = value
 
-    output_folder = options["output_folder"]
     flowcell_barcode = options["flowcell_barcode"]
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
+
+    # Convert Illumina base calls to sam (unmapped.bam)
+    log.info(
+        f"{flowcell_barcode} - IlluminaBasecallsToSam for Lane {lane}_{lane_slice}"
     )
-    email_address = options["email_address"] if "email_address" in options else ""
-
-    try:
-        # Convert Illumina base calls to sam (unmapped.bam)
-        log.info(
-            f"{flowcell_barcode} - IlluminaBasecallsToSam for Lane {lane}_{lane_slice}"
-        )
-        log.debug(f"Command = {commandStr}")
-        os.system(commandStr)
-        log.info(f"{flowcell_barcode} - IlluminaBasecallsToSam is done.")
-    except:
-        log.exception("EXCEPTION")
-
-        if len(email_address) > 1:
-            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
-            content = (
-                f"The Slide-seq workflow for lane {lane} slice {lane_slice} failed at"
-                f" the step of converting barcodes to sam."
-                f" Please check the log file for the issues."
-            )
-            call_args = [
-                "python",
-                f"{scripts_folder}/send_email.py",
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        sys.exit()
+    log.debug(f"Command = {commandStr}")
+    os.system(commandStr)
+    log.info(f"{flowcell_barcode} - IlluminaBasecallsToSam is done.")
 
 
 if __name__ == "__main__":

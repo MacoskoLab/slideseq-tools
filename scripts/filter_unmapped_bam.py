@@ -64,15 +64,9 @@ def main():
         if "library_folder" in options
         else "{}/libraries".format(output_folder)
     )
-    scripts_folder = (
-        options["scripts_folder"]
-        if "scripts_folder" in options
-        else "/broad/macosko/jilong/slideseq_pipeline/scripts"
-    )
 
     # Read info from metadata file
     reference = ""
-    email_address = ""
     bead_structure = ""
     experiment_date = ""
     with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
@@ -83,7 +77,6 @@ def main():
             row = rows[i]
             if row[row0.index("library")] == library:
                 reference = row[row0.index("reference")]
-                email_address = row[row0.index("email")]
                 bead_structure = row[row0.index("bead_structure")]
                 experiment_date = row[row0.index("date")]
                 break
@@ -137,78 +130,58 @@ def main():
             f"TagMatchedBam error: {combined_cmatcher_file} does not exist!"
         )
 
-    try:
-        log.info(
-            f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id}"
-        )
+    log.info(
+        f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id}"
+    )
 
-        commandStr = f"samtools view -h -o {unmapped_sam} {unmapped_bam}"
-        os.system(commandStr)
+    commandStr = f"samtools view -h -o {unmapped_sam} {unmapped_bam}"
+    os.system(commandStr)
 
-        dict1 = {}
-        with open(combined_cmatcher_file, "r") as fin:
-            j = 0
+    dict1 = {}
+    with open(combined_cmatcher_file, "r") as fin:
+        j = 0
+        for line in fin:
+            j += 1
+            if j > 1:
+                dict1[line.split("\t")[0]] = line.split("\t")[2]
+
+    bs_range1 = get_bead_structure_range(bead_structure, "C")  # 1-7:26-32
+    lists = re.split(":", bs_range1)
+    with open(filtered_sam, "w") as fout:
+        with open(unmapped_sam, "r") as fin:
+            flag = False
             for line in fin:
-                j += 1
-                if j > 1:
-                    dict1[line.split("\t")[0]] = line.split("\t")[2]
+                if line[0] == "@":
+                    fout.write(line)
+                else:
+                    items1 = line.split("\t")
+                    if items1[1] == "77":
+                        read1 = items1[9]
+                        r = ""
+                        for s in lists:
+                            v = re.split("-", s)
+                            r += read1[int(v[0]) - 1 : int(v[1])]
+                        if r in dict1:
+                            fout.write(line)
+                            flag = True
+                        else:
+                            flag = False
+                    elif items1[1] == "141":
+                        if flag:
+                            fout.write(line)
 
-        bs_range1 = get_bead_structure_range(bead_structure, "C")  # 1-7:26-32
-        lists = re.split(":", bs_range1)
-        with open(filtered_sam, "w") as fout:
-            with open(unmapped_sam, "r") as fin:
-                flag = False
-                for line in fin:
-                    if line[0] == "@":
-                        fout.write(line)
-                    else:
-                        items1 = line.split("\t")
-                        if items1[1] == "77":
-                            read1 = items1[9]
-                            r = ""
-                            for s in lists:
-                                v = re.split("-", s)
-                                r += read1[int(v[0]) - 1 : int(v[1])]
-                            if r in dict1:
-                                fout.write(line)
-                                flag = True
-                            else:
-                                flag = False
-                        elif items1[1] == "141":
-                            if flag:
-                                fout.write(line)
+    if os.path.isfile(unmapped_sam):
+        call(["rm", unmapped_sam])
 
-        if os.path.isfile(unmapped_sam):
-            call(["rm", unmapped_sam])
+    commandStr = f"samtools view -S -b {filtered_sam} > {filtered_bam}"
+    os.system(commandStr)
 
-        commandStr = f"samtools view -S -b {filtered_sam} > {filtered_bam}"
-        os.system(commandStr)
+    if os.path.isfile(filtered_sam):
+        call(["rm", filtered_sam])
 
-        if os.path.isfile(filtered_sam):
-            call(["rm", filtered_sam])
-
-        log.info(
-            f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id} done"
-        )
-    except:
-        log.exception("EXCEPTION!")
-
-        if len(email_address) > 1:
-            subject = f"Slide-seq workflow failed for {flowcell_barcode}"
-            content = (
-                f"The Slide-seq workflow for {library} {reference2} in lane {lane} slice {slice_id}"
-                " failed at the step of filtering unmapped bam. Please check the log file for the issues."
-            )
-            call_args = [
-                "python",
-                f"{scripts_folder}/send_email.py",
-                email_address,
-                subject,
-                content,
-            ]
-            call(call_args)
-
-        raise
+    log.info(
+        f"{flowcell_barcode} - Filter unmapped bam for {library} {reference2} in lane {lane} slice {slice_id} done"
+    )
 
 
 if __name__ == "__main__":

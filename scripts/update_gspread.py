@@ -6,6 +6,7 @@ import argparse
 import os
 import re
 import time
+
 # silence warnings for pandas below
 import warnings
 
@@ -135,11 +136,9 @@ for flowcell in flowcells:
 
         file = "{}/BeadBarcodes.txt".format(wks.cell(row, puckcaller_i).value)
         if os.path.isfile(file):
-            l = 0
             with open(file, "r") as fin:
-                for line in fin:
-                    l += 1
-            wks.update_acell("AB" + str(row), str(l))
+                file_len = sum(1 for line in fin)
+            wks.update_acell("AB" + str(row), str(file_len))
 
         file = "{}/{}.fracIntronicExonic.txt".format(alignment_folder, library)
         if os.path.isfile(file):
@@ -187,11 +186,9 @@ for flowcell in flowcells:
                 )
             )
             if os.path.isfile(selected_cells):
-                l = 0
                 with open(selected_cells, "r") as fin:
-                    for line in fin:
-                        l += 1
-                num_cells += str(l) + ";"
+                    file_len = sum(1 for line in fin)
+                num_cells += str(file_len) + ";"
 
             file = "{}/{}/alignment/{}.ReadQualityMetrics.txt".format(
                 alignment_folder, reference2, library
