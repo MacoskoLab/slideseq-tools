@@ -30,7 +30,7 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
+        print(f"File {manifest_file} does not exist. Exiting...")
         sys.exit()
 
     # Read manifest file
@@ -45,7 +45,7 @@ def main():
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
 
     # Read info from metadata file
@@ -70,47 +70,23 @@ def main():
     if referencePure.endswith(".gz"):
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
-    reference2 = referencePure + "." + locus_function_list
+    reference2 = f"{referencePure}.{locus_function_list}"
 
-    alignment_folder = "{}/{}_{}/{}/alignment/".format(
-        library_folder, experiment_date, library, reference2
-    )
-    barcode_matching_folder = "{}/{}_{}/{}/barcode_matching".format(
-        library_folder, experiment_date, library, reference2
-    )
-    prefix_libraries = "{}/{}.{}.{}.{}".format(
-        barcode_matching_folder, flowcell_barcode, lane, lane_slice, library
-    )
+    alignment_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/alignment/"
+    barcode_matching_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/barcode_matching"
+    prefix_libraries = f"{barcode_matching_folder}/{flowcell_barcode}.{lane}.{lane_slice}.{library}"
     if barcode:
         prefix_libraries += "." + barcode
     mapped_bam = prefix_libraries + ".star_gene_exon_tagged2.bam"
-    mapped_sam = "{}/{}_{}_{}_{}_aligned.sam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    tagged_sam = "{}/{}_{}_{}_{}_tagged.sam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    tagged_bam = "{}/{}_{}_{}_{}_tagged.bam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    raw_sam = "{}/{}_{}_{}_{}_raw.sam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    raw_bam = "{}/{}_{}_{}_{}_raw.bam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    shuffled_sam = "{}/{}_{}_{}_{}_shuffled.sam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    shuffled_bam = "{}/{}_{}_{}_{}_shuffled.bam".format(
-        barcode_matching_folder, library, lane, lane_slice, barcode
-    )
-    combined_cmatcher_file = "{}/{}_barcode_matching.txt".format(
-        barcode_matching_folder, library
-    )
-    combined_cmatcher_shuffled_file = "{}/{}_barcode_matching_shuffled.txt".format(
-        barcode_matching_folder, library
-    )
+    mapped_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_aligned.sam"
+    tagged_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.sam"
+    tagged_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.bam"
+    raw_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.sam"
+    raw_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.bam"
+    shuffled_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_shuffled.sam"
+    shuffled_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_shuffled.bam"
+    combined_cmatcher_file = f"{barcode_matching_folder}/{library}_barcode_matching.txt"
+    combined_cmatcher_shuffled_file = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled.txt"
 
     if not os.path.isfile(mapped_bam):
         log.error(
@@ -158,22 +134,10 @@ def main():
     log.info("read raw2shuffle into dict2")
     dict2 = {}
     select_cell_file = (
-        alignment_folder
-        + library
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt"
+        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
     )
     select_cell_shuffled_file = (
-        alignment_folder
-        + library
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.shuffled.txt"
+        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
     )
     bc1 = np.loadtxt(select_cell_file, delimiter="\t", dtype="str", usecols=0)
     bc2 = np.loadtxt(select_cell_shuffled_file, delimiter="\t", dtype="str", usecols=0)

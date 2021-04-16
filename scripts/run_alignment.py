@@ -378,7 +378,7 @@ def main():
         f"{flowcell_barcode} - Mapping using STAR for {library} in lane {lane} is done."
     )
 
-    star_file = "{}.star.Aligned.out.bam".format(prefix_libraries)
+    star_file = f"{prefix_libraries}.star.Aligned.out.bam"
     if not os.path.isfile(star_file):
         log.error(f"{flowcell_barcode} - STAR error: {star_file} does not exist!")
         raise Exception(f"STAR error: {star_file} does not exist!")
@@ -387,52 +387,37 @@ def main():
         call(["rm", fastq_file])
 
     # Check alignments quality
-    star_file2 = "{}.star.Aligned.out.sam".format(prefix_libraries)
+    star_file2 = f"{prefix_libraries}.star.Aligned.out.sam"
     commandStr = "samtools view -h -o " + star_file2 + " " + star_file
     os.system(commandStr)
-    commandStr = "{}/check_alignments_quality {}".format(scripts_folder, star_file2)
+    commandStr = f"{scripts_folder}/check_alignments_quality {star_file2}"
     log.info(
-        f"{flowcell_barcode} - Check alignments quality for "
-        + library
-        + " in Lane "
-        + lane
+        f"{flowcell_barcode} - Check alignments quality for"
+        f" {library} in Lane {lane} is done."
     )
     log.debug(f"Command = {commandStr}")
     os.system(commandStr)
     log.info(
-        f"{flowcell_barcode} - Check alignments quality for "
-        + library
-        + " in Lane "
-        + lane
-        + " is done. ",
+        f"{flowcell_barcode} - Check alignments quality for"
+        f" {library} in Lane {lane} is done."
     )
     call(["rm", star_file2])
 
     # Sort aligned bam
     commandStr = (
-        "java -Djava.io.tmpdir="
-        + tmpdir
-        + " -Xmx4000m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 "
-    )
-    commandStr += (
-        "-jar "
-        + picard_folder
-        + "/picard.jar SortSam I="
-        + prefix_libraries
-        + ".star.Aligned.out.bam "
-    )
-    commandStr += (
-        "O="
-        + prefix_libraries
-        + ".aligned.sorted.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR="
-        + tmpdir
+        f"java -Djava.io.tmpdir={tmpdir} -Xmx4000m -XX:+UseParallelOldGC"
+        f" -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10"
+        f" -jar {picard_folder}/picard.jar SortSam"
+        f" I={prefix_libraries}.star.Aligned.out.bam"
+        f" O={prefix_libraries}.aligned.sorted.bam"
+        f" SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR={tmpdir}"
     )
     log.info(f"{flowcell_barcode} - SortSam for {library} in lane {lane}")
     log.debug(f"Command = {commandStr}")
     os.system(commandStr)
     log.info(f"{flowcell_barcode} - SortSam for {library} in lane {lane} is done.")
 
-    sortsam_file = "{}.aligned.sorted.bam".format(prefix_libraries)
+    sortsam_file = f"{prefix_libraries}.aligned.sorted.bam"
     if not os.path.isfile(sortsam_file):
         log.error(f"{flowcell_barcode} - SortSam error: {sortsam_file} does not exist!")
         raise Exception(f"SortSam error: {sortsam_file} does not exist!")
