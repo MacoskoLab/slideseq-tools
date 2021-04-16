@@ -573,22 +573,22 @@ def main():
     ]
     call(call_args)
 
-    # Call write_bijective_mapping.sh
-    output_file = f"{output_folder}/logs/write_bijective_mapping_{library}_{locus_function_list}.log"
-    submission_script = f"{scripts_folder}/write_bijective_mapping.sh"
-    call_args = [
-        "qsub",
-        "-o",
-        output_file,
-        submission_script,
-        manifest_file,
-        library,
-        scripts_folder,
-        locus_function_list,
-        output_folder,
-        f"{analysis_folder}/{reference2}",
-    ]
-    call(call_args)
+    # # Call write_bijective_mapping.sh...but what we just didn't
+    # output_file = f"{output_folder}/logs/write_bijective_mapping_{library}_{locus_function_list}.log"
+    # submission_script = f"{scripts_folder}/write_bijective_mapping.sh"
+    # call_args = [
+    #     "qsub",
+    #     "-o",
+    #     output_file,
+    #     submission_script,
+    #     manifest_file,
+    #     library,
+    #     scripts_folder,
+    #     locus_function_list,
+    #     output_folder,
+    #     f"{analysis_folder}/{reference2}",
+    # ]
+    # call(call_args)
 
     # Generate libraryID_XYUMIs.txt
     matched_barcodes = np.loadtxt(

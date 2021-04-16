@@ -224,29 +224,19 @@ def main():
     # Wait for all of run_alignment finish
 
     # Merge bam files
-    combined_bamfile = "{}/{}.bam".format(analysis_folder, library)
+    combined_bamfile = f"{analysis_folder}/{library}.bam"
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir}"
-        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
-        " -XX:GCHeapFreeLimit=10 -Xmx8192m "
-    )
-    commandStr += (
-        "-jar "
-        + picard_folder
-        + "/picard.jar MergeSamFiles TMP_DIR="
-        + tmpdir
-        + " CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT "
-    )
-    commandStr += (
-        "OUTPUT=" + combined_bamfile + " SORT_ORDER=coordinate ASSUME_SORTED=true"
+        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1"
+        f" -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m"
+        f" -jar {picard_folder}/picard.jar MergeSamFiles TMP_DIR={tmpdir}"
+        f" CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT"
+        f" OUTPUT={combined_bamfile} SORT_ORDER=coordinate ASSUME_SORTED=true"
     )
     for i in range(len(lanes)):
         if libraries[i] != library:
             continue
         for lane_slice in slice_id[lanes[i]]:
-            star_bamfile = "{}/{}.{}.{}.{}".format(
-                analysis_folder, flowcell_barcode, lanes[i], lane_slice, library
-            )
+            star_bamfile = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
             if barcodes[i]:
                 star_bamfile += "." + barcodes[i]
             star_bamfile += ".star_gene_exon_tagged2.bam"
@@ -263,12 +253,11 @@ def main():
 
     # Validate bam file
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir}"
-        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
-        " -XX:GCHeapFreeLimit=10 -Xmx16384m "
+        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1"
+        f" -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx16384m"
+        f" -jar {picard_folder}/picard.jar ValidateSamFile TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
+        f" INPUT={combined_bamfile} MODE=SUMMARY"
     )
-    commandStr += f"-jar {picard_folder}/picard.jar ValidateSamFile TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT "
-    commandStr += "INPUT=" + combined_bamfile + " MODE=SUMMARY"
     if (not is_NovaSeq) and (not is_NovaSeq_S4):
         commandStr += " IGNORE=MISSING_PLATFORM_VALUE IGNORE=INVALID_VERSION_NUMBER"
     log.info(f"{flowcell_barcode} - ValidateSamFile for " + library)
@@ -277,8 +266,8 @@ def main():
     log.info(f"{flowcell_barcode} - ValidateSamFile for {library} is done.")
 
     # Call generate_plots
-    output_file = "{}/logs/generate_plots_{}.log".format(output_folder, library)
-    submission_script = "{}/generate_plots.sh".format(scripts_folder)
+    output_file = f"{output_folder}/logs/generate_plots_{library}.log"
+    submission_script = f"{scripts_folder}/generate_plots.sh"
     call_args = [
         "qsub",
         "-o",
