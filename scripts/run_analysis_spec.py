@@ -27,7 +27,7 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
+        print(f"File {manifest_file} does not exist. Exiting...")
         sys.exit()
 
     # Read manifest file
@@ -44,12 +44,12 @@ def main():
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
     tmpdir = (
         options["temp_folder"]
         if "temp_folder" in options
-        else "{}/tmp".format(output_folder)
+        else f"{output_folder}/tmp"
     )
     dropseq_folder = (
         options["dropseq_folder"]
@@ -63,7 +63,7 @@ def main():
         else "/broad/macosko/jilong/slideseq_pipeline/scripts"
     )
     is_NovaSeq = str2bool(options["is_NovaSeq"]) if "is_NovaSeq" in options else False
-    is_NovaSeq_S4 = (
+    is_NovaSeq |= (
         str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
     )
 
@@ -83,7 +83,7 @@ def main():
     min_transcripts_per_cell = "10"
     experiment_date = ""
     gen_downsampling = False
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -114,7 +114,7 @@ def main():
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
 
-    reference2 = referencePure + "." + locus_function_list
+    reference2 = f"{referencePure}.{locus_function_list}"
 
     analysis_folder = f"{library_folder}/{experiment_date}_{library}"
     alignment_folder = f"{analysis_folder}/{reference2}/alignment/"
@@ -122,40 +122,15 @@ def main():
     combined_bamfile = f"{analysis_folder}/{library}.bam"
 
     # Select cells by num transcripts
-    commandStr = dropseq_folder + "/SelectCellsByNumTranscripts "
-    if is_NovaSeq or is_NovaSeq_S4:
-        commandStr += (
-            "-m 24076m I="
-            + combined_bamfile
-            + " MIN_TRANSCRIPTS_PER_CELL="
-            + min_transcripts_per_cell
-            + " READ_MQ="
-            + base_quality
-        )
-    else:
-        commandStr += (
-            "-m 7692m I="
-            + combined_bamfile
-            + " MIN_TRANSCRIPTS_PER_CELL="
-            + min_transcripts_per_cell
-            + " READ_MQ="
-            + base_quality
-        )
-    commandStr += (
-        " OUTPUT="
-        + alignment_folder
-        + library
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt.gz "
+    commandStr = (
+        f"{dropseq_folder}/SelectCellsByNumTranscripts -m {'24076m' if is_NovaSeq else '7692m'}"
+        f" I={combined_bamfile} MIN_TRANSCRIPTS_PER_CELL={min_transcripts_per_cell} READ_MQ={base_quality}"
+        f" OUTPUT={alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
+        f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
+        " LOCUS_FUNCTION_LIST=null" if locus_function_list == "intronic" else ""
+        " LOCUS_FUNCTION_LIST=INTRONIC" if "intronic" in locus_function_list else ""
     )
-    commandStr += "TMP_DIR=" + tmpdir + " VALIDATION_STRINGENCY=SILENT"
-    if locus_function_list == "exonic+intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
-    elif locus_function_list == "intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
+
     log.info(f"{flowcell_barcode} - SelectCellsByNumTranscripts for {library}")
     log.debug(f"Command = {commandStr}")
     os.system(commandStr)
@@ -165,60 +140,31 @@ def main():
     if run_barcodematching:
         # wait for BeadBarcodes_degenerate for finish...
 
-        bead_barcode_file = "{}/BeadBarcodes_degenerate.txt".format(analysis_folder)
+        bead_barcode_file = f"{analysis_folder}/BeadBarcodes_degenerate.txt"
         select_cell_gzfile = (
-            alignment_folder
-            + library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.txt.gz"
+            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
         )
         select_cell_file = (
-            alignment_folder
-            + library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.txt"
+            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
         )
         name = (
-            library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells"
+            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells"
         )
         name_shuffled = (
-            library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.shuffled"
+            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
         )
         os.system("gunzip -c " + select_cell_gzfile + " > " + select_cell_file)
 
         select_cell_shuffled_file = (
-            alignment_folder
-            + library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.shuffled.txt"
+            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
         )
-        with open(select_cell_shuffled_file, "w") as fout:
+        with open(select_cell_shuffled_file, "w") as out:
             with open(select_cell_file, "r") as fin:
                 for line in fin:
-                    line = line.strip(" \t\n")
-                    items = list(line)
+                    items = list(line.strip())
                     random.shuffle(items)
-                    bc = "".join(items)
-                    fout.write(bc + "\n")
+
+                    print("".join(items), file=out)
 
         with open(select_cell_file, "r") as fin:
             j = sum(1 for _ in fin)
@@ -260,9 +206,7 @@ def main():
 
             # shuffled barcodes
             infile2 = f"{alignment_folder}/{name_shuffled}_{str(i + 1)}.txt"
-            commandStr = "awk 'NR >= {} && NR <= {}' {} > {}".format(
-                str(i * k + 1), str((i + 1) * k), select_cell_shuffled_file, infile2
-            )
+            commandStr = f"awk 'NR >= {str(i * k + 1)} && NR <= {str((i + 1) * k)}' {select_cell_shuffled_file} > {infile2}"
             os.system(commandStr)
 
             file4 = f"{barcode_matching_folder}/{library}_barcode_matching_distance_shuffled_{str(i + 1)}.txt"
@@ -306,44 +250,17 @@ def main():
         call(call_args)
 
     # Generate digital expression files for all Illumina barcodes
-    commandStr = dropseq_folder + "/DigitalExpression "
-    if is_NovaSeq or is_NovaSeq_S4:
-        commandStr += "-m 32268m "
-    else:
-        commandStr += "-m 7692m "
-    commandStr += (
-        "I="
-        + combined_bamfile
-        + " O="
-        + alignment_folder
-        + library
-        + ".AllIllumina.digital_expression.txt.gz "
+    commandStr = (
+        f"{dropseq_folder}/DigitalExpression -m {'32268m' if is_NovaSeq else '7692m'}"
+        f" I={combined_bamfile} O={alignment_folder}{library}.AllIllumina.digital_expression.txt.gz"
+        f" SUMMARY={alignment_folder}{library}.AllIllumina.digital_expression_summary.txt EDIT_DISTANCE=1"
+        f" READ_MQ={base_quality} MIN_BC_READ_THRESHOLD=0"
+        f" CELL_BC_FILE={alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
+        f" TMP_DIR={tmpdir} OUTPUT_HEADER=false UEI={library} VALIDATION_STRINGENCY=SILENT"
+        " LOCUS_FUNCTION_LIST=null" if locus_function_list == "intronic" else ""
+        " LOCUS_FUNCTION_LIST=INTRONIC" if "intronic" in locus_function_list else ""
     )
-    commandStr += (
-        "SUMMARY="
-        + alignment_folder
-        + library
-        + ".AllIllumina.digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ="
-        + base_quality
-        + " MIN_BC_READ_THRESHOLD=0 "
-    )
-    commandStr += (
-        "CELL_BC_FILE="
-        + alignment_folder
-        + library
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt.gz TMP_DIR="
-        + tmpdir
-        + " "
-    )
-    commandStr += "OUTPUT_HEADER=false UEI=" + library + " VALIDATION_STRINGENCY=SILENT"
-    if locus_function_list == "exonic+intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
-    elif locus_function_list == "intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
+
     log.info(
         f"{flowcell_barcode} - DigitalExpression for {library} for all Illumina barcodes"
     )
@@ -355,21 +272,15 @@ def main():
 
     if gen_downsampling:
         # Downsample bam
-        downsample_folder = "{}/{}_{}/{}/downsample/".format(
-            library_folder, experiment_date, library, reference2
-        )
+        downsample_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/downsample/"
         call(["mkdir", "-p", downsample_folder])
-        f1 = "{}/{}.AllIllumina.digital_expression_summary.txt".format(
-            alignment_folder, library
-        )
-        f2 = "{}/{}_1.digital_expression_summary.txt".format(downsample_folder, library)
+        f1 = f"{alignment_folder}/{library}.AllIllumina.digital_expression_summary.txt"
+        f2 = f"{downsample_folder}/{library}_1.digital_expression_summary.txt"
         call(["cp", f1, f2])
         ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         for i in range(0, 9, 1):
-            output_file = "{}/logs/gen_downsample_dge_{}_{}_{}.log".format(
-                output_folder, library, reference2, str(ratio[i])
-            )
-            submission_script = "{}/gen_downsample_dge.sh".format(scripts_folder)
+            output_file = f"{output_folder}/logs/gen_downsample_dge_{library}_{reference2}_{str(ratio[i])}.log"
+            submission_script = f"{scripts_folder}/gen_downsample_dge.sh"
             call_args = [
                 "qsub",
                 "-o",
@@ -386,10 +297,8 @@ def main():
             call(call_args)
 
         # Call generate_plot_downsampling
-        output_file = "{}/logs/generate_plot_downsampling_{}_{}.log".format(
-            output_folder, library, reference2
-        )
-        submission_script = "{}/generate_plot_downsampling.sh".format(scripts_folder)
+        output_file = f"{output_folder}/logs/generate_plot_downsampling_{library}_{reference2}.log"
+        submission_script = f"{scripts_folder}/generate_plot_downsampling.sh"
         call_args = [
             "qsub",
             "-o",

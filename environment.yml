@@ -1,0 +1,15 @@
+name: slideseq-test
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - matplotlib>=3.4,<3.5
+  - networkx>=2.5
+  - numpy>=1.20
+  - pandas>=1.2
+  - plotnine>=0.8.0
+  - python=3.9
+  - scikit-learn>=0.24
+  - scipy>=1.6
+  - star>=2.7.8a,<2.8

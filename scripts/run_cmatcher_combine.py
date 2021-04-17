@@ -137,13 +137,7 @@ def main():
     alignment_folder = f"{analysis_folder}/{reference2}/alignment/"
     barcode_matching_folder = f"{analysis_folder}/{reference2}/barcode_matching/"
     select_cell_file = (
-        alignment_folder
-        + library
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt"
+        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
     )
 
     if not os.path.isfile(select_cell_file):
@@ -156,7 +150,7 @@ def main():
     k = 10000
     ls = j // k
 
-    log.info("# selected cells: " + str(j))
+    log.info(f"# selected cells: {j}")
 
     # wait for barcode matching and shuffled matching
 
@@ -337,12 +331,7 @@ def main():
         file1 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.txt"
         file2 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.finished"
         name = (
-            library
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.shuffled"
+            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
         )
         file3 = f"{alignment_folder}/{name}_{str(i + 1)}.txt"
         file4 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.txt.log"
@@ -396,17 +385,6 @@ def main():
                 "qsub",
                 "-o",
                 output_file,
-                "-l",
-                "h_vmem=10g",
-                "-notify",
-                "-l",
-                "h_rt=10:0:0",
-                "-j",
-                "y",
-                "-P",
-                "macosko_lab",
-                "-l",
-                "os=RedHat7",
                 submission_script,
                 manifest_file,
                 library,
