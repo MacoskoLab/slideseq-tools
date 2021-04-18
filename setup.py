@@ -29,5 +29,7 @@ setuptools.setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=["Click", "numpy", "pandas", "plotnine", "matplotlib"],
-    entry_points={"console_scripts": ["submit_job = slideseq.submit_job:main"]},
+    entry_points={
+        "console_scripts": ["submit_job = slideseq.scripts.submit_slideseq:main"]
+    },
 )

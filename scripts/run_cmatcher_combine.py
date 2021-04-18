@@ -136,9 +136,7 @@ def main():
     analysis_folder = f"{library_folder}/{experiment_date}_{library}"
     alignment_folder = f"{analysis_folder}/{reference2}/alignment/"
     barcode_matching_folder = f"{analysis_folder}/{reference2}/barcode_matching/"
-    select_cell_file = (
-        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
-    )
+    select_cell_file = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
 
     if not os.path.isfile(select_cell_file):
         log.error(f"{flowcell_barcode} - {select_cell_file} does not exist!")
@@ -330,9 +328,7 @@ def main():
             break
         file1 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.txt"
         file2 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.finished"
-        name = (
-            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
-        )
+        name = f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
         file3 = f"{alignment_folder}/{name}_{str(i + 1)}.txt"
         file4 = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled_{str(i + 1)}.txt.log"
         if os.path.isfile(file1):

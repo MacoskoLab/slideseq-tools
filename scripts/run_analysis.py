@@ -102,7 +102,7 @@ def main():
     puckcaller_path = ""
     bead_type = "180402"
     experiment_date = ""
-    gen_updistance_plot = False
+
     with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
@@ -124,10 +124,6 @@ def main():
                 puckcaller_path = row[row0.index("puckcaller_path")]
                 bead_type = row[row0.index("bead_type")]
                 experiment_date = row[row0.index("date")]
-                if "gen_updistance_plot" in row0:
-                    gen_updistance_plot = str2bool(
-                        row[row0.index("gen_updistance_plot")]
-                    )
 
     # Get tile information from RunInfo.xml
     slice_id = {}
@@ -287,31 +283,25 @@ def main():
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
     for j in lists:
-        call(["mkdir", "-p", "{}/{}.{}".format(analysis_folder, referencePure, j)])
+        call(["mkdir", "-p", f"{analysis_folder}/{referencePure}.{j}"])
         call(
             [
                 "mkdir",
                 "-p",
-                "{}/{}.{}/alignment".format(analysis_folder, referencePure, j),
+                f"{analysis_folder}/{referencePure}.{j}/alignment",
             ]
         )
 
         if run_barcodematching:
-            barcode_matching_folder = "{}/{}.{}/barcode_matching/".format(
-                analysis_folder, referencePure, j
+            barcode_matching_folder = (
+                f"{analysis_folder}/{referencePure}.{j}/barcode_matching/"
             )
             call(["mkdir", "-p", barcode_matching_folder])
             for i in range(len(lanes)):
                 if libraries[i] != library:
                     continue
                 for lane_slice in slice_id[lanes[i]]:
-                    toCopyFile = "{}/{}.{}.{}.{}".format(
-                        analysis_folder,
-                        flowcell_barcode,
-                        lanes[i],
-                        lane_slice,
-                        library,
-                    )
+                    toCopyFile = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
                     if barcodes[i]:
                         toCopyFile += "." + barcodes[i]
                     toCopyFile += ".star_gene_exon_tagged2.bam"
@@ -319,10 +309,8 @@ def main():
                         call(["cp", toCopyFile, barcode_matching_folder])
 
         # Call run_analysis_spec
-        output_file = "{}/logs/run_analysis_spec_{}_{}.log".format(
-            output_folder, library, j
-        )
-        submission_script = "{}/run_analysis_spec.sh".format(scripts_folder)
+        output_file = f"{output_folder}/logs/run_analysis_spec_{library}_{j}.log"
+        submission_script = f"{scripts_folder}/run_analysis_spec.sh"
         call_args = [
             "qsub",
             "-o",
@@ -333,7 +321,7 @@ def main():
             scripts_folder,
             j,
             output_folder,
-            "{}/{}.{}".format(analysis_folder, referencePure, j),
+            f"{analysis_folder}/{referencePure}.{j}",
         ]
         call(call_args)
 
@@ -341,9 +329,7 @@ def main():
         if libraries[i] != library:
             continue
         for lane_slice in slice_id[lanes[i]]:
-            toDeleteFile = "{}/{}.{}.{}.{}".format(
-                analysis_folder, flowcell_barcode, lanes[i], lane_slice, library
-            )
+            toDeleteFile = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
             if barcodes[i]:
                 toDeleteFile += "." + barcodes[i]
             toDeleteFile += ".star_gene_exon_tagged2.bam"
@@ -562,112 +548,6 @@ def main():
                 "{0:.3g}".format(100 * mismatch3 / totalreads)
             )
         )
-
-    if gen_updistance_plot:
-        for i in range(len(lanes)):
-            if libraries[i] != library:
-                continue
-
-            read1_file = "{}/{}.{}.read1.fastq".format(
-                analysis_folder, library, lanes[i]
-            )
-            read2_file = "{}/{}.{}.read2.fastq".format(
-                analysis_folder, library, lanes[i]
-            )
-            combined_bamfile = "{}/{}.{}.unmapped.bam".format(
-                analysis_folder, library, lanes[i]
-            )
-            combined_baifile = "{}/{}.{}.unmapped.bai".format(
-                analysis_folder, library, lanes[i]
-            )
-
-            commandStr = (
-                f"java -Djava.io.tmpdir={tmpdir}"
-                " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
-                " -XX:GCHeapFreeLimit=10 -Xmx8192m "
-            )
-            commandStr += (
-                "-jar "
-                + picard_folder
-                + "/picard.jar MergeSamFiles TMP_DIR="
-                + tmpdir
-                + " CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT "
-            )
-            commandStr += (
-                "OUTPUT="
-                + combined_bamfile
-                + " SORT_ORDER=coordinate ASSUME_SORTED=true"
-            )
-            for lane_slice in slice_id[lanes[i]]:
-                bamfile = "{}/{}.{}.{}.{}".format(
-                    analysis_folder, flowcell_barcode, lanes[i], lane_slice, library
-                )
-                if barcodes[i]:
-                    bamfile += "." + barcodes[i]
-                bamfile += ".unmapped.bam"
-                if not os.path.isfile(bamfile):
-                    log.error(
-                        f"{flowcell_barcode} - MergeSamFiles error: {bamfile} does not exist!"
-                    )
-                    raise Exception(f"{bamfile} does not exist!")
-                commandStr += " INPUT=" + bamfile
-            os.system(commandStr)
-
-            # Convert bam to fastq
-            commandStr = (
-                f"java -Djava.io.tmpdir={tmpdir}"
-                " -Xmx500m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 "
-            )
-            commandStr += (
-                "-jar "
-                + picard_folder
-                + "/picard.jar SamToFastq I="
-                + combined_bamfile
-                + " F="
-                + read1_file
-                + " F2="
-                + read2_file
-                + " VALIDATION_STRINGENCY=SILENT"
-            )
-            os.system(commandStr)
-
-            if os.path.isfile(combined_bamfile):
-                call(["rm", combined_bamfile])
-            if os.path.isfile(combined_baifile):
-                call(["rm", combined_baifile])
-            if os.path.isfile(read2_file):
-                call(["rm", read2_file])
-
-            output_file = "{}/logs/run_analysis_UPdistance_{}_{}.log".format(
-                output_folder, library, lanes[i]
-            )
-            submission_script = "{}/run_analysis_UPdistance.sh".format(scripts_folder)
-            call_args = [
-                "qsub",
-                "-o",
-                output_file,
-                "-l",
-                "h_vmem=35G",
-                "-notify",
-                "-l",
-                "h_rt=10:0:0",
-                "-j",
-                "y",
-                "-P",
-                "macosko_lab",
-                "-l",
-                "os=RedHat7",
-                submission_script,
-                manifest_file,
-                library,
-                lanes[i],
-                scripts_folder,
-                output_folder,
-                analysis_folder,
-            ]
-            call(call_args)
-
-            break
 
 
 if __name__ == "__main__":

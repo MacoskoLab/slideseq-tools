@@ -288,3 +288,7 @@ for flowcell in flowcells:
                 "_".join(skipped)
             )
         )
+
+
+def main():
+    ...

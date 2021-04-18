@@ -72,21 +72,39 @@ def main():
     referencePure = referencePure[: referencePure.rfind(".")]
     reference2 = f"{referencePure}.{locus_function_list}"
 
-    alignment_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/alignment/"
-    barcode_matching_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/barcode_matching"
-    prefix_libraries = f"{barcode_matching_folder}/{flowcell_barcode}.{lane}.{lane_slice}.{library}"
+    alignment_folder = (
+        f"{library_folder}/{experiment_date}_{library}/{reference2}/alignment/"
+    )
+    barcode_matching_folder = (
+        f"{library_folder}/{experiment_date}_{library}/{reference2}/barcode_matching"
+    )
+    prefix_libraries = (
+        f"{barcode_matching_folder}/{flowcell_barcode}.{lane}.{lane_slice}.{library}"
+    )
     if barcode:
         prefix_libraries += "." + barcode
     mapped_bam = prefix_libraries + ".star_gene_exon_tagged2.bam"
-    mapped_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_aligned.sam"
-    tagged_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.sam"
-    tagged_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.bam"
-    raw_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.sam"
-    raw_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.bam"
+    mapped_sam = (
+        f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_aligned.sam"
+    )
+    tagged_sam = (
+        f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.sam"
+    )
+    tagged_bam = (
+        f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_tagged.bam"
+    )
+    raw_sam = (
+        f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.sam"
+    )
+    raw_bam = (
+        f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_raw.bam"
+    )
     shuffled_sam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_shuffled.sam"
     shuffled_bam = f"{barcode_matching_folder}/{library}_{lane}_{lane_slice}_{barcode}_shuffled.bam"
     combined_cmatcher_file = f"{barcode_matching_folder}/{library}_barcode_matching.txt"
-    combined_cmatcher_shuffled_file = f"{barcode_matching_folder}/{library}_barcode_matching_shuffled.txt"
+    combined_cmatcher_shuffled_file = (
+        f"{barcode_matching_folder}/{library}_barcode_matching_shuffled.txt"
+    )
 
     if not os.path.isfile(mapped_bam):
         log.error(
@@ -133,12 +151,8 @@ def main():
 
     log.info("read raw2shuffle into dict2")
     dict2 = {}
-    select_cell_file = (
-        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
-    )
-    select_cell_shuffled_file = (
-        f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
-    )
+    select_cell_file = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
+    select_cell_shuffled_file = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
     bc1 = np.loadtxt(select_cell_file, delimiter="\t", dtype="str", usecols=0)
     bc2 = np.loadtxt(select_cell_shuffled_file, delimiter="\t", dtype="str", usecols=0)
     for i in range(len(bc1)):

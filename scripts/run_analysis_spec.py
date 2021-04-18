@@ -47,9 +47,7 @@ def main():
         else f"{output_folder}/libraries"
     )
     tmpdir = (
-        options["temp_folder"]
-        if "temp_folder" in options
-        else f"{output_folder}/tmp"
+        options["temp_folder"] if "temp_folder" in options else f"{output_folder}/tmp"
     )
     dropseq_folder = (
         options["dropseq_folder"]
@@ -127,8 +125,11 @@ def main():
         f" I={combined_bamfile} MIN_TRANSCRIPTS_PER_CELL={min_transcripts_per_cell} READ_MQ={base_quality}"
         f" OUTPUT={alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
         f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
-        " LOCUS_FUNCTION_LIST=null" if locus_function_list == "intronic" else ""
-        " LOCUS_FUNCTION_LIST=INTRONIC" if "intronic" in locus_function_list else ""
+        " LOCUS_FUNCTION_LIST=null"
+        if locus_function_list == "intronic"
+        else "" " LOCUS_FUNCTION_LIST=INTRONIC"
+        if "intronic" in locus_function_list
+        else ""
     )
 
     log.info(f"{flowcell_barcode} - SelectCellsByNumTranscripts for {library}")
@@ -141,23 +142,13 @@ def main():
         # wait for BeadBarcodes_degenerate for finish...
 
         bead_barcode_file = f"{analysis_folder}/BeadBarcodes_degenerate.txt"
-        select_cell_gzfile = (
-            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
-        )
-        select_cell_file = (
-            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
-        )
-        name = (
-            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells"
-        )
-        name_shuffled = (
-            f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
-        )
+        select_cell_gzfile = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
+        select_cell_file = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt"
+        name = f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells"
+        name_shuffled = f"{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled"
         os.system("gunzip -c " + select_cell_gzfile + " > " + select_cell_file)
 
-        select_cell_shuffled_file = (
-            f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
-        )
+        select_cell_shuffled_file = f"{alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.shuffled.txt"
         with open(select_cell_shuffled_file, "w") as out:
             with open(select_cell_file, "r") as fin:
                 for line in fin:
@@ -182,7 +173,9 @@ def main():
             os.system(commandStr)
 
             file4 = f"{barcode_matching_folder}/{library}_barcode_matching_distance_{str(i + 1)}.txt"
-            file5 = f"{barcode_matching_folder}/{library}_barcode_matching_{str(i + 1)}.txt"
+            file5 = (
+                f"{barcode_matching_folder}/{library}_barcode_matching_{str(i + 1)}.txt"
+            )
             output_file = f"{output_folder}/logs/run_cmatcher_{library}_{locus_function_list}_{str(i + 1)}.log"
             submission_script = f"{scripts_folder}/run_cmatcher.sh"
             call_args = [
@@ -257,8 +250,11 @@ def main():
         f" READ_MQ={base_quality} MIN_BC_READ_THRESHOLD=0"
         f" CELL_BC_FILE={alignment_folder}{library}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
         f" TMP_DIR={tmpdir} OUTPUT_HEADER=false UEI={library} VALIDATION_STRINGENCY=SILENT"
-        " LOCUS_FUNCTION_LIST=null" if locus_function_list == "intronic" else ""
-        " LOCUS_FUNCTION_LIST=INTRONIC" if "intronic" in locus_function_list else ""
+        " LOCUS_FUNCTION_LIST=null"
+        if locus_function_list == "intronic"
+        else "" " LOCUS_FUNCTION_LIST=INTRONIC"
+        if "intronic" in locus_function_list
+        else ""
     )
 
     log.info(
@@ -272,7 +268,9 @@ def main():
 
     if gen_downsampling:
         # Downsample bam
-        downsample_folder = f"{library_folder}/{experiment_date}_{library}/{reference2}/downsample/"
+        downsample_folder = (
+            f"{library_folder}/{experiment_date}_{library}/{reference2}/downsample/"
+        )
         call(["mkdir", "-p", downsample_folder])
         f1 = f"{alignment_folder}/{library}.AllIllumina.digital_expression_summary.txt"
         f2 = f"{downsample_folder}/{library}_1.digital_expression_summary.txt"
