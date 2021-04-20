@@ -133,10 +133,9 @@ def main():
 
     # Check if the input Illumina folder is in correct format
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
-        f" -XX:ParallelGCThreads=1 -XX:GCTimeLimit=5"
-        f" -XX:GCHeapFreeLimit=10 -Xmx8192m "
-        f"-jar {picard_folder}/picard.jar CheckIlluminaDirectory TMP_DIR={tmpdir}"
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelGC"
+        f" -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xmx8192m"
+        f" -jar {picard_folder}/picard.jar CheckIlluminaDirectory TMP_DIR={tmpdir}"
         f" VALIDATION_STRINGENCY=SILENT"
         f" BASECALLS_DIR={basecalls_dir} READ_STRUCTURE={read_structure}"
     )

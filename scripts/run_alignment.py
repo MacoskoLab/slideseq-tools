@@ -232,9 +232,7 @@ def main():
         f"{flowcell_barcode} - TrimStartingSequence for {library} in lane {lane} is done."
     )
 
-    adapter_trim_file = (
-        f"{prefix_libraries}.unaligned_trimstartingsequence.filtered.bam"
-    )
+    adapter_trim_file = f"{prefix_libraries}.unaligned_trimstartingsequence.filtered.bam"
     if not os.path.isfile(adapter_trim_file):
         log.error(
             f"{flowcell_barcode} - TrimStartingSequence error: {adapter_trim_file} does not exist!"
@@ -272,7 +270,7 @@ def main():
 
     # Convert bam to fastq
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -Xmx500m -XX:+UseParallelGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+        f"java -Djava.io.tmpdir={tmpdir} -Xmx500m -XX:+UseParallelGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=20"
         f" -XX:GCHeapFreeLimit=10 -jar {picard_folder}/picard.jar SamToFastq"
         f" I={prefix_libraries}.unaligned_mc_tagged_polyA_filtered.bam F={prefix_libraries}.fastq"
         f" VALIDATION_STRINGENCY=SILENT"
@@ -328,12 +326,12 @@ def main():
 
     # Sort aligned bam
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -Xmx4000m -XX:+UseParallelOldGC"
-        f" -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10"
+        f"java -Djava.io.tmpdir={tmpdir} -Xmx4000m -XX:+UseParallelGC"
+        f" -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10"
         f" -jar {picard_folder}/picard.jar SortSam"
-        f" I={prefix_libraries}.star.Aligned.out.bam"
-        f" O={prefix_libraries}.aligned.sorted.bam"
-        f" SORT_ORDER=queryname VALIDATION_STRINGENCY=SILENT TMP_DIR={tmpdir}"
+        f" -I {prefix_libraries}.star.Aligned.out.bam"
+        f" -O {prefix_libraries}.aligned.sorted.bam"
+        f" --SORT_ORDER queryname --VALIDATION_STRINGENCY SILENT --TMP_DIR {tmpdir}"
     )
     log.info(f"{flowcell_barcode} - SortSam for {library} in lane {lane}")
     log.debug(f"Command = {commandStr}")
@@ -350,12 +348,12 @@ def main():
 
     # Merge unmapped bam and aligned bam
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -Xmx8192m -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
-        f" -XX:GCHeapFreeLimit=10 -jar {picard_folder}/picard.jar MergeBamAlignment R={reference}"
-        f" UNMAPPED={prefix_libraries}.unaligned_mc_tagged_polyA_filtered.bam"
-        f" ALIGNED={prefix_libraries}.aligned.sorted.bam O={prefix_libraries}.merged.bam"
-        f" COMPRESSION_LEVEL=0 INCLUDE_SECONDARY_ALIGNMENTS=false CLIP_ADAPTERS=false"
-        f" VALIDATION_STRINGENCY=SILENT TMP_DIR={tmpdir}"
+        f"java -Djava.io.tmpdir={tmpdir} -Xmx8192m -XX:+UseParallelGC -XX:GCTimeLimit=20"
+        f" -XX:GCHeapFreeLimit=10 -jar {picard_folder}/picard.jar MergeBamAlignment -R {reference}"
+        f" --UNMAPPED {prefix_libraries}.unaligned_mc_tagged_polyA_filtered.bam"
+        f" --ALIGNED {prefix_libraries}.aligned.sorted.bam -O {prefix_libraries}.merged.bam"
+        f" --COMPRESSION_LEVEL 0 --INCLUDE_SECONDARY_ALIGNMENTS false --CLIP_ADAPTERS false"
+        f" --VALIDATION_STRINGENCY SILENT --TMP_DIR {tmpdir}"
     )
     log.info(f"{flowcell_barcode} - MergeBamAlignment for {library} in lane {lane}")
     log.debug(f"Command = {commandStr}")

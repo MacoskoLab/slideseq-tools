@@ -14,10 +14,10 @@ log = logging.getLogger(__name__)
 
 def main():
     if len(sys.argv) != 5:
-        print(
+        log.error(
             "Please provide four arguments: manifest file, library ID, locus function and ratio!"
         )
-        sys.exit()
+        sys.exit(1)
 
     manifest_file = sys.argv[1]
     library = sys.argv[2]
@@ -26,8 +26,8 @@ def main():
 
     # Check if the manifest file exists
     if not os.path.isfile(manifest_file):
-        print("File {} does not exist. Exiting...".format(manifest_file))
-        sys.exit()
+        log.error(f"File {manifest_file} does not exist. Exiting...")
+        sys.exit(1)
 
     # Read manifest file
     options = {}
@@ -41,12 +41,12 @@ def main():
     library_folder = (
         options["library_folder"]
         if "library_folder" in options
-        else "{}/libraries".format(output_folder)
+        else f"{output_folder}/libraries"
     )
     tmpdir = (
         options["temp_folder"]
         if "temp_folder" in options
-        else "{}/tmp".format(output_folder)
+        else f"{output_folder}/tmp"
     )
     dropseq_folder = (
         options["dropseq_folder"]
@@ -60,9 +60,6 @@ def main():
     )
 
     is_NovaSeq = str2bool(options["is_NovaSeq"]) if "is_NovaSeq" in options else False
-    is_NovaSeq_S4 = (
-        str2bool(options["is_NovaSeq_S4"]) if "is_NovaSeq_S4" in options else False
-    )
 
     # Read info from metadata file
     lanes = []
@@ -75,7 +72,7 @@ def main():
     base_quality = "10"
     min_transcripts_per_cell = "10"
     experiment_date = ""
-    with open("{}/parsed_metadata.txt".format(output_folder), "r") as fin:
+    with open(f"{output_folder}/parsed_metadata.txt", "r") as fin:
         reader = csv.reader(fin, delimiter="\t")
         rows = list(reader)
         row0 = rows[0]
@@ -99,58 +96,28 @@ def main():
     if referencePure.endswith(".gz"):
         referencePure = referencePure[: referencePure.rfind(".")]
     referencePure = referencePure[: referencePure.rfind(".")]
-    reference2 = referencePure + "." + locus_function_list
+    reference2 = f"{referencePure}.{locus_function_list}"
 
-    analysis_folder = "{}/{}_{}".format(library_folder, experiment_date, library)
-    downsample_folder = "{}/{}/downsample/".format(analysis_folder, reference2)
-    bam_file = "{}/{}.bam".format(analysis_folder, library)
+    analysis_folder = f"{library_folder}/{experiment_date}_{library}"
+    downsample_folder = f"{analysis_folder}/{reference2}/downsample"
+    bam_file = f"{analysis_folder}/{library}.bam"
 
     # Down sample reads
     sampled_bam_file = downsample_folder + library + "_" + ratio + ".bam"
     commandStr = (
-        "java -Djava.io.tmpdir="
-        + tmpdir
-        + " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m "
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelGC -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xmx8192m"
+        f" -jar {picard_folder}/picard.jar DownsampleSam --TMP_DIR {tmpdir}"
+        f" -I {bam_file} -O {sampled_bam_file} -P {ratio}"
     )
-    commandStr += (
-        "-jar " + picard_folder + "/picard.jar DownsampleSam TMP_DIR=" + tmpdir
-    )
-    commandStr += " I=" + bam_file + " O=" + sampled_bam_file + " P=" + ratio
     os.system(commandStr)
 
     # Select cells by num transcripts
-    commandStr = dropseq_folder + "/SelectCellsByNumTranscripts "
-    if is_NovaSeq or is_NovaSeq_S4:
-        commandStr += (
-            "-m 24076m I="
-            + sampled_bam_file
-            + " MIN_TRANSCRIPTS_PER_CELL="
-            + min_transcripts_per_cell
-            + " READ_MQ="
-            + base_quality
-        )
-    else:
-        commandStr += (
-            "-m 7692m I="
-            + sampled_bam_file
-            + " MIN_TRANSCRIPTS_PER_CELL="
-            + min_transcripts_per_cell
-            + " READ_MQ="
-            + base_quality
-        )
-    commandStr += (
-        " OUTPUT="
-        + downsample_folder
-        + library
-        + "_"
-        + ratio
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt.gz TMP_DIR="
-        + tmpdir
-        + " VALIDATION_STRINGENCY=SILENT"
+    commandStr = (
+        f"{dropseq_folder}/SelectCellsByNumTranscripts "
+        f" -m {'24076m' if is_NovaSeq else '7692m'}"
+        f" -I {sampled_bam_file} --MIN_TRANSCRIPTS_PER_CELL {min_transcripts_per_cell} --READ_MQ {base_quality}"
+        f" -O {downsample_folder}/{library}_{ratio}.{min_transcripts_per_cell}_transcript_mq_{base_quality}_selected_cells.txt.gz"
+        f" --TMP_DIR {tmpdir} --VALIDATION_STRINGENCY SILENT"
     )
     if locus_function_list == "exonic+intronic":
         commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
@@ -159,96 +126,33 @@ def main():
     os.system(commandStr)
 
     # Generate digital expression files
-    commandStr = dropseq_folder + "/DigitalExpression -m 7692m "
-    commandStr += (
-        "I="
-        + sampled_bam_file
-        + " O="
-        + downsample_folder
-        + library
-        + "_"
-        + ratio
-        + ".digital_expression.txt.gz "
+    commandStr = (
+        f"{dropseq_folder}/DigitalExpression -m 7692m "
+        f" -I {sampled_bam_file} -O {downsample_folder}{library}_{ratio}.digital_expression.txt.gz "
+        f" --SUMMARY {downsample_folder}{library}_{ratio}.digital_expression_summary.txt"
+        f" --EDIT_DISTANCE 1 --READ_MQ {base_quality} --MIN_BC_READ_THRESHOLD 0"
+        f" --CELL_BC_FILE {downsample_folder}{library}_{ratio}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
+        f" --TMP_DIR {tmpdir} --OUTPUT_HEADER true UEI {library} --VALIDATION_STRINGENCY SILENT"
     )
-    commandStr += (
-        "SUMMARY="
-        + downsample_folder
-        + library
-        + "_"
-        + ratio
-        + ".digital_expression_summary.txt EDIT_DISTANCE=1 READ_MQ="
-        + base_quality
-        + " MIN_BC_READ_THRESHOLD=0 "
-    )
-    commandStr += (
-        "CELL_BC_FILE="
-        + downsample_folder
-        + library
-        + "_"
-        + ratio
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt.gz TMP_DIR="
-        + tmpdir
-        + " "
-    )
-    commandStr += "OUTPUT_HEADER=true UEI=" + library + " VALIDATION_STRINGENCY=SILENT"
     if locus_function_list == "exonic+intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=INTRONIC"
+        commandStr += " --LOCUS_FUNCTION_LIST INTRONIC"
     elif locus_function_list == "intronic":
-        commandStr += " LOCUS_FUNCTION_LIST=null LOCUS_FUNCTION_LIST=INTRONIC"
+        commandStr += " --LOCUS_FUNCTION_LIST null --LOCUS_FUNCTION_LIST INTRONIC"
     os.system(commandStr)
 
     if os.path.isfile(
-        downsample_folder
-        + library
-        + "_"
-        + ratio
-        + "."
-        + min_transcripts_per_cell
-        + "_transcripts_mq_"
-        + base_quality
-        + "_selected_cells.txt.gz"
+        f"{downsample_folder}{library}_{ratio}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
     ):
         os.system(
-            "rm "
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + "."
-            + min_transcripts_per_cell
-            + "_transcripts_mq_"
-            + base_quality
-            + "_selected_cells.txt.gz"
+            f"rm {downsample_folder}{library}_{ratio}.{min_transcripts_per_cell}_transcripts_mq_{base_quality}_selected_cells.txt.gz"
         )
-    if os.path.isfile(
-        downsample_folder
-        + library
-        + "_"
-        + ratio
-        + ".SelectCellsByNumTranscripts_metrics"
-    ):
+    if os.path.isfile(f"{downsample_folder}{library}_{ratio}.SelectCellsByNumTranscripts_metrics"):
         os.system(
-            "rm "
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + ".SelectCellsByNumTranscripts_metrics"
+            f"rm {downsample_folder}{library}_{ratio}.SelectCellsByNumTranscripts_metrics"
         )
-    if os.path.isfile(
-        downsample_folder + library + "_" + ratio + ".digital_expression.txt.gz"
-    ):
+    if os.path.isfile(f"{downsample_folder}{library}_{ratio}.digital_expression.txt.gz"):
         os.system(
-            "rm "
-            + downsample_folder
-            + library
-            + "_"
-            + ratio
-            + ".digital_expression.txt.gz"
+            f"rm {downsample_folder}{library}_{ratio}.digital_expression.txt.gz"
         )
     if os.path.isfile(sampled_bam_file):
         os.system("rm " + sampled_bam_file)

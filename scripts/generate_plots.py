@@ -177,7 +177,7 @@ def main():
     commandStr = (
         "java -Djava.io.tmpdir="
         + tmpdir
-        + " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 "
+        + " -XX:+UseParallelGC -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 "
     )
     if is_NovaSeq or is_NovaSeq_S4:
         commandStr += "-Xmx16384m "

@@ -222,8 +222,8 @@ def main():
     # Merge bam files
     combined_bamfile = f"{analysis_folder}/{library}.bam"
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1"
-        f" -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m"
+        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC"
+        f" -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xmx8192m"
         f" -jar {picard_folder}/picard.jar MergeSamFiles TMP_DIR={tmpdir}"
         f" CREATE_INDEX=true CREATE_MD5_FILE=false VALIDATION_STRINGENCY=SILENT"
         f" OUTPUT={combined_bamfile} SORT_ORDER=coordinate ASSUME_SORTED=true"
@@ -249,8 +249,8 @@ def main():
 
     # Validate bam file
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1"
-        f" -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx16384m"
+        f"java -Djava.io.tmpdir={tmpdir} -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC"
+        f" -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xmx16384m"
         f" -jar {picard_folder}/picard.jar ValidateSamFile TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
         f" INPUT={combined_bamfile} MODE=SUMMARY"
     )

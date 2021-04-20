@@ -205,7 +205,7 @@ def main():
     matched_bam_file = "{}/{}_matched.bam".format(barcode_matching_folder, library)
     commandStr = (
         f"java -Djava.io.tmpdir={tmpdir}"
-        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC -XX:GCTimeLimit=20"
         " -XX:GCHeapFreeLimit=10 -Xmx8192m "
     )
     commandStr += (
@@ -245,7 +245,7 @@ def main():
     matched_raw_bam_file = f"{barcode_matching_folder}/{library}_matched_raw.bam"
     commandStr = (
         f"java -Djava.io.tmpdir={tmpdir}"
-        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC -XX:GCTimeLimit=20"
         " -XX:GCHeapFreeLimit=10 -Xmx8192m "
     )
     commandStr += (
@@ -284,7 +284,7 @@ def main():
     )
     commandStr = (
         f"java -Djava.io.tmpdir={tmpdir}"
-        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+        " -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC -XX:GCTimeLimit=20"
         " -XX:GCHeapFreeLimit=10 -Xmx8192m "
     )
     commandStr += (
@@ -650,8 +650,8 @@ def main():
 
     # Collect RnaSeq metrics
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1"
-        f" -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx8192m"
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelGC"
+        f" -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xmx8192m"
         f" -jar {picard_folder}/picard.jar CollectRnaSeqMetrics TMP_DIR={tmpdir}"
         f" VALIDATION_STRINGENCY=SILENT I={matched_bam_file} REF_FLAT={ref_flat} STRAND_SPECIFICITY=NONE"
         f" OUTPUT={alignment_folder}{library}.fracIntronicExonic.txt RIBOSOMAL_INTERVALS={ribosomal_intervals}"
@@ -1305,7 +1305,7 @@ def main():
         )
         commandStr = (
             f"java -Djava.io.tmpdir={tmpdir}"
-            " -Dsamjdk.buffer_size=131072 -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+            " -Dsamjdk.buffer_size=131072 -XX:+UseParallelGC -XX:GCTimeLimit=20"
             " -XX:GCHeapFreeLimit=10 -Xmx8192m "
         )
         commandStr += (

@@ -94,9 +94,8 @@ def main():
     log.info(f"{flowcell_barcode} - Running ExtractIlluminaBarcodes")
     # Extract Illumina barcodes
     commandStr = (
-        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelOldGC"
-        " -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10"
-        " -Xmx4000m -jar {picard_folder}/picard.jar ExtractIlluminaBarcodes"
+        f"java -Djava.io.tmpdir={tmpdir} -XX:+UseParallelGC -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10"
+        f" -Xmx4000m -jar {picard_folder}/picard.jar ExtractIlluminaBarcodes"
         f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
         f" BASECALLS_DIR={basecalls_dir} OUTPUT_DIR={output_folder}/{lane}/barcodes"
         f" LANE={lane} READ_STRUCTURE={read_structure}"
@@ -115,7 +114,7 @@ def main():
     for i in range(len(slice_id[lane])):
         commandStr = (
             f"java -Djava.io.tmpdir={tmpdir}"
-            " -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50"
+            " -XX:+UseParallelGC -XX:GCTimeLimit=20"
             " -XX:GCHeapFreeLimit=10 -Xmx10192m "
             f" -jar {picard_folder} /picard.jar IlluminaBasecallsToSam"
             f" TMP_DIR={tmpdir} VALIDATION_STRINGENCY=SILENT"
