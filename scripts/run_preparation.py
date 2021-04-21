@@ -72,12 +72,12 @@ def main():
     read_structure = get_read_structure(runinfo_file)
 
     # Parse metadata file
-    log.info(f"{flowcell_barcode} - Parsing metadata file.")
-    commandStr = (
-        f"python {scripts_folder}/parse_metadata.py -i {metadata_file}"
-        f" -r {runinfo_file} -o {output_folder}/parsed_metadata.txt"
-    )
-    os.system(commandStr)
+    # log.info(f"{flowcell_barcode} - Parsing metadata file.")
+    # commandStr = (
+    #     f"python {scripts_folder}/parse_metadata.py -i {metadata_file}"
+    #     f" -r {runinfo_file} -o {output_folder}/parsed_metadata.txt"
+    # )
+    # os.system(commandStr)
 
     # Read info from metadata file
     lanes = []

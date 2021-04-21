@@ -3,15 +3,17 @@ import pathlib
 import sys
 
 
-def create_logger(log_file: pathlib.Path, log_level: int = logging.INFO):
+def create_logger(debug: bool = False, log_file: pathlib.Path = None):
     log = logging.getLogger()
 
     # google is noisy, turn up its logging level
     logging.getLogger("googleapiclient").setLevel(logging.WARNING)
 
-    log.setLevel(log_level)
+    if debug:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.INFO)
 
-    # Need to modify logger to output INFO level to stdout for cloudwatch/local runs
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(log_level)
     formatter = logging.Formatter(
