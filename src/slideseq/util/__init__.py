@@ -3,31 +3,43 @@
 import pathlib
 import sys
 import xml.etree.ElementTree as et
+from typing import Any
 
 import slideseq.util.constants as constants
 
 
-def get_env_name():
-    # need to pass this to the qsub scripts so they activate the right thing
+def get_env_name() -> str:
+    # need to pass this to the qsub scripts so they can activate the right environment
     return sys.executable.split("/")[-3]
 
 
-def qsub_args(cpu: int = 1, mem: int = 1, hours: int = 1, minutes: int = 0) -> list[str]:
+def qsub_args(
+    log_file: pathlib.Path = None,
+    include_env: bool = False,
+    **kwargs: Any,
+) -> list[str]:
     """
-    Returns a list of options to pass to qsub, including the constant options
+    Returns command list starting with "qsub", adding configured options
 
-    :param cpu: number of cpus to request
-    :param mem: amount of memory (in gb) to request
-    :param hours: expected hours needed for the job
-    :param minutes: expected minutes needed for the job
+    :param log_file: path to log file for output
+    :param include_env: pass in the current conda environment as a variable
+    :param kwargs: additional keyword arguments are passed as environment variables.
+                   Values will be converted to strings
+
     :return: configured list of options, including common args
     """
 
-    arg_list = constants.QSUB_ARGS[:]
-    if cpu > 1:
-        arg_list.extend(["-pe", "smp", f"{cpu}", "-binding", f"linear:{cpu}"])
+    # standard options, including resources requests, are specified in the shell scripts
+    arg_list = ["qsub"]
 
-    arg_list.extend(["-l", f"h_vmem={mem}g", "-l", f"h_rt={hours}:{minutes}:0"])
+    if log_file is not None:
+        arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
+
+    if include_env:
+        arg_list.extend(["-v", f"CONDA_ENV={get_env_name()}"])
+
+    for name, value in kwargs.items():
+        arg_list.extend(["-v", f"{name}='{value}'"])
 
     return arg_list
 
@@ -74,7 +86,7 @@ def get_lanes(run_info_file: pathlib.Path) -> range:
         run_info = et.parse(f)
 
     lane_count = int(run_info.find('./Run/FlowcellLayout[@LaneCount]').get('LaneCount'))
-    return range(lane_count)
+    return range(1, lane_count + 1)
 
 
 # Convert string to boolean

@@ -1,0 +1,3 @@
+include src/slideseq/scripts/demultiplex.sh
+include src/slideseq/scripts/alignment.sh
+include src/slideseq/scripts/processing.sh
