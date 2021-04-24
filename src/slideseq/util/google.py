@@ -3,14 +3,12 @@
 import io
 import json
 import logging
-
-from google.oauth2 import service_account
-from google.cloud import secretmanager
-
-from googleapiclient.discovery import build, Resource
+from datetime import datetime
 
 import pandas as pd
-
+from google.cloud import secretmanager
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import Resource, build
 
 # name for secret storing service account credentials. the API will use existing user credentials
 # which should be configured locally to retrieve this secret, and then configure the service account
@@ -24,16 +22,16 @@ NUM_RETRIES = 5
 log = logging.getLogger(__name__)
 
 
-def get_secrets_manager_credentials(secret_name: str = SECRET_NAME) -> service_account.Credentials:
+def get_secrets_manager_credentials(
+    secret_name: str = SECRET_NAME,
+) -> Credentials:
     client = secretmanager.SecretManagerServiceClient()
     secret_string = client.access_secret_version(name=secret_name).payload.data
 
-    return service_account.Credentials.from_service_account_info(
-        json.loads(secret_string)
-    )
+    return Credentials.from_service_account_info(json.loads(secret_string))
 
 
-def get_service(google_credentials: service_account.Credentials) -> Resource:
+def get_service(google_credentials: Credentials) -> Resource:
     service = build(
         "drive",
         "v3",

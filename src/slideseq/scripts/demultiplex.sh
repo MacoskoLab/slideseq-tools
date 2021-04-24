@@ -14,13 +14,6 @@ source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8
 
-if [ -z "$CONDA_ENV" ]
-then
-  conda activate ${CONDA_ENV}
-else
-  echo "Error: conda environment is not set"
-  exit 1
-fi
 
 # check that the data directory has all the needed files
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
@@ -41,8 +34,8 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   --BASECALLS_DIR ${BASECALLS_DIR} \
   --READ_STRUCTURE ${READ_STRUCTURE} \
   --OUTPUT_DIR ${OUTPUT_DIR}/L00${SGE_TASK_ID}/barcodes \
-  --BARCODE_FILE ${BARCODE_FILE} \
-  --METRICS_FILE ${METRICS_FILE} \
+  --BARCODE_FILE ${OUTPUT_DIR}/L00${SGE_TASK_ID}/barcode_params.txt \
+  --METRICS_FILE ${OUTPUT_DIR}/L00${SGE_TASK_ID}/${RUN_BARCODE}.barcode_metrics.txt \
   --COMPRESS_OUTPUTS true \
   --NUM_PROCESSORS 8
 
@@ -57,7 +50,7 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   --READ_STRUCTURE ${READ_STRUCTURE} \
   --RUN_BARCODE ${RUN_BARCODE} \
   --BARCODES_DIR ${BARCODE_DIR} \
-  --LIBRARY_PARAMS ${LIBRARY_PARAMS} \
+  --LIBRARY_PARAMS ${OUTPUT_DIR}/L00${SGE_TASK_ID}/library_params.txt \
   --INCLUDE_NON_PF_READS false \
   --APPLY_EAMSS_FILTER false \
   --ADAPTERS_TO_CHECK null \

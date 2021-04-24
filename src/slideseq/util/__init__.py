@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import pathlib
 import sys
 import xml.etree.ElementTree as et
@@ -15,14 +13,12 @@ def get_env_name() -> str:
 
 def qsub_args(
     log_file: pathlib.Path = None,
-    include_env: bool = False,
     **kwargs: Any,
 ) -> list[str]:
     """
     Returns command list starting with "qsub", adding configured options
 
     :param log_file: path to log file for output
-    :param include_env: pass in the current conda environment as a variable
     :param kwargs: additional keyword arguments are passed as environment variables.
                    Values will be converted to strings
 
@@ -35,13 +31,52 @@ def qsub_args(
     if log_file is not None:
         arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
 
-    if include_env:
-        arg_list.extend(["-v", f"CONDA_ENV={get_env_name()}"])
-
     for name, value in kwargs.items():
         arg_list.extend(["-v", f"{name}='{value}'"])
 
     return arg_list
+
+
+def picard_cmd(command: str, tmp_dir: pathlib.Path):
+    """Return the beginning of a Picard command, with standard options
+
+    :param command: name of the picard tool being invoked
+    :param tmp_dir: Location of the tmp directory to use
+    """
+    return [
+        "java",
+        f"-Djava.io.tmp_dir={tmp_dir}",
+        "-Xms32g",
+        "-Xmx62g",
+        "-XX:+UseParallelGC",
+        "-XX:GCTimeLimit=20",
+        "-XX:GCHeapFreeLimit=10",
+        "-jar",
+        f"{constants.PICARD}",
+        command,
+        "--TMP_DIR",
+        f"{tmp_dir}",
+        "--VALIDATION_STRINGENCY",
+        "SILENT",
+    ]
+
+
+def dropseq_cmd(command: str, tmp_dir: pathlib.Path, compression: int = 0):
+    """Return the beginning of a DropSeq command, with standard options
+
+    :param command: name of the dropseq tool being invoked
+    :param tmp_dir: Location of the tmp directory to use
+    :param compression: Compression level for output BAM
+    """
+    return [
+        f"{constants.DROPSEQ_DIR / command}",
+        "--TMP_DIR",
+        f"{tmp_dir}",
+        "--VALIDATION_STRINGENCY",
+        "SILENT",
+        "--COMPRESSION_LEVEL",
+        f"{compression}",
+    ]
 
 
 def get_read_structure(run_info_file: pathlib.Path) -> str:
@@ -85,10 +120,5 @@ def get_lanes(run_info_file: pathlib.Path) -> range:
     with run_info_file.open() as f:
         run_info = et.parse(f)
 
-    lane_count = int(run_info.find('./Run/FlowcellLayout[@LaneCount]').get('LaneCount'))
+    lane_count = int(run_info.find("./Run/FlowcellLayout[@LaneCount]").get("LaneCount"))
     return range(1, lane_count + 1)
-
-
-# Convert string to boolean
-def str2bool(s):
-    return s.lower() == "true"

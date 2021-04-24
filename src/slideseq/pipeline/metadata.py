@@ -1,22 +1,22 @@
-import datetime
+import logging
 import os
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 import yaml
-from slideseq.pipeline.submit_slideseq import log
+
 from slideseq.util import constants as constants
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
 class Manifest:
+    flowcell: str
     flowcell_directory: Path
     output_directory: Path
     metadata_file: Path
-    flowcell: str
-    experiment_date: datetime.date
-    is_novaseq: bool
     email_addresses: list[str]
 
     @staticmethod
@@ -25,33 +25,24 @@ class Manifest:
             data = yaml.safe_load_all(fh)
 
         return Manifest(
+            flowcell=data["flowcell"],
             flowcell_directory=Path(data["flowcell_directory"]),
             output_directory=Path(data["output_directory"]),
             metadata_file=Path(data["metadata_file"]),
-            flowcell=data["flowcell"],
-            experiment_date=datetime.date(data["experiment_date"]),
-            is_novaseq=data["is_novaseq"],
             email_addresses=data["email_addresses"],
         )
 
     def to_file(self, output_file: Path):
         data = {
-            "flowcell_directory": self.flowcell_directory,
-            "output_directory": self.output_directory,
-            "metadata_file": self.metadata_file,
             "flowcell": self.flowcell,
-            "experiment_date": self.experiment_date,
-            "is_novaseq": self.is_novaseq,
+            "flowcell_directory": str(self.flowcell_directory),
+            "output_directory": str(self.output_directory),
+            "metadata_file": str(self.metadata_file),
             "email_addresses": self.email_addresses,
         }
 
         with output_file.open("w") as out:
             yaml.safe_dump(data, stream=out)
-
-
-@dataclass
-class Metadata:
-    ...
 
 
 def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
@@ -81,11 +72,16 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
             " please correct to single path before running."
         )
 
-    if not os.path.isdir(flowcell_df.BCLPath.values[0]):
+    bcl_path = Path(flowcell_df.BCLPath.values[0])
+    if not bcl_path.is_dir():
         warning_logs.append(
             f"Flowcell {flowcell} has incorrect BCLPath associated with it;"
             " please correct path before running."
         )
+
+    run_info_file = bcl_path / "RunInfo.xml"
+    if not run_info_file.exists():
+        warning_logs.append(f"{run_info_file} for flowcell {flowcell} does not exist")
 
     if len(set(flowcell_df.IlluminaPlatform)) > 1:
         warning_logs.append(
@@ -113,3 +109,19 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
         return False
     else:
         return True
+
+
+def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
+    new_rows = []
+
+    for _, row in flowcell_df.iterrows():
+        if row["lane"] == "{LANE}":
+            row_lanes = lanes
+        else:
+            row_lanes = str(row["lane"]).split(",")
+
+        for lane in row_lanes:
+            row["lane"] = int(lane)
+            new_rows.append(row.copy())
+
+    return pd.DataFrame(new_rows, index=range(len(new_rows)))

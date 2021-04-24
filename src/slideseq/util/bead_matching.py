@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import gzip
 import itertools
 import logging
@@ -8,13 +6,10 @@ import sys
 from collections import Counter
 
 import click
-
 import networkx as nx
 import numpy as np
 import scipy.sparse
-
 from sklearn.neighbors import radius_neighbors_graph
-
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +46,8 @@ def hamming_set(h_set: set[tuple[int]], d: int = 1, include_N: bool = True):
     bc_len = len(next(iter(h_set)))
 
     # method for generating a hamming ball: turn your barcode into an array. Make
-    # new_base array for each of yours bases that consists of that base on the diagonal,
-    # and other_bases = (1 - eye) to grab the rest
+    # new_base array for each position that consists of base i on the diagonal and
+    # the other_bases = (1 - eye) to grab the rest
 
     # use array broadcasting to add new_base + a * other_bases, i.e. the set of arrays
     # with the new base in each position plus the set of arrays with the other bases
@@ -257,9 +252,7 @@ def main(
     log.setLevel(logging.DEBUG)
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     stream_handler.setFormatter(formatter)
 
     log.addHandler(stream_handler)

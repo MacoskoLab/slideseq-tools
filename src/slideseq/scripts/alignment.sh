@@ -22,4 +22,5 @@ else
   exit 1
 fi
 
-# task array id is the lane
+# this will run slideseq.pipeline.alignment:main
+align_sample --lane ${LANE} --sample_index ${SGE_TASK_ID} --manifest_file ${MANIFEST}
