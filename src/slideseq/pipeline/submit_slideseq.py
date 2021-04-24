@@ -119,7 +119,7 @@ def main(
         output_dir = constants.WORKFLOW_DIR / flowcell
         log_dir = output_dir / "logs"
         tmp_dir = output_dir / "tmp"
-        flowcell_dir = pathlib.Path(flowcell_df.bclpath[0])
+        flowcell_dir = pathlib.Path(flowcell_df.bclpath.values[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
         lanes = get_lanes(run_info_file=run_info_file)
