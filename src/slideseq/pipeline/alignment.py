@@ -300,7 +300,7 @@ def main(
         "--soloType",
         "CB_samTagOut",
         "--soloCellFilter",
-        "None"
+        "None",
         "--soloUMIdedup",
         "NoDedup",
         "--soloInputSAMattrBarcodeSeq",

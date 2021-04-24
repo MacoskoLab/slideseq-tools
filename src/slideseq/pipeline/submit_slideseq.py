@@ -44,15 +44,16 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 
 
 @click.command(name="submit_slideseq", no_args_is_help=True)
-@click.argument("flowcell", nargs=-1, name="flowcells")
+@click.argument("flowcells", nargs=-1)
 @click.option(
-    "-s",
     "--spreadsheet",
     default="1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic",
     help="ID of the Google Sheet to use (default is Macosko Slide-seq Flowcell Alignment)",
 )
-@click.option("-w", "--worksheet", default="Experiment Log", help="Worksheet to open")
-@click.option("-d", "--dryrun", is_flag=True, help="Show the plan but don't execute")
+@click.option(
+    "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
+)
+@click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log_file", type=click.Path(exists=False))
 def main(
@@ -64,7 +65,7 @@ def main(
     log_file: str = None,
 ):
     """
-    Submit flowcells to the Slide-Seq alignment pipeline.
+    Submit FLOWCELLS to the Slide-Seq alignment pipeline.
 
     See README.md for instructions and requirements: github.com/MacoskoLab/slideseq-tools
     """
@@ -118,7 +119,7 @@ def main(
         output_dir = constants.WORKFLOW_DIR / flowcell
         log_dir = output_dir / "logs"
         tmp_dir = output_dir / "tmp"
-        flowcell_dir = pathlib.Path(flowcell_df.BCLPath[0])
+        flowcell_dir = pathlib.Path(flowcell_df.bclpath[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
         lanes = get_lanes(run_info_file=run_info_file)
@@ -252,7 +253,11 @@ def main(
 
         submitted.append(flowcell)
 
-    log.info(f"Flowcells {', '.join(submitted)} submitted for processing")
+    if submitted and not dryrun:
+        log.info(f"Flowcells {', '.join(submitted)} submitted for processing")
+    else:
+        log.info("No flowcells submitted for processing")
+
     if flowcell_errors:
         log.info(
             f"Flowcells {', '.join(flowcell_errors)} had errors -- please see warnings above."

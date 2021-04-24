@@ -60,19 +60,20 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
             " please remove all spaces before running."
         )
 
-    if any(flowcell_df.isna()):
+    if flowcell_df.isna().values.any():
         warning_logs.append(
             f"Flowcell {flowcell} does not have complete submission metadata (orange and blue cols);"
             " please fill out before running."
         )
 
-    if len(set(flowcell_df.BCLPath)) > 1:
+    bcl_path_set = set(flowcell_df.bclpath)
+    if len(bcl_path_set) > 1:
         warning_logs.append(
             f"Flowcell {flowcell} has multiple BCLPaths associated with it;"
             " please correct to single path before running."
         )
 
-    bcl_path = Path(flowcell_df.BCLPath.values[0])
+    bcl_path = Path(bcl_path_set.pop())
     if not bcl_path.is_dir():
         warning_logs.append(
             f"Flowcell {flowcell} has incorrect BCLPath associated with it;"
@@ -83,14 +84,15 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
     if not run_info_file.exists():
         warning_logs.append(f"{run_info_file} for flowcell {flowcell} does not exist")
 
-    if len(set(flowcell_df.IlluminaPlatform)) > 1:
+    illumina_platform_set = set(flowcell_df.illuminaplatform)
+    if len(illumina_platform_set) > 1:
         warning_logs.append(
             f"Flowcell {flowcell} has multiple Illumina platforms associated with it;"
             " please correct to single platform before running."
         )
 
     # check if platform supported
-    if flowcell_df.IlluminaPlatform[0] not in constants.PLATFORMS:
+    if not illumina_platform_set & constants.PLATFORMS:
         warning_logs.append(
             f"Flowcell {flowcell} has unsupported platform; please correct to one of"
             f" {' '.join(constants.PLATFORMS)} before running."

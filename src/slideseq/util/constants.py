@@ -9,7 +9,7 @@ PICARD = Path("/seq/software/picard-public/2.24.2/picard.jar")
 WORKFLOW_DIR = Path("/broad/macosko/data/workflows/flowcell")
 LIBRARY_DIR = Path("/broad/macosko/data/libraries")
 
-PLATFORMS = ("MiniSeq", "NextSeq", "NovaSeq", "NovaSeqS4")
+PLATFORMS = {"MiniSeq", "NextSeq", "NovaSeq", "NovaSeqS4"}
 
 # columns we need from the sequencing spreadsheet
 METADATA_COLS = [
