@@ -34,10 +34,11 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
     for _ in range(MAX_QSUB):
         proc = run(qsub_arg_list, capture_output=True, text=True)
         if int(proc.returncode) == 0:
-            # using -terse, proc.stdout is the job id
-            return proc.stdout.strip()
+            # using -terse, proc.stdout is [job id].1-N:1' for array jobs
+            return proc.stdout.strip().split(".")[0]
         else:
             log.warning("qsub failed, retrying")
+            log.debug(f"Error: {proc.stderr}")
     else:
         log.error(f"Unable to launch {job_name} job for {flowcell}")
         return None
@@ -92,8 +93,8 @@ def main(
     log.debug(f"Retreived worksheet {worksheet} with {len(worksheet_df)} rows")
 
     log.info(f"Beginning submission for {len(flowcells)} flowcells")
-    submitted = []
-    flowcell_errors = []
+    submitted = set()
+    flowcell_errors = set()
 
     for flowcell in flowcells:
         flowcell_df = worksheet_df.loc[worksheet_df["flowcell"] == flowcell]
@@ -102,7 +103,7 @@ def main(
             log.warning(
                 f"Flowcell {flowcell} not found in spreadsheet; please add to sheet."
             )
-            flowcell_errors.append(flowcell)
+            flowcell_errors.add(flowcell)
             continue
 
         log.debug(f"Found {len(flowcell_df)} libraries in worksheet")
@@ -112,7 +113,7 @@ def main(
         flowcell_df.columns = [c.lower() for c in constants.METADATA_COLS]
 
         if not validate_flowcell_df(flowcell, flowcell_df):
-            flowcell_errors.append(flowcell)
+            flowcell_errors.add(flowcell)
             continue
 
         # data locations
@@ -183,7 +184,7 @@ def main(
 
             demux_jid = attempt_qsub(demux_args, flowcell, "demultiplex", dryrun)
             if demux_jid is None:
-                flowcell_errors.append(flowcell)
+                flowcell_errors.add(flowcell)
                 continue
 
         alignment_jids = dict()
@@ -193,6 +194,10 @@ def main(
         # -hold_jid on the specific lane
         with importlib.resources.path(slideseq.scripts, "alignment.sh") as qsub_script:
             for lane in lanes:
+                if demux_jid is None:
+                    log.debug(f"Not aligning {lane} because demux was not submitted")
+                    continue
+
                 # number of samples in this lane
                 n_samples = (flowcell_df["lane"] == lane).sum()
 
@@ -217,14 +222,17 @@ def main(
                     alignment_args, flowcell, "alignment", dryrun
                 )
                 if alignment_jids[lane] is None:
-                    flowcell_errors.append(flowcell)
-                    continue
+                    flowcell_errors.add(flowcell)
 
         # this script analyzes the alignment output, generates plots, matches to puck, etc
         # need to wait on the individual alignment jobs to finish, so we use -hold_jid_ad on
         # the jobs for a given lane
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
             for lane in lanes:
+                if alignment_jids[lane] is None:
+                    log.debug(f"Not processing {lane} because alignment was not submitted")
+                    continue
+
                 # number of samples in this lane
                 n_samples = (flowcell_df["lane"] == lane).sum()
 
@@ -249,10 +257,9 @@ def main(
                     processing_args, flowcell, "processing", dryrun
                 )
                 if processing_jid is None:
-                    flowcell_errors.append(flowcell)
-                    continue
-
-        submitted.append(flowcell)
+                    flowcell_errors.add(flowcell)
+                else:
+                    submitted.add(flowcell)
 
     if submitted and not dryrun:
         log.info(f"Flowcells {', '.join(submitted)} submitted for processing")

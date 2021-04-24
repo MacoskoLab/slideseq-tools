@@ -19,7 +19,7 @@ then
   echo "Error: conda environment is not set"
   exit 1
 else
-  conda activate ${CONDA_ENV}
+  source activate ${CONDA_ENV}
 fi
 
 # do whatever post-processing is needed

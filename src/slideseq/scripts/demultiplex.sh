@@ -1,6 +1,6 @@
 #!/bin/bash
 #$ -l os=RedHat7
-#$ -l h_vmem=16g
+#$ -l h_vmem=8g
 #$ -l h_rt=4:0:0
 #$ -pe smp 8
 #$ -binding linear:8
@@ -17,7 +17,7 @@ reuse Java-1.8
 
 # check that the data directory has all the needed files
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
-  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms8g -Xmx124g \
+  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms8g -Xmx62g \
   -jar ${PICARD_JAR} CheckIlluminaDirectory \
   --TMP_DIR ${TMP_DIR} \
   --LANE ${SGE_TASK_ID} \
@@ -27,7 +27,7 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
 
 # extract barcodes to $BARCODE_FILE
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
-  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms64g -Xmx124g \
+  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms32g -Xmx62g \
   -jar ${PICARD_JAR} ExtractIlluminaBarcodes \
   --TMP_DIR ${TMP_DIR} \
   --LANE ${SGE_TASK_ID} \
@@ -42,7 +42,7 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
 
 # create uBAM files
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
-  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms64g -Xmx124g \
+  -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms32g -Xmx62g \
   -jar ${PICARD_JAR} IlluminaBasecallsToSam \
   --TMP_DIR ${TMP_DIR} \
   --LANE ${SGE_TASK_ID} \
