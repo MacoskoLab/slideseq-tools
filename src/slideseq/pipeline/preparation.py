@@ -16,20 +16,21 @@ log = logging.getLogger(__name__)
 
 
 def gen_barcode_file(sample_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"{lane:03d}" / "barcode_params.txt"
+    output_file = manifest.output_directory / f"L{lane:03d}" / "barcode_params.txt"
 
     with output_file.open("w") as out:
         print("barcode_sequence_1\tlibrary_name\tbarcode_name", file=out)
 
         for _, row in sample_df.loc[sample_df["lane"] == lane].iterrows():
+            # we don't write out barcode_name but the column is required
             print(
-                f"{row.sample_barcode}\t{row.library}\t{row.barcode_name}",
+                f"{row.sample_barcode}\t{row.library}\t",
                 file=out,
             )
 
 
 def gen_library_params(sample_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"{lane:03d}" / "library_params.txt"
+    output_file = manifest.output_directory / f"L{lane:03d}" / "library_params.txt"
 
     with output_file.open("w") as out:
         print("OUTPUT\tSAMPLE_ALIAS\tLIBRARY_NAME\tBARCODE_1", file=out)

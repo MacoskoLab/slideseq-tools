@@ -16,10 +16,10 @@ reuse Java-1.8
 
 if [ -z "$CONDA_ENV" ]
 then
-  conda activate ${CONDA_ENV}
-else
   echo "Error: conda environment is not set"
   exit 1
+else
+  conda activate ${CONDA_ENV}
 fi
 
 # this will run slideseq.pipeline.alignment:main

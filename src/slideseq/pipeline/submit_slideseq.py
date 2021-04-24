@@ -194,7 +194,7 @@ def main(
         with importlib.resources.path(slideseq.scripts, "alignment.sh") as qsub_script:
             for lane in lanes:
                 # number of samples in this lane
-                n_samples = len(flowcell_df["lane" == lane])
+                n_samples = (flowcell_df["lane"] == lane).sum()
 
                 # request a high-cpu, high-mem machine for this step
                 alignment_args = qsub_args(
@@ -206,7 +206,8 @@ def main(
                 alignment_args.extend(
                     [
                         "-hold_jid",
-                        f"{demux_jid}[{lane}]" "-t",
+                        f"{demux_jid}[{lane}]",
+                        "-t",
                         f"1-{n_samples}",
                         f"{qsub_script.absolute()}",
                     ]
@@ -225,7 +226,7 @@ def main(
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
             for lane in lanes:
                 # number of samples in this lane
-                n_samples = len(flowcell_df["lane" == lane])
+                n_samples = (flowcell_df["lane"] == lane).sum()
 
                 # this step requires considerably fewer resources
                 processing_args = qsub_args(
