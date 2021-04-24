@@ -288,8 +288,6 @@ def main(
     # Map reads to genome sequence using STARsolo
     cmd = [
         "STAR",
-        "--soloType",
-        "CB_samTagOut",
         "--genomeDir",
         f"{genome_dir}",
         "--readFilesIn",
@@ -299,6 +297,12 @@ def main(
         "view",
         "-F",
         "0x100",
+        "--soloType",
+        "CB_samTagOut",
+        "--soloCellFilter",
+        "None"
+        "--soloUMIdedup",
+        "NoDedup",
         "--soloInputSAMattrBarcodeSeq",
         "XC",
         "XM",
