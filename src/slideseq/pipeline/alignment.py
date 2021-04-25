@@ -18,6 +18,17 @@ from slideseq.util import dropseq_cmd, picard_cmd
 log = logging.getLogger(__name__)
 
 
+def run_command(cmd: list[str], name: str, flowcell: str, library: str, lane: int):
+    log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+    log.debug(f"Command = {' '.join(cmd)}")
+    proc = run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        log.error(f"Error running {name}:\n\t{proc.stderr}")
+        sys.exit(1)
+    else:
+        log.info(f"{flowcell} - {name} completed")
+
+
 # Get bead structure range
 def get_bead_structure_range(bs, structure_type):
     # 12C8M|*T
@@ -124,166 +135,99 @@ def main(
     cmd = dropseq_cmd("TagBamWithReadSequenceExtended", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{unmapped_bam}",
-            "-O",
-            f"{cellular_tagged_bam}",
-            "--SUMMARY",
-            f"{cellular_tagged_summary}",
-            "--BASE_RANGE",
-            f"{bs_range1}",
-            "--BASE_QUALITY",
-            f"{sample_row.base_quality}",
-            "--BARCODED_READ",
-            "1",
-            "--DISCARD_READ",
-            "false",
-            "--TAG_NAME",
-            "XC",
-            "--NUM_BASES_BELOW_QUALITY",
-            "1",
+            f"I={unmapped_bam}",
+            f"O={cellular_tagged_bam}",
+            f"SUMMARY={cellular_tagged_summary}",
+            f"BASE_RANGE={bs_range1}",
+            f"BASE_QUALITY={sample_row.base_quality}",
+            "BARCODED_READ=1",
+            "DISCARD_READ=false",
+            "TAG_NAME=XC",
+            "NUM_BASES_BELOW_QUALITY=1",
         ]
     )
 
-    log.info(
-        f"{manifest.flowcell} - TagBamWithReadSequenceExtended (Cellular)"
-        f" for {sample_row.library} in lane {lane}"
+    run_command(
+        cmd,
+        "TagBamWithReadSequenceExtended (Cellular)",
+        manifest.flowcell,
+        sample_row.library,
+        lane,
     )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running TagBamWithReadSequenceExtended:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(
-            f"{manifest.flowcell} - TagBamWithReadSequenceExtended (Cellular) completed"
-        )
 
     # Tag bam with read sequence extended molecular
     cmd = dropseq_cmd("TagBamWithReadSequenceExtended", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{cellular_tagged_bam}",
-            "-O",
-            f"{molecular_tagged_bam}",
-            "--SUMMARY",
-            f"{molecular_tagged_summary}",
-            "--BASE_RANGE",
-            f"{bs_range2}",
-            "--BASE_QUALITY",
-            f"{sample_row.base_quality}",
-            "--BARCODED_READ",
-            "1",
-            "--DISCARD_READ",
-            "true",
-            "--TAG_NAME",
-            "XM",
-            "--NUM_BASES_BELOW_QUALITY",
-            "1",
+            f"I={cellular_tagged_bam}",
+            f"O={molecular_tagged_bam}",
+            f"SUMMARY={molecular_tagged_summary}",
+            f"BASE_RANGE={bs_range2}",
+            f"BASE_QUALITY={sample_row.base_quality}",
+            "BARCODED_READ=1",
+            "DISCARD_READ=true",
+            "TAG_NAME=XM",
+            "NUM_BASES_BELOW_QUALITY=1",
         ]
     )
-    log.info(
-        f"{manifest.flowcell} - TagBamWithReadSequenceExtended (Molecular)"
-        f" for {sample_row.library} in lane {lane}"
+
+    run_command(
+        cmd,
+        "TagBamWithReadSequenceExtended (Molecular)",
+        manifest.flowcell,
+        sample_row.library,
+        lane,
     )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running TagBamWithReadSequenceExtended:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(
-            f"{manifest.flowcell} - TagBamWithReadSequenceExtended (Molecular) completed"
-        )
-        os.remove(cellular_tagged_bam)
+    os.remove(cellular_tagged_bam)
 
     # Filter low-quality reads
     cmd = dropseq_cmd("FilterBam", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{molecular_tagged_bam}",
-            "-O",
-            f"{filtered_ubam}",
-            "--PASSING_READ_THRESHOLD",
-            "0.1",
-            "--REPAIR_BARCODES",
-            "false",
-            "--TAG_REJECT",
-            "XQ",
+            f"I={molecular_tagged_bam}",
+            f"O={filtered_ubam}",
+            "PASSING_READ_THRESHOLD=0.1",
+            "REPAIR_BARCODES=false",
+            "TAG_REJECT=XQ",
         ]
     )
-    log.info(f"{manifest.flowcell} - FilterBam for {sample_row.library} in Lane {lane}")
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running FilterBam:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - FilterBam complete")
-        os.remove(molecular_tagged_bam)
+
+    run_command(cmd, "FilterBam", manifest.flowcell, sample_row.library, lane)
+    os.remove(molecular_tagged_bam)
 
     # Trim reads with starting sequence
     cmd = dropseq_cmd("TrimStartingSequence", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{filtered_ubam}",
-            "-O",
-            f"{trimmed_ubam}",
-            "--OUTPUT_SUMMARY",
-            f"{trimming_summary}",
-            "--SEQUENCE",
-            f"{sample_row.start_sequence}",
-            "--MISMATCHES",
-            "0",
-            "--NUM_BASES",
-            "5",
+            f"I={filtered_ubam}",
+            f"O={trimmed_ubam}",
+            f"OUTPUT_SUMMARY={trimming_summary}",
+            f"SEQUENCE={sample_row.start_sequence}",
+            "MISMATCHES=0",
+            "NUM_BASES=5",
         ]
     )
-    log.info(
-        f"{manifest.flowcell} - TrimStartingSequence for {sample_row.library} in Lane {lane}"
+
+    run_command(
+        cmd, "TrimStartingSequence", manifest.flowcell, sample_row.library, lane
     )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running TrimStartingSequence:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - TrimStartingSequence complete")
-        os.remove(filtered_ubam)
+    os.remove(filtered_ubam)
 
     # Adapter-aware poly A trimming
     cmd = dropseq_cmd("PolyATrimmer", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{trimmed_ubam}",
-            "-O",
-            f"{polya_filtered_ubam}",
-            "--OUTPUT_SUMMARY",
-            f"{polya_filtered_summary}",
-            "--MISMATCHES",
-            "0",
-            "--NUM_BASES",
-            "6",
-            "--USE_NEW_TRIMMER",
-            "true",
+            f"I={trimmed_ubam}",
+            f"O={polya_filtered_ubam}",
+            f"OUTPUT_SUMMARY={polya_filtered_summary}",
+            "MISMATCHES=0",
+            "NUM_BASES=6",
+            "USE_NEW_TRIMMER=true",
         ]
     )
-    log.info(
-        f"{manifest.flowcell} - PolyATrimmer for {sample_row.library} in Lane {lane}"
-    )
 
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running PolyATrimmer:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - PolyATrimmer complete")
-        os.remove(trimmed_ubam)
+    run_command(cmd, "PolyATrimmer", manifest.flowcell, sample_row.library, lane)
+    os.remove(trimmed_ubam)
 
     # Map reads to genome sequence using STARsolo
     cmd = [
@@ -323,17 +267,9 @@ def main(
         "--runThreadN",
         "8",
     ]
-    log.info(
-        f"{manifest.flowcell} - Mapping using STAR for {sample_row.library} in Lane {lane}"
-    )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running STAR:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - STAR alignment complete")
-        os.remove(polya_filtered_ubam)
+
+    run_command(cmd, "STAR", manifest.flowcell, sample_row.library, lane)
+    os.remove(polya_filtered_ubam)
 
     # TODO: this thing
 
@@ -365,15 +301,8 @@ def main(
             "queryname",
         ]
     )
-    log.info(f"{manifest.flowcell} - SortSam for {sample_row.library} in lane {lane}")
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running SortSam:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - SortSam complete")
-        os.remove(f"{aligned_bam}.star.Aligned.out.bam")
+    run_command(cmd, "SortSam", manifest.flowcell, sample_row.library, lane)
+    os.remove(f"{aligned_bam}.star.Aligned.out.bam")
 
     # Merge unmapped bam and aligned bam
     cmd = picard_cmd("MergeBamAlignment", tmp_dir)
@@ -396,71 +325,38 @@ def main(
         ]
     )
 
-    log.info(
-        f"{manifest.flowcell} - MergeBamAlignment for {sample_row.library} in lane {lane}"
-    )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running MergeBamAlignment:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - MergeBamAlignment complete")
-        os.remove(polya_filtered_ubam)
-        os.remove(f"{aligned_bam}.aligned.sorted.bam")
+    run_command(cmd, "MergeBamAlignment", manifest.flowcell, sample_row.library, lane)
+    os.remove(polya_filtered_ubam)
+    os.remove(f"{aligned_bam}.aligned.sorted.bam")
 
     # Tag read with interval
     cmd = dropseq_cmd("TagReadWithInterval", tmp_dir)
     cmd.extend(
         [
-            "-I",
-            f"{aligned_bam}.merged.bam",
-            "-O",
-            f"{aligned_bam}.merged.TagReadWithInterval.bam",
-            "--INTERVALS",
-            f"{intervals}",
-            "--TAG",
-            "XG",
+            f"I={aligned_bam}.merged.bam",
+            f"O={aligned_bam}.merged.TagReadWithInterval.bam",
+            f"INTERVALS={intervals}",
+            "TAG=XG",
         ]
     )
 
-    log.info(
-        f"{manifest.flowcell} - TagReadWithInterval for {sample_row.library} in lane {lane}"
-    )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running TagReadWithInterval:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - TagReadWithInterval complete")
-        os.remove(f"{aligned_bam}.merged.bam")
+    run_command(cmd, "TagReadWithInterval", manifest.flowcell, sample_row.library, lane)
+    os.remove(f"{aligned_bam}.merged.bam")
 
     # Tag read with gene function
     cmd = dropseq_cmd("TagReadWithGeneFunction", tmp_dir, compression=5)
     cmd.extend(
         [
-            "-I",
-            f"{aligned_bam}.merged.TagReadWithInterval.bam",
-            "-O",
-            f"{aligned_bam}.star_gene_exon_tagged2.bam",
-            "--ANNOTATIONS_FILE",
-            f"{annotations_file}",
-            "--CREATE_INDEX",
-            "false",
+            f"I={aligned_bam}.merged.TagReadWithInterval.bam",
+            f"O={aligned_bam}.star_gene_exon_tagged2.bam",
+            f"ANNOTATIONS_FILE={annotations_file}",
+            "CREATE_INDEX=false",
         ]
     )
 
-    log.info(
-        f"{manifest.flowcell} - TagReadWithGeneFunction for {sample_row.library} in lane {lane}"
+    run_command(
+        cmd, "TagReadWithGeneFunction", manifest.flowcell, sample_row.library, lane
     )
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True)
-    if proc.returncode != 0:
-        log.error(f"Error running TagReadWithGeneFunction:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{manifest.flowcell} - TagReadWithGeneFunction complete")
-        os.remove(f"{aligned_bam}.merged.TagReadWithInterval.bam")
+    os.remove(f"{aligned_bam}.merged.TagReadWithInterval.bam")
 
     log.info(f"Alignment for {sample_row.library} completed")

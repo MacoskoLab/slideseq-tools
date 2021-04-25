@@ -22,7 +22,7 @@ class Manifest:
     @staticmethod
     def from_file(input_file: Path):
         with input_file.open() as fh:
-            data = yaml.safe_load_all(fh)
+            data = yaml.safe_load(fh)
 
         return Manifest(
             flowcell=data["flowcell"],

@@ -3,7 +3,7 @@ from pathlib import Path
 # number of times to try qsub before giving up
 MAX_QSUB = 3
 
-DROPSEQ_DIR = Path("/broad/macosko/bin/dropseq-tools")
+DROPSEQ_DIR = Path("/broad/macosko/bin/dropseq-tools-2.4.0")
 PICARD = Path("/seq/software/picard-public/2.24.2/picard.jar")
 
 WORKFLOW_DIR = Path("/broad/macosko/data/workflows/flowcell")

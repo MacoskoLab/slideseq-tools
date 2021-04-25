@@ -18,7 +18,7 @@ from slideseq.pipeline.metadata import (
     split_sample_lanes,
     validate_flowcell_df,
 )
-from slideseq.pipeline.preparation import prepare_demux
+from slideseq.pipeline.preparation import prepare_demux, validate_demux
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
 from slideseq.util.constants import MAX_QSUB
 
@@ -54,13 +54,17 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 @click.option(
     "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
 )
+@click.option("--demux/--no-demux", default=True, help="Whether to run demultiplexing")
+@click.option("--alignment/no-alignment", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
-@click.option("--log_file", type=click.Path(exists=False))
+@click.option("--log_file", type=click.Path(exists=False), help="File to write logs")
 def main(
     flowcells: list[str],
     spreadsheet: str,
     worksheet: str,
+    demux: bool = True,
+    alignment: bool = True,  # TODO validate this
     dryrun: bool = False,
     debug: bool = False,
     log_file: str = None,
@@ -134,7 +138,9 @@ def main(
             output_directory=output_dir,
             metadata_file=metadata_file,
             flowcell=flowcell,
-            email_addresses=sorted(set(flowcell_df.email)),
+            email_addresses=sorted(
+                set(e.strip() for v in flowcell_df.email for e in v.split(","))
+            ),
         )
 
         if not dryrun:
@@ -154,10 +160,14 @@ def main(
         if dryrun:
             log.info(f"Would write following in {metadata_file}")
             log.info(flowcell_df)
-        else:
+        elif demux:
             # make various directories
             prepare_demux(flowcell_df, manifest)
             flowcell_df.to_csv(metadata_file, header=True, index=False)
+        elif not validate_demux(manifest):
+            # appears that demux was not run previously
+            flowcell_errors.add(flowcell)
+            continue
 
         # this script will check the sequencing directory, extract barcodes,
         # and demultiplex to BAM files
@@ -182,10 +192,14 @@ def main(
                 ]
             )
 
-            demux_jid = attempt_qsub(demux_args, flowcell, "demultiplex", dryrun)
-            if demux_jid is None:
-                flowcell_errors.add(flowcell)
-                continue
+            if demux:
+                demux_jid = attempt_qsub(demux_args, flowcell, "demultiplex", dryrun)
+                if demux_jid is None:
+                    flowcell_errors.add(flowcell)
+                    continue
+            else:
+                demux_jid = None
+                log.debug("Skipping demux step")
 
         alignment_jids = dict()
 
@@ -194,7 +208,7 @@ def main(
         # -hold_jid on the specific lane
         with importlib.resources.path(slideseq.scripts, "alignment.sh") as qsub_script:
             for lane in lanes:
-                if demux_jid is None:
+                if demux and demux_jid is None:
                     log.debug(f"Not aligning {lane} because demux was not submitted")
                     continue
 
@@ -206,31 +220,39 @@ def main(
                     log_file=log_dir / f"alignment.L00{lane}.$TASK_ID.log",
                     CONDA_ENV=env_name,
                     LANE=lane,
-                    MANIFEST_FILE=manifest_file,
+                    MANIFEST=manifest_file,
                 )
+
+                if demux:
+                    alignment_args.extend(["-hold_jid", f"{demux_jid}[{lane}]"])
+
                 alignment_args.extend(
                     [
-                        "-hold_jid",
-                        f"{demux_jid}[{lane}]",
                         "-t",
                         f"1-{n_samples}",
                         f"{qsub_script.absolute()}",
                     ]
                 )
 
-                alignment_jids[lane] = attempt_qsub(
-                    alignment_args, flowcell, "alignment", dryrun
-                )
-                if alignment_jids[lane] is None:
-                    flowcell_errors.add(flowcell)
+                if alignment:
+                    alignment_jids[lane] = attempt_qsub(
+                        alignment_args, flowcell, "alignment", dryrun
+                    )
+                    if alignment_jids[lane] is None:
+                        flowcell_errors.add(flowcell)
+                else:
+                    alignment_jids[lane] = None
+                    log.info("Skipping alignment step")
 
         # this script analyzes the alignment output, generates plots, matches to puck, etc
         # need to wait on the individual alignment jobs to finish, so we use -hold_jid_ad on
         # the jobs for a given lane
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
             for lane in lanes:
-                if alignment_jids[lane] is None:
-                    log.debug(f"Not processing {lane} because alignment was not submitted")
+                if alignment and alignment_jids[lane] is None:
+                    log.debug(
+                        f"Not processing {lane} because alignment was not submitted"
+                    )
                     continue
 
                 # number of samples in this lane
@@ -241,12 +263,14 @@ def main(
                     log_file=log_dir / f"processing.L00{lane}.$TASK_ID.log",
                     CONDA_ENV=env_name,
                     LANE=lane,
-                    MANIFEST_FILE=manifest_file,
+                    MANIFEST=manifest_file,
                 )
+
+                if alignment:
+                    processing_args.extend(["-hold_jid_ad", f"{alignment_jids[lane]}"])
+
                 processing_args.extend(
                     [
-                        "-hold_jid_ad",
-                        f"{alignment_jids[lane]}",
                         "-t",
                         f"1-{n_samples}",
                         f"{qsub_script.absolute()}",

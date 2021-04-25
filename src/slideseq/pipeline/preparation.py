@@ -58,7 +58,7 @@ def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"{manifest.flowcell} - Creating directories.")
+    log.info(f"{manifest.flowcell} - Creating directories")
     for lane in lanes:
         output_lane_dir = output_dir / f"L{lane:03d}"
         output_lane_dir.mkdir(exist_ok=True)
@@ -69,3 +69,35 @@ def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
 
         # Generate library_params that is needed by IlluminaBasecallsToSam
         gen_library_params(flowcell_df, manifest, lane)
+
+
+def validate_demux(manifest: Manifest):
+    """verify that `prepare_demux` was run previously"""
+    output_dir = manifest.output_directory
+
+    if not output_dir.exists():
+        log.error(f"{output_dir} does not exist")
+        return False
+
+    if not manifest.metadata_file.exists():
+        log.error(f"{manifest.metadata_file} does not exist")
+        return False
+
+    runinfo_file = manifest.flowcell_directory / "RunInfo.xml"
+
+    lanes = get_lanes(runinfo_file)
+
+    # Create directories
+    log.info(f"{manifest.flowcell} - Checking directories")
+    for lane in lanes:
+        for p in (
+            output_dir / f"L{lane:03d}",
+            output_dir / f"L{lane:03d}" / "barcodes",
+            output_dir / f"L{lane:03d}" / "barcode_params.txt",
+            output_dir / f"L{lane:03d}" / "library_params.txt",
+        ):
+            if not p.exists():
+                log.error(f"{p} does not exist")
+                return False
+    else:
+        return True
