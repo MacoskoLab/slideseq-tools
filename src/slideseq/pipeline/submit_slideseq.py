@@ -157,7 +157,7 @@ def main(
         else:
             # make various directories
             prepare_demux(flowcell_df, manifest)
-            flowcell_df.to_csv(metadata_file, sep="\t", header=True, index=False)
+            flowcell_df.to_csv(metadata_file, header=True, index=False)
 
         # this script will check the sequencing directory, extract barcodes,
         # and demultiplex to BAM files
