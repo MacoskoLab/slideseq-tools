@@ -20,7 +20,7 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms8g -Xmx62g \
   -jar ${PICARD_JAR} CheckIlluminaDirectory \
   --TMP_DIR ${TMP_DIR} \
-  --LANE ${SGE_TASK_ID} \
+  --LANES ${SGE_TASK_ID} \
   --BASECALLS_DIR ${BASECALLS_DIR} \
   --READ_STRUCTURE ${READ_STRUCTURE}
 

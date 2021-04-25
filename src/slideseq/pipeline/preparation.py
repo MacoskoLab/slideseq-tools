@@ -44,7 +44,7 @@ def gen_library_params(sample_df: pd.DataFrame, manifest: Manifest, lane: int):
             output_bam = f"{manifest.flowcell}.{lane}.{row.library}.{row.sample_barcode}.unmapped.bam"
 
             print(
-                f"{library_dir / output_bam}\t{row.sample}\t{row.library}\t{row.sample_barcode}",
+                f"{library_dir / output_bam}\t{row.library}\t{row.library}\t{row.sample_barcode}",
                 file=out,
             )
 
