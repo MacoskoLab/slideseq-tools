@@ -90,7 +90,7 @@ def main(
     drive_service = gutil.get_service(google_creds)
 
     # get a pandas DataFrame of the worksheet
-    log.debug(f"Downloading Google workshet id={spreadsheet} worksheet={worksheet}")
+    log.debug(f"Downloading Google worksheet id={spreadsheet} worksheet={worksheet}")
     worksheet_df = gutil.GoogleSheet(drive_service, spreadsheet)[worksheet]
     worksheet_df = worksheet_df.dropna(axis=0, how="all")
 
@@ -105,7 +105,7 @@ def main(
 
         if not len(flowcell_df):
             log.warning(
-                f"Flowcell {flowcell} not found in spreadsheet; please add to sheet."
+                f"Flowcell {flowcell} not found in worksheet; please add to sheet."
             )
             flowcell_errors.add(flowcell)
             continue
