@@ -13,7 +13,7 @@ import pandas as pd
 import slideseq.util.constants as constants
 from slideseq.logger import create_logger
 from slideseq.pipeline.metadata import Manifest
-from slideseq.util import dropseq_cmd, picard_cmd
+from slideseq.util import picard_cmd
 
 log = logging.getLogger(__name__)
 
@@ -132,20 +132,33 @@ def main(
     bs_range1 = get_bead_structure_range(sample_row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(sample_row.bead_structure, "M")
 
-    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", tmp_dir)
-    cmd.extend(
-        [
-            f"I={unmapped_bam}",
-            f"O={cellular_tagged_bam}",
-            f"SUMMARY={cellular_tagged_summary}",
-            f"BASE_RANGE={bs_range1}",
-            f"BASE_QUALITY={sample_row.base_quality}",
-            "BARCODED_READ=1",
-            "DISCARD_READ=false",
-            "TAG_NAME=XC",
-            "NUM_BASES_BELOW_QUALITY=1",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
+        "-TMP_DIR",
+        f"{tmp_dir}",
+        "-VALIDATION_STRINGENCY",
+        "SILENT",
+        "-COMPRESSION_LEVEL",
+        "0",
+        "-I",
+        f"{unmapped_bam}",
+        "-O",
+        f"{cellular_tagged_bam}",
+        "-SUMMARY",
+        f"{cellular_tagged_summary}",
+        "-BASE_RANGE",
+        f"{bs_range1}",
+        "-BASE_QUALITY",
+        f"{sample_row.base_quality:d}",
+        "-BARCODED_READ",
+        "1",
+        "-DISCARD_READ",
+        "false",
+        "-TAG_NAME",
+        "XC",
+        "-NUM_BASES_BELOW_QUALITY",
+        "1",
+    ]
 
     run_command(
         cmd,
@@ -156,20 +169,33 @@ def main(
     )
 
     # Tag bam with read sequence extended molecular
-    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", tmp_dir)
-    cmd.extend(
-        [
-            f"I={cellular_tagged_bam}",
-            f"O={molecular_tagged_bam}",
-            f"SUMMARY={molecular_tagged_summary}",
-            f"BASE_RANGE={bs_range2}",
-            f"BASE_QUALITY={sample_row.base_quality}",
-            "BARCODED_READ=1",
-            "DISCARD_READ=true",
-            "TAG_NAME=XM",
-            "NUM_BASES_BELOW_QUALITY=1",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
+        "-TMP_DIR",
+        f"{tmp_dir}",
+        "-VALIDATION_STRINGENCY",
+        "SILENT",
+        "-COMPRESSION_LEVEL",
+        "0",
+        "-I",
+        f"{cellular_tagged_bam}",
+        "-O",
+        f"{molecular_tagged_bam}",
+        "-SUMMARY",
+        f"{molecular_tagged_summary}",
+        "-BASE_RANGE",
+        f"{bs_range2}",
+        "-BASE_QUALITY",
+        f"{sample_row.base_quality:d}",
+        "-BARCODED_READ",
+        "1",
+        "-DISCARD_READ",
+        "true",
+        "-TAG_NAME",
+        "XM",
+        "-NUM_BASES_BELOW_QUALITY",
+        "1",
+    ]
 
     run_command(
         cmd,
@@ -181,32 +207,39 @@ def main(
     os.remove(cellular_tagged_bam)
 
     # Filter low-quality reads
-    cmd = dropseq_cmd("FilterBam", tmp_dir)
-    cmd.extend(
-        [
-            f"I={molecular_tagged_bam}",
-            f"O={filtered_ubam}",
-            "PASSING_READ_THRESHOLD=0.1",
-            "REPAIR_BARCODES=false",
-            "TAG_REJECT=XQ",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'FilterBam'}",
+        "-I",
+        f"{molecular_tagged_bam}",
+        "-O",
+        f"{filtered_ubam}",
+        "-PASSING_READ_THRESHOLD",
+        "0.1",
+        "-REPAIR_BARCODES",
+        "false",
+        "-TAG_REJECT",
+        "XQ",
+    ]
 
     run_command(cmd, "FilterBam", manifest.flowcell, sample_row.library, lane)
     os.remove(molecular_tagged_bam)
 
     # Trim reads with starting sequence
-    cmd = dropseq_cmd("TrimStartingSequence", tmp_dir)
-    cmd.extend(
-        [
-            f"I={filtered_ubam}",
-            f"O={trimmed_ubam}",
-            f"OUTPUT_SUMMARY={trimming_summary}",
-            f"SEQUENCE={sample_row.start_sequence}",
-            "MISMATCHES=0",
-            "NUM_BASES=5",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'TrimStartingSequence'}",
+        "-I",
+        f"{filtered_ubam}",
+        "-O",
+        f"{trimmed_ubam}",
+        "-OUTPUT_SUMMARY",
+        f"{trimming_summary}",
+        "-SEQUENCE",
+        f"{sample_row.start_sequence}",
+        "-MISMATCHES",
+        "0",
+        "-NUM_BASES",
+        "5",
+    ]
 
     run_command(
         cmd, "TrimStartingSequence", manifest.flowcell, sample_row.library, lane
@@ -214,17 +247,21 @@ def main(
     os.remove(filtered_ubam)
 
     # Adapter-aware poly A trimming
-    cmd = dropseq_cmd("PolyATrimmer", tmp_dir)
-    cmd.extend(
-        [
-            f"I={trimmed_ubam}",
-            f"O={polya_filtered_ubam}",
-            f"OUTPUT_SUMMARY={polya_filtered_summary}",
-            "MISMATCHES=0",
-            "NUM_BASES=6",
-            "USE_NEW_TRIMMER=true",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'PolyATrimmer'}",
+        "-I",
+        f"{trimmed_ubam}",
+        "-O",
+        f"{polya_filtered_ubam}",
+        "-OUTPUT_SUMMARY",
+        f"{polya_filtered_summary}",
+        "-MISMATCHES",
+        "0",
+        "-NUM_BASES",
+        "6",
+        "-USE_NEW_TRIMMER",
+        "true",
+    ]
 
     run_command(cmd, "PolyATrimmer", manifest.flowcell, sample_row.library, lane)
     os.remove(trimmed_ubam)
@@ -330,29 +367,33 @@ def main(
     os.remove(f"{aligned_bam}.aligned.sorted.bam")
 
     # Tag read with interval
-    cmd = dropseq_cmd("TagReadWithInterval", tmp_dir)
-    cmd.extend(
-        [
-            f"I={aligned_bam}.merged.bam",
-            f"O={aligned_bam}.merged.TagReadWithInterval.bam",
-            f"INTERVALS={intervals}",
-            "TAG=XG",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'TagReadWithInterval'}",
+        "-I",
+        f"{aligned_bam}.merged.bam",
+        "-O",
+        f"{aligned_bam}.merged.TagReadWithInterval.bam",
+        "-INTERVALS",
+        f"{intervals}",
+        "-TAG",
+        "XG",
+    ]
 
     run_command(cmd, "TagReadWithInterval", manifest.flowcell, sample_row.library, lane)
     os.remove(f"{aligned_bam}.merged.bam")
 
     # Tag read with gene function
-    cmd = dropseq_cmd("TagReadWithGeneFunction", tmp_dir, compression=5)
-    cmd.extend(
-        [
-            f"I={aligned_bam}.merged.TagReadWithInterval.bam",
-            f"O={aligned_bam}.star_gene_exon_tagged2.bam",
-            f"ANNOTATIONS_FILE={annotations_file}",
-            "CREATE_INDEX=false",
-        ]
-    )
+    cmd = [
+        f"{constants.DROPSEQ_DIR / 'TagReadWithGeneFunction'}",
+        "-I",
+        f"{aligned_bam}.merged.TagReadWithInterval.bam",
+        "-O",
+        f"{aligned_bam}.star_gene_exon_tagged2.bam",
+        "-ANNOTATIONS_FILE",
+        f"{annotations_file}",
+        "-CREATE_INDEX",
+        "false",
+    ]
 
     run_command(
         cmd, "TagReadWithGeneFunction", manifest.flowcell, sample_row.library, lane

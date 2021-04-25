@@ -61,24 +61,6 @@ def picard_cmd(command: str, tmp_dir: pathlib.Path):
     ]
 
 
-def dropseq_cmd(command: str, tmp_dir: pathlib.Path, compression: int = 0):
-    """Return the beginning of a DropSeq command, with standard options
-
-    :param command: name of the dropseq tool being invoked
-    :param tmp_dir: Location of the tmp directory to use
-    :param compression: Compression level for output BAM
-    """
-    return [
-        f"{constants.DROPSEQ_DIR / command}",
-        "--TMP_DIR",
-        f"{tmp_dir}",
-        "--VALIDATION_STRINGENCY",
-        "SILENT",
-        "--COMPRESSION_LEVEL",
-        f"{compression}",
-    ]
-
-
 def get_read_structure(run_info_file: pathlib.Path) -> str:
     """
     Get read structure from RunInfo.xml. Assumes one index sequence only,
