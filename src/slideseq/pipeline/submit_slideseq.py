@@ -55,7 +55,7 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
     "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
 )
 @click.option("--demux/--no-demux", default=True, help="Whether to run demultiplexing")
-@click.option("--alignment/no-alignment", default=True, help="Whether to run alignment")
+@click.option("--align/--no-align", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log_file", type=click.Path(exists=False), help="File to write logs")
@@ -64,7 +64,7 @@ def main(
     spreadsheet: str,
     worksheet: str,
     demux: bool = True,
-    alignment: bool = True,  # TODO validate this
+    align: bool = True,  # TODO validate this
     dryrun: bool = False,
     debug: bool = False,
     log_file: str = None,
@@ -234,7 +234,7 @@ def main(
                     ]
                 )
 
-                if alignment:
+                if align:
                     alignment_jids[lane] = attempt_qsub(
                         alignment_args, flowcell, "alignment", dryrun
                     )
@@ -249,7 +249,7 @@ def main(
         # the jobs for a given lane
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
             for lane in lanes:
-                if alignment and alignment_jids[lane] is None:
+                if align and alignment_jids[lane] is None:
                     log.debug(
                         f"Not processing {lane} because alignment was not submitted"
                     )
@@ -266,7 +266,7 @@ def main(
                     MANIFEST=manifest_file,
                 )
 
-                if alignment:
+                if align:
                     processing_args.extend(["-hold_jid_ad", f"{alignment_jids[lane]}"])
 
                 processing_args.extend(
