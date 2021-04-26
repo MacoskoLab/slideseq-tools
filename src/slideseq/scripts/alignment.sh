@@ -14,7 +14,7 @@ source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8
 
-if [ -z "$CONDA_ENV" ]; then
+if [ -z "${CONDA_ENV}" ]; then
   echo "Error: conda environment is not set"
   exit 1
 else
@@ -24,5 +24,5 @@ fi
 # this will run slideseq.pipeline.alignment:main
 align_sample ${DEBUG} \
   --lane ${LANE} \
-  --sample_index ${SGE_TASK_ID} \
-  --manifest_file ${MANIFEST}
+  --sample-index ${SGE_TASK_ID} \
+  --manifest-file ${MANIFEST}

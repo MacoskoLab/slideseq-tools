@@ -58,7 +58,7 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 @click.option("--align/--no-align", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
-@click.option("--log_file", type=click.Path(exists=False), help="File to write logs")
+@click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
 def main(
     flowcells: list[str],
     spreadsheet: str,
@@ -75,11 +75,7 @@ def main(
     See README.md for instructions and requirements: github.com/MacoskoLab/slideseq-tools
     """
 
-    create_logger(debug=debug, log_file=log_file)
-
-    if dryrun:
-        log.info("DRY RUN ONLY -- No files will be written and no jobs run")
-
+    create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = get_env_name()
     log.debug(f"Running in Conda env {env_name}")
 

@@ -216,28 +216,28 @@ def match_barcodes(
     return bipartite_matching(bead_barcodes, bead_groups, seq_barcodes)
 
 
-@click.command()
+@click.command(name="bead_matching")
 @click.option(
     "-s",
-    "--sequence_barcodes",
+    "--sequence-barcodes",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
 )
 @click.option(
     "-b",
-    "--bead_barcodes",
+    "--bead-barcodes",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
 )
 @click.option(
     "-l",
-    "--bead_locations",
+    "--bead-locations",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
 )
 @click.option(
     "-o",
-    "--output_file",
+    "--output-file",
     required=True,
     type=click.Path(exists=False, file_okay=True, dir_okay=False),
 )

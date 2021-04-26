@@ -3,7 +3,9 @@ import pathlib
 import sys
 
 
-def create_logger(debug: bool = False, log_file: pathlib.Path = None):
+def create_logger(
+    debug: bool = False, dryrun: bool = False, log_file: pathlib.Path = None
+):
     log = logging.getLogger()
 
     # google is noisy, turn up its logging level
@@ -16,9 +18,14 @@ def create_logger(debug: bool = False, log_file: pathlib.Path = None):
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    if dryrun:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - DRYRUN - %(levelname)s - %(message)s"
+        )
+    else:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
     stream_handler.setFormatter(formatter)
 
     log.addHandler(stream_handler)
@@ -30,3 +37,7 @@ def create_logger(debug: bool = False, log_file: pathlib.Path = None):
         log_handler.setFormatter(formatter)
         log.addHandler(log_handler)
         log.debug(msg="Added file handler")
+
+    if dryrun:
+        log.info("DRY RUN ONLY -- No files will be written and no jobs run")
+

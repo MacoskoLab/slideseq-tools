@@ -6,6 +6,25 @@ MAX_QSUB = 3
 DROPSEQ_DIR = Path("/broad/macosko/bin/dropseq-tools-2.4.0")
 PICARD = Path("/seq/software/picard-public/2.24.2/picard.jar")
 
+REFERENCE_DIR = Path("/broad/macosko/reference")
+# these biotypes are _removed_ from the reference GTF
+FILTERED_BIOTYPES = [
+    "processed_pseudogene",
+    "unprocessed_pseudogene",
+    "transcribed_unprocessed_pseudogene",
+    "pseudogene",
+    "IG_V_pseudogene",
+    "transcribed_processed_pseudogene",
+    "TR_J_pseudogene",
+    "TR_V_pseudogene",
+    "unitary_pseudogene",
+    "polymorphic_pseudogene",
+    "IG_D_pseudogene",
+    "translated_processed_pseudogene",
+    "translated_unprocessed_pseudogene",
+    "IG_C_pseudogene",
+]
+
 WORKFLOW_DIR = Path("/broad/macosko/data/workflows/flowcell")
 LIBRARY_DIR = Path("/broad/macosko/data/libraries")
 

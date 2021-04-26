@@ -52,19 +52,19 @@ def get_bead_structure_range(bs, structure_type):
 )
 @click.option(
     "-i",
-    "--sample_index",
+    "--sample-index",
     type=int,
     required=True,
     help="Which sample from the metadata to align",
 )
 @click.option(
-    "--manifest_file",
+    "--manifest-file",
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
     help="YAML file containing the flowcell manifest",
 )
 @click.option("-d", "--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
-@click.option("--log_file", type=click.Path(exists=False))
+@click.option("--log-file", type=click.Path(exists=False))
 def main(
     lane: int,
     sample_index: int,
@@ -73,10 +73,7 @@ def main(
     debug: bool = False,
     log_file: str = None,
 ):
-    create_logger(debug=debug, log_file=log_file)
-
-    if dryrun:
-        log.info("DRY RUN ONLY -- No files will be written and no jobs run")
+    create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
