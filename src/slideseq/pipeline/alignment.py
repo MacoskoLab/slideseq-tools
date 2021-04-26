@@ -118,6 +118,7 @@ def main(
         output_dir / f"{bam_base}.unaligned_mc_tagged_polyA_filtered.bam"
     )
     polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
+    polya_filtered_fastq = polya_filtered_ubam.with_suffix("fastq")
 
     # prefix for aligned bam file
     aligned_bam = output_dir / f"{bam_base}"
@@ -209,30 +210,25 @@ def main(
     run_command(cmd, "PolyATrimmer", manifest.flowcell, row.library, lane)
     os.remove(trimmed_ubam)
 
+    # convert to fastq like a loser
+    cmd = picard_cmd("SamToFastq", tmp_dir)
+    cmd.extend(
+        [
+            "-I",
+            f"{polya_filtered_ubam}",
+            "-F",
+            f"{polya_filtered_fastq}",
+        ]
+    )
+    run_command(cmd, "SamToFastq", manifest.flowcell, row.library, lane)
+
     # Map reads to genome sequence using STARsolo
     cmd = [
         "STAR",
         "--genomeDir",
         f"{genome_dir}",
         "--readFilesIn",
-        f"{polya_filtered_ubam}",
-        "--readFilesCommand",
-        "samtools",
-        "view",
-        "-F",
-        "0x100",
-        "--soloType",
-        "CB_samTagOut",
-        "--soloCellFilter",
-        "None",
-        "--soloUMIdedup",
-        "NoDedup",
-        "--soloInputSAMattrBarcodeSeq",
-        "XC",
-        "XM",
-        "--soloFeatures",
-        "Gene",
-        # "GeneFull",
+        f"{polya_filtered_fastq}",
         "--outFileNamePrefix",
         f"{aligned_bam}.star.",
         "--outStd",
@@ -249,7 +245,7 @@ def main(
     ]
 
     run_command(cmd, "STAR", manifest.flowcell, row.library, lane)
-    os.remove(polya_filtered_ubam)
+    os.remove(polya_filtered_fastq)
 
     # TODO: this thing
 
