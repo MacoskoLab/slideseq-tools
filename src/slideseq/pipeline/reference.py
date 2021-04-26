@@ -105,5 +105,7 @@ def main(
             if int(proc.returncode) != 0:
                 log.warning("qsub failed, retrying")
                 log.debug(f"Error: {proc.stderr}")
+            else:
+                break
         else:
             log.error(f"Unable to launch build-reference job for {reference_fasta}")
