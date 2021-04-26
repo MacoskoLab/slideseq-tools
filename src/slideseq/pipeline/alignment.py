@@ -175,7 +175,6 @@ def main(
         f"I={molecular_tagged_bam}",
         f"O={filtered_ubam}",
         "PASSING_READ_THRESHOLD=0.1",
-        "REPAIR_BARCODES=false",
         "TAG_REJECT=XQ",
     ]
 
