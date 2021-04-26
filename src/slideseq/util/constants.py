@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import numpy as np
-
 # number of times to try qsub before giving up
 MAX_QSUB = 3
 
@@ -42,7 +40,7 @@ METADATA_COLS = [
 
 # for columns that pandas might not recognize automatically
 METADATA_TYPES = {
-    "date": np.datetime64,
+    "date": str,
     "estimated_num_cells": int,
     "estimated_num_beads": int,
     "run_barcodematching": bool,
