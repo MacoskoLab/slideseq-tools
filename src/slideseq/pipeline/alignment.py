@@ -84,9 +84,11 @@ def main(
 
     tmp_dir = manifest.output_directory / "tmp"
 
-    row = metadata_df.iloc[sample_index]
+    row = metadata_df.iloc[sample_index - 1]
 
-    output_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
+    output_dir = (
+        constants.LIBRARY_DIR / f"{row.date.date()}_{row.library}" / f"L{lane:03d}"
+    )
 
     reference = pathlib.Path(row.reference)
     reference_folder = reference.parent
