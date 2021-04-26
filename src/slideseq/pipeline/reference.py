@@ -17,38 +17,40 @@ from slideseq.util import qsub_args
 log = logging.getLogger(__name__)
 
 
-@click.command(name="mkref", no_args_is_help=True)
+@click.command(name="build_ref", no_args_is_help=True)
 @click.option("-n", "--genome-name", help="Name for the reference")
 @click.option("-f", "--reference-fasta", type=click.Path(dir_okay=False, exists=True))
 @click.option("-g", "--reference-gtf", type=click.Path(dir_okay=False, exists=True))
 @click.option(
-    "--output-dir",
+    "--reference-dir",
     type=click.Path(dir_okay=True, file_okay=False),
     default=constants.REFERENCE_DIR,
+    show_default=True,
+    help="Location where genome references are stored",
 )
 @click.option("--mt-sequence", help="Name prefix used in GTF for mitochrondrial genes")
 @click.option(
     "-F",
     "--filter-biotypes",
-    help="Gene biotypes to filter out",
     multiple=True,
-    show_default=True,
     default=constants.FILTERED_BIOTYPES,
+    show_default=True,
+    help="Gene biotypes to filter out",
 )
-@click.option("-d", "--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--overwrite", is_flag=True, help="Overwrite any existing reference")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
+@click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--log-file", type=click.Path(exists=False))
 def main(
     genome_name: str,
     reference_fasta: str,
     reference_gtf: str,
-    output_dir: str,
+    reference_dir: str,
     mt_sequence: str,
     filter_biotypes: list[str],
     overwrite: bool = False,
-    dryrun: bool = False,
     debug: bool = False,
+    dryrun: bool = False,
     log_file: str = None,
 ):
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
@@ -57,22 +59,25 @@ def main(
 
     reference_fasta = pathlib.Path(reference_fasta)
     reference_gtf = pathlib.Path(reference_gtf)
-    output_dir = pathlib.Path(output_dir)
+    output_dir = pathlib.Path(reference_dir) / genome_name
+    star_dir = output_dir / "STAR"
 
     log.info(f"Building reference for genome {genome_name}")
 
-    if output_dir.exists():
+    if star_dir.exists():
         if overwrite:
-            log.warning(f"Removing existing reference {output_dir}")
+            log.warning(f"{star_dir} exists, overwriting existing reference")
+            # remove only STAR directory to allow storage of original files
             if not dryrun:
-                shutil.rmtree(output_dir)
+                shutil.rmtree(star_dir)
+                star_dir.mkdir()
         else:
-            log.error(f"{output_dir} already exists and overwrite=False, aborting")
+            log.error(f"{star_dir} already exists and overwrite=False, aborting")
             sys.exit(1)
-
-    log.info(f"Creating output directory {output_dir}")
-    if not dryrun:
-        (output_dir / "STAR").mkdir(parents=True)
+    else:
+        log.info(f"Creating output directory {star_dir}")
+        if not dryrun:
+            star_dir.mkdir(exist_ok=True, parents=True)
 
     log.info(f"Creating genome reference for {reference_fasta}")
 
@@ -80,7 +85,6 @@ def main(
     with importlib.resources.path(
         slideseq.scripts, "build_reference.sh"
     ) as qsub_script:
-        # request a high-cpu, high-mem machine for this step
         mkref_args = qsub_args(
             log_file=output_dir / "build_reference.log",
             CONDA_ENV=env_name,
