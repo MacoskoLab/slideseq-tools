@@ -40,4 +40,3 @@ def create_logger(
 
     if dryrun:
         log.info("DRY RUN ONLY -- No files will be written and no jobs run")
-

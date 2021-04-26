@@ -91,7 +91,7 @@ def main(
             REFERENCE_GTF=reference_gtf,
             OUTPUT_DIR=output_dir,
             MT_SEQUENCE=mt_sequence,
-            FILTERED_BIOTYPES=" ".join(f"G={biotype}" for biotype in filter_biotypes)
+            FILTERED_BIOTYPES=" ".join(f"G={biotype}" for biotype in filter_biotypes),
         )
         mkref_args.append(f"{qsub_script.absolute()}")
 
