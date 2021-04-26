@@ -13,12 +13,14 @@ def get_env_name() -> str:
 
 def qsub_args(
     log_file: pathlib.Path = None,
+    debug: bool = False,
     **kwargs: Any,
 ) -> list[str]:
     """
     Returns command list starting with "qsub", adding configured options
 
     :param log_file: path to log file for output
+    :param debug: whether to turn on debug logging
     :param kwargs: additional keyword arguments are passed as environment variables.
                    Values will be converted to strings
 
@@ -30,6 +32,9 @@ def qsub_args(
 
     if log_file is not None:
         arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
+
+    if debug:
+        arg_list.extend(["-v", "DEBUG=--debug"])
 
     for name, value in kwargs.items():
         arg_list.extend(["-v", f"{name}={value}"])

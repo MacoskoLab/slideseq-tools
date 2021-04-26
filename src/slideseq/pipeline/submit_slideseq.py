@@ -149,7 +149,13 @@ def main(
         if not dryrun:
             log.debug("Creating output directories")
             output_dir.mkdir(exist_ok=True)
+
             log_dir.mkdir(exist_ok=True)
+            if list(log_dir.glob("*.log")):
+                log.warning(
+                    "Log files already exist for this job, new output will be appended"
+                )
+
             tmp_dir.mkdir(exist_ok=True)
 
             log.debug(f"Writing manifest to {manifest_file}")
@@ -219,6 +225,7 @@ def main(
                 # request a high-cpu, high-mem machine for this step
                 alignment_args = qsub_args(
                     log_file=log_dir / f"alignment.L00{lane}.$TASK_ID.log",
+                    debug=debug,
                     CONDA_ENV=env_name,
                     LANE=lane,
                     MANIFEST=manifest_file,
@@ -262,6 +269,7 @@ def main(
                 # this step requires considerably fewer resources
                 processing_args = qsub_args(
                     log_file=log_dir / f"processing.L00{lane}.$TASK_ID.log",
+                    debug=debug,
                     CONDA_ENV=env_name,
                     LANE=lane,
                     MANIFEST=manifest_file,
