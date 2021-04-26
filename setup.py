@@ -43,7 +43,7 @@ setuptools.setup(
         "scikit-learn",
         "scipy",
     ],
-    extras_require={"dev": ["black", "isort", "flake8"]},
+    extras_require={"dev": ["black", "isort", "flake8", "pre-commit"]},
     entry_points={
         "console_scripts": [
             "submit_job = slideseq.pipeline.submit_slideseq:main",
