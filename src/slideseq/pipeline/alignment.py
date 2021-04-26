@@ -116,7 +116,7 @@ def main(
         output_dir / f"{bam_base}.unaligned_mc_tagged_polyA_filtered.bam"
     )
     polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
-    polya_filtered_fastq = polya_filtered_ubam.with_suffix("fastq")
+    polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq")
 
     # prefix for aligned bam file
     aligned_bam = output_dir / f"{bam_base}"
