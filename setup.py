@@ -33,7 +33,7 @@ setuptools.setup(
         "PyYAML",
         "google-api-python-client",
         "google-auth",
-        "google-cloud-secrets-manager",
+        "google-cloud-secret-manager",
         "matplotlib",
         "networkx",
         "numpy",
