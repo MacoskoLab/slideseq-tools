@@ -32,7 +32,7 @@ def qsub_args(
         arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
 
     for name, value in kwargs.items():
-        arg_list.extend(["-v", f"{name}='{value}'"])
+        arg_list.extend(["-v", f"{name}={value}"])
 
     return arg_list
 

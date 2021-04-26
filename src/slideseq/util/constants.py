@@ -34,7 +34,18 @@ METADATA_COLS = [
     "puckcaller_path",
     "bead_type",
     "fdr_threshold",
-    "gen_updistance_plot",
     "gen_read1_plot",
     "gen_downsampling",
 ]
+
+# for columns that pandas doesn't recognize automatically
+METADATA_TYPES = {
+    "estimated_num_cells": int,
+    "estimated_num_beads": int,
+    "run_barcodematching": bool,
+    "base_quality": int,
+    "min_transcripts_per_cell": int,
+    "fdr_threshold": float,
+    "gen_read1_plot": bool,
+    "gen_downsampling": bool,
+}

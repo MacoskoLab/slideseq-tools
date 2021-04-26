@@ -84,30 +84,21 @@ def main(
 
     tmp_dir = manifest.output_directory / "tmp"
 
-    sample_row = metadata_df.iloc[sample_index]
+    row = metadata_df.iloc[sample_index]
 
-    library_dir = constants.LIBRARY_DIR / f"{sample_row.date}_{sample_row.library}"
+    output_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
 
-    reference = sample_row.reference
+    reference = pathlib.Path(row.reference)
+    reference_folder = reference.parent
 
-    reference_folder = reference[: reference.rfind("/")]
-    referencePure = reference[reference.rfind("/") + 1 :]
-    if referencePure.endswith(".gz"):
-        referencePure = referencePure[: referencePure.rfind(".")]
-    referencePure = referencePure[: referencePure.rfind(".")]
-    genome_dir = f"{reference_folder}/STAR"
-    intervals = f"{reference_folder}/{referencePure}.genes.intervals"
-    annotations_file = f"{reference_folder}/{referencePure}.gtf"
-
-    output_dir = (
-        library_dir / f"{lane:03d}" / sample_row.library / sample_row.sample_barcode
-    )
+    # assumes that reference always ends in .fasta, not .fasta.gz
+    genome_dir = reference_folder / "STAR"
+    intervals = reference_folder / f"{reference.stem}.genes.intervals"
+    annotations_file = reference_folder / f"{reference.stem}.gtf"
 
     # define all the intermediate files we need
     # TODO: figure out if we can combine some of these steps, maybe
-    bam_base = (
-        f"{manifest.flowcell}.{lane}.{sample_row.library}.{sample_row.sample_barcode}"
-    )
+    bam_base = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}"
     unmapped_bam = output_dir / f"{bam_base}.unmapped.bam"
 
     cellular_tagged_bam = output_dir / f"{bam_base}.unmapped_tagged_cellular.bam"
@@ -129,79 +120,49 @@ def main(
     # prefix for aligned bam file
     aligned_bam = output_dir / f"{bam_base}"
 
-    bs_range1 = get_bead_structure_range(sample_row.bead_structure, "C")
-    bs_range2 = get_bead_structure_range(sample_row.bead_structure, "M")
+    bs_range1 = get_bead_structure_range(row.bead_structure, "C")
+    bs_range2 = get_bead_structure_range(row.bead_structure, "M")
 
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
-        "-TMP_DIR",
-        f"{tmp_dir}",
-        "-VALIDATION_STRINGENCY",
-        "SILENT",
-        "-COMPRESSION_LEVEL",
-        "0",
-        "-I",
-        f"{unmapped_bam}",
-        "-O",
-        f"{cellular_tagged_bam}",
-        "-SUMMARY",
-        f"{cellular_tagged_summary}",
-        "-BASE_RANGE",
-        f"{bs_range1}",
-        "-BASE_QUALITY",
-        f"{sample_row.base_quality:d}",
-        "-BARCODED_READ",
-        "1",
-        "-DISCARD_READ",
-        "false",
-        "-TAG_NAME",
-        "XC",
-        "-NUM_BASES_BELOW_QUALITY",
-        "1",
+        f"I={unmapped_bam}",
+        f"O={cellular_tagged_bam}",
+        f"SUMMARY={cellular_tagged_summary}",
+        f"BASE_RANGE={bs_range1}",
+        f"BASE_QUALITY={row.base_quality}",
+        "BARCODED_READ=1",
+        "DISCARD_READ=false",
+        "TAG_NAME=XC",
+        "NUM_BASES_BELOW_QUALITY=1",
     ]
 
     run_command(
         cmd,
         "TagBamWithReadSequenceExtended (Cellular)",
         manifest.flowcell,
-        sample_row.library,
+        row.library,
         lane,
     )
 
     # Tag bam with read sequence extended molecular
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
-        "-TMP_DIR",
-        f"{tmp_dir}",
-        "-VALIDATION_STRINGENCY",
-        "SILENT",
-        "-COMPRESSION_LEVEL",
-        "0",
-        "-I",
-        f"{cellular_tagged_bam}",
-        "-O",
-        f"{molecular_tagged_bam}",
-        "-SUMMARY",
-        f"{molecular_tagged_summary}",
-        "-BASE_RANGE",
-        f"{bs_range2}",
-        "-BASE_QUALITY",
-        f"{sample_row.base_quality:d}",
-        "-BARCODED_READ",
-        "1",
-        "-DISCARD_READ",
-        "true",
-        "-TAG_NAME",
-        "XM",
-        "-NUM_BASES_BELOW_QUALITY",
-        "1",
+        f"I={cellular_tagged_bam}",
+        f"O={molecular_tagged_bam}",
+        f"SUMMARY={molecular_tagged_summary}",
+        f"BASE_RANGE={bs_range2}",
+        f"BASE_QUALITY={row.base_quality}",
+        "BARCODED_READ=1",
+        "DISCARD_READ=true",
+        "TAG_NAME=XM",
+        "NUM_BASES_BELOW_QUALITY=1",
     ]
 
     run_command(
         cmd,
         "TagBamWithReadSequenceExtended (Molecular)",
         manifest.flowcell,
-        sample_row.library,
+        row.library,
         lane,
     )
     os.remove(cellular_tagged_bam)
@@ -209,61 +170,42 @@ def main(
     # Filter low-quality reads
     cmd = [
         f"{constants.DROPSEQ_DIR / 'FilterBam'}",
-        "-I",
-        f"{molecular_tagged_bam}",
-        "-O",
-        f"{filtered_ubam}",
-        "-PASSING_READ_THRESHOLD",
-        "0.1",
-        "-REPAIR_BARCODES",
-        "false",
-        "-TAG_REJECT",
-        "XQ",
+        f"I={molecular_tagged_bam}",
+        f"O={filtered_ubam}",
+        "PASSING_READ_THRESHOLD=0.1",
+        "REPAIR_BARCODES=false",
+        "TAG_REJECT=XQ",
     ]
 
-    run_command(cmd, "FilterBam", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "FilterBam", manifest.flowcell, row.library, lane)
     os.remove(molecular_tagged_bam)
 
     # Trim reads with starting sequence
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TrimStartingSequence'}",
-        "-I",
-        f"{filtered_ubam}",
-        "-O",
-        f"{trimmed_ubam}",
-        "-OUTPUT_SUMMARY",
-        f"{trimming_summary}",
-        "-SEQUENCE",
-        f"{sample_row.start_sequence}",
-        "-MISMATCHES",
-        "0",
-        "-NUM_BASES",
-        "5",
+        f"I={filtered_ubam}",
+        f"O={trimmed_ubam}",
+        f"OUTPUT_SUMMARY={trimming_summary}",
+        f"SEQUENCE={row.start_sequence}",
+        "MISMATCHES=0",
+        "NUM_BASES=5",
     ]
 
-    run_command(
-        cmd, "TrimStartingSequence", manifest.flowcell, sample_row.library, lane
-    )
+    run_command(cmd, "TrimStartingSequence", manifest.flowcell, row.library, lane)
     os.remove(filtered_ubam)
 
     # Adapter-aware poly A trimming
     cmd = [
         f"{constants.DROPSEQ_DIR / 'PolyATrimmer'}",
-        "-I",
-        f"{trimmed_ubam}",
-        "-O",
-        f"{polya_filtered_ubam}",
-        "-OUTPUT_SUMMARY",
-        f"{polya_filtered_summary}",
-        "-MISMATCHES",
-        "0",
-        "-NUM_BASES",
-        "6",
-        "-USE_NEW_TRIMMER",
-        "true",
+        f"I={trimmed_ubam}",
+        f"O={polya_filtered_ubam}",
+        f"OUTPUT_SUMMARY={polya_filtered_summary}",
+        "MISMATCHES=0",
+        "NUM_BASES=6",
+        "USE_NEW_TRIMMER=true",
     ]
 
-    run_command(cmd, "PolyATrimmer", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "PolyATrimmer", manifest.flowcell, row.library, lane)
     os.remove(trimmed_ubam)
 
     # Map reads to genome sequence using STARsolo
@@ -305,7 +247,7 @@ def main(
         "8",
     ]
 
-    run_command(cmd, "STAR", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "STAR", manifest.flowcell, row.library, lane)
     os.remove(polya_filtered_ubam)
 
     # TODO: this thing
@@ -338,7 +280,7 @@ def main(
             "queryname",
         ]
     )
-    run_command(cmd, "SortSam", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "SortSam", manifest.flowcell, row.library, lane)
     os.remove(f"{aligned_bam}.star.Aligned.out.bam")
 
     # Merge unmapped bam and aligned bam
@@ -346,7 +288,7 @@ def main(
     cmd.extend(
         [
             "-R",
-            f"{sample_row.reference}",
+            f"{row.reference}",
             "--UNMAPPED",
             f"{polya_filtered_ubam}",
             "--ALIGNED",
@@ -362,42 +304,32 @@ def main(
         ]
     )
 
-    run_command(cmd, "MergeBamAlignment", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "MergeBamAlignment", manifest.flowcell, row.library, lane)
     os.remove(polya_filtered_ubam)
     os.remove(f"{aligned_bam}.aligned.sorted.bam")
 
     # Tag read with interval
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagReadWithInterval'}",
-        "-I",
-        f"{aligned_bam}.merged.bam",
-        "-O",
-        f"{aligned_bam}.merged.TagReadWithInterval.bam",
-        "-INTERVALS",
-        f"{intervals}",
-        "-TAG",
-        "XG",
+        f"I={aligned_bam}.merged.bam",
+        f"O={aligned_bam}.merged.TagReadWithInterval.bam",
+        f"INTERVALS={intervals}",
+        "TAG=XG",
     ]
 
-    run_command(cmd, "TagReadWithInterval", manifest.flowcell, sample_row.library, lane)
+    run_command(cmd, "TagReadWithInterval", manifest.flowcell, row.library, lane)
     os.remove(f"{aligned_bam}.merged.bam")
 
     # Tag read with gene function
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagReadWithGeneFunction'}",
-        "-I",
-        f"{aligned_bam}.merged.TagReadWithInterval.bam",
-        "-O",
-        f"{aligned_bam}.star_gene_exon_tagged2.bam",
-        "-ANNOTATIONS_FILE",
-        f"{annotations_file}",
-        "-CREATE_INDEX",
-        "false",
+        f"I={aligned_bam}.merged.TagReadWithInterval.bam",
+        f"O={aligned_bam}.star_gene_exon_tagged2.bam",
+        f"ANNOTATIONS_FILE={annotations_file}",
+        "CREATE_INDEX=false",
     ]
 
-    run_command(
-        cmd, "TagReadWithGeneFunction", manifest.flowcell, sample_row.library, lane
-    )
+    run_command(cmd, "TagReadWithGeneFunction", manifest.flowcell, row.library, lane)
     os.remove(f"{aligned_bam}.merged.TagReadWithInterval.bam")
 
-    log.info(f"Alignment for {sample_row.library} completed")
+    log.info(f"Alignment for {row.library} completed")

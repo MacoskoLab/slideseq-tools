@@ -120,6 +120,9 @@ def main(
             flowcell_errors.add(flowcell)
             continue
 
+        # convert columns to desired types
+        flowcell_df = flowcell_df.astype(constants.METADATA_TYPES)
+
         # data locations
         output_dir = constants.WORKFLOW_DIR / flowcell
         log_dir = output_dir / "logs"
@@ -152,8 +155,6 @@ def main(
             log.debug(f"Writing manifest to {manifest_file}")
             manifest.to_file(manifest_file)
 
-        # round num_expected_cells to integers
-        flowcell_df = flowcell_df.round({"num_expected_cells": 0})
         # break rows out per lane for processing
         flowcell_df = split_sample_lanes(flowcell_df, lanes)
 

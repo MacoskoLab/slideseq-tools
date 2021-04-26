@@ -41,7 +41,7 @@ def gen_library_params(sample_df: pd.DataFrame, manifest: Manifest, lane: int):
                 constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
             )
             library_dir.mkdir(exist_ok=True, parents=True)
-            output_bam = f"{manifest.flowcell}.{lane}.{row.library}.{row.sample_barcode}.unmapped.bam"
+            output_bam = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.unmapped.bam"
 
             print(
                 f"{library_dir / output_bam}\t{row.library}\t{row.library}\t{row.sample_barcode}",
