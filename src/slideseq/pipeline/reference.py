@@ -2,6 +2,7 @@
 
 import importlib.resources
 import logging
+import os
 import pathlib
 import shutil
 import sys
@@ -64,20 +65,24 @@ def main(
 
     log.info(f"Building reference for genome {genome_name}")
 
-    if star_dir.exists():
+    if output_dir.exists():
         if overwrite:
-            log.warning(f"{star_dir} exists, overwriting existing reference")
-            # remove only STAR directory to allow storage of original files
+            log.warning(f"{output_dir} exists, overwriting existing reference")
             if not dryrun:
-                shutil.rmtree(star_dir)
-                star_dir.mkdir()
+                if star_dir.exists():
+                    log.debug(f"Removing and remaking {star_dir}")
+                    shutil.rmtree(star_dir)
+                    star_dir.mkdir()
+                if (output_dir / f"{genome_name}.dict").exists():
+                    log.debug(f"Removing {output_dir}/{genome_name}.dict")
+                    os.remove(output_dir / f"{genome_name}.dict")
         else:
             log.error(f"{star_dir} already exists and overwrite=False, aborting")
             sys.exit(1)
     else:
         log.info(f"Creating output directory {star_dir}")
         if not dryrun:
-            star_dir.mkdir(exist_ok=True, parents=True)
+            star_dir.mkdir(parents=True)
 
     log.info(f"Creating genome reference for {reference_fasta}")
 
@@ -95,7 +100,7 @@ def main(
             REFERENCE_GTF=reference_gtf,
             OUTPUT_DIR=output_dir,
             MT_SEQUENCE=mt_sequence,
-            FILTERED_BIOTYPES=" ".join(f"G={biotype}" for biotype in filter_biotypes),
+            FILTERED_BIOTYPES=" ".join(f"-G {biotype}" for biotype in filter_biotypes),
         )
         mkref_args.append(f"{qsub_script.absolute()}")
 
@@ -112,4 +117,4 @@ def main(
             else:
                 break
         else:
-            log.error(f"Unable to launch build-reference job for {reference_fasta}")
+            log.error(f"Unable to launch build_ref job for {reference_fasta}")
