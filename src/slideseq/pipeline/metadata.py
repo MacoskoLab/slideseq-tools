@@ -51,7 +51,7 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
     if len(set(flowcell_df.library)) != len(flowcell_df.library):
         warning_logs.append(
             f"Flowcell {flowcell} does not have unique library names;"
-            f" please fill out naming metadata correctly or add suffixes."
+            " please fill out naming metadata correctly or add suffixes."
         )
 
     if any(" " in name for name in flowcell_df.library):
@@ -62,8 +62,8 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
 
     if flowcell_df.isna().values.any():
         warning_logs.append(
-            f"Flowcell {flowcell} does not have complete submission metadata (orange and blue cols);"
-            " please fill out before running."
+            f"Flowcell {flowcell} does not have complete submission metadata (orange"
+            " and blue cols); please fill out before running."
         )
 
     bcl_path_set = set(flowcell_df.bclpath)
@@ -101,7 +101,8 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
     # check if references exist
     if not all(os.path.isfile(build) for build in flowcell_df.reference):
         warning_logs.append(
-            f"Reference for {flowcell} does not exist; please correct reference values before running.",
+            f"Reference for {flowcell} does not exist; please correct reference values"
+            " before running.",
         )
 
     if warning_logs:

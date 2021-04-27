@@ -13,6 +13,7 @@ import pandas as pd
 import slideseq.util.constants as constants
 from slideseq.pipeline.metadata import Manifest
 from slideseq.util import picard_cmd
+from slideseq.util.alignment_quality import write_alignment_stats
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -116,8 +117,20 @@ def main(
     polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
-    # prefix for aligned bam file
-    aligned_bam = output_dir / f"{bam_base}"
+    # prefix for aligned bam files
+    aligned_bam_prefix = output_dir / f"{bam_base}"
+
+    # intermediate files
+    aligned_bam = aligned_bam_prefix.with_suffix(".star.Aligned.out.bam")
+    alignment_statistics = aligned_bam_prefix.with_suffix(
+        ".alignment_statistics.pickle"
+    )
+    aligned_sorted_bam = aligned_bam_prefix.with_suffix(".aligned.sorted.bam")
+    aligned_merged_bam = aligned_bam_prefix.with_suffix(".merged.bam")
+    aligned_tagged_bam = aligned_bam.with_suffix(".merged.TagReadWithInterval.bam")
+
+    # the final file
+    final_aligned_bam = aligned_bam.with_suffix(".star_gene_exon_tagged2.bam")
 
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(row.bead_structure, "M")
@@ -228,7 +241,7 @@ def main(
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        f"{aligned_bam}.star.",
+        f"{aligned_bam_prefix}.star.",
         "--outStd",
         "Log",
         "--outSAMtype",
@@ -244,36 +257,26 @@ def main(
 
     run_command(cmd, "STAR", manifest.flowcell, row.library, lane)
 
-    # TODO: this thing
-
     # Check alignments quality
-    # star_file2 = f"{prefix_libraries}.star.Aligned.out.sam"
-    # commandStr = f"samtools view -h -o {star_file2} {star_file}"
-    # os.system(commandStr)
-    # commandStr = f"check_alignments_quality {star_file2}"
-
-    # log.debug(f"Command = {commandStr}")
-    # os.system(commandStr)
-    # log.info(
-    #     f"{manifest.flowcell} - Check alignments quality for"
-    #     f" {sample_row.library} in Lane {lane} is done."
-    # )
-    # call(["rm", star_file2])
+    log.debug(
+        f"Writing alignment statistics for {aligned_bam} to {alignment_statistics}"
+    )
+    write_alignment_stats(aligned_bam, alignment_statistics)
 
     # Sort aligned bam
     cmd = picard_cmd("SortSam", tmp_dir)
     cmd.extend(
         [
             "-I",
-            f"{aligned_bam}.star.Aligned.out.bam",
+            f"{aligned_bam}",
             "-O",
-            f"{aligned_bam}.aligned.sorted.bam",
+            f"{aligned_sorted_bam}",
             "--SORT_ORDER",
             "queryname",
         ]
     )
     run_command(cmd, "SortSam", manifest.flowcell, row.library, lane)
-    os.remove(f"{aligned_bam}.star.Aligned.out.bam")
+    os.remove(aligned_bam)
 
     # Merge unmapped bam and aligned bam
     cmd = picard_cmd("MergeBamAlignment", tmp_dir)
@@ -284,9 +287,9 @@ def main(
             "--UNMAPPED",
             f"{polya_filtered_ubam}",
             "--ALIGNED",
-            f"{aligned_bam}.aligned.sorted.bam",
+            f"{aligned_sorted_bam}",
             "-O",
-            f"{aligned_bam}.merged.bam",
+            f"{aligned_merged_bam}",
             "--COMPRESSION_LEVEL",
             "0",
             "--INCLUDE_SECONDARY_ALIGNMENTS",
@@ -298,30 +301,30 @@ def main(
 
     run_command(cmd, "MergeBamAlignment", manifest.flowcell, row.library, lane)
     os.remove(polya_filtered_ubam)
-    os.remove(f"{aligned_bam}.aligned.sorted.bam")
+    os.remove(aligned_sorted_bam)
 
     # Tag read with interval
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagReadWithInterval'}",
-        f"I={aligned_bam}.merged.bam",
-        f"O={aligned_bam}.merged.TagReadWithInterval.bam",
+        f"I={aligned_merged_bam}",
+        f"O={aligned_tagged_bam}",
         f"INTERVALS={intervals}",
         "TAG=XG",
     ]
 
     run_command(cmd, "TagReadWithInterval", manifest.flowcell, row.library, lane)
-    os.remove(f"{aligned_bam}.merged.bam")
+    os.remove(aligned_merged_bam)
 
     # Tag read with gene function
     cmd = [
         f"{constants.DROPSEQ_DIR / 'TagReadWithGeneFunction'}",
-        f"I={aligned_bam}.merged.TagReadWithInterval.bam",
-        f"O={aligned_bam}.star_gene_exon_tagged2.bam",
+        f"I={aligned_tagged_bam}",
+        f"O={final_aligned_bam}",
         f"ANNOTATIONS_FILE={annotations_file}",
         "CREATE_INDEX=false",
     ]
 
     run_command(cmd, "TagReadWithGeneFunction", manifest.flowcell, row.library, lane)
-    os.remove(f"{aligned_bam}.merged.TagReadWithInterval.bam")
+    os.remove(aligned_tagged_bam)
 
     log.info(f"Alignment for {row.library} completed")

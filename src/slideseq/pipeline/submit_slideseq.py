@@ -49,7 +49,7 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 @click.option(
     "--spreadsheet",
     default="1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic",
-    help="ID of the Google Sheet to use (default is Macosko Slide-seq Flowcell Alignment)",
+    help="ID of the Google Sheet (default is Macosko Slide-seq Flowcell Alignment)",
 )
 @click.option(
     "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
@@ -77,7 +77,7 @@ def main(
 
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = get_env_name()
-    log.debug(f"Running in Conda env {env_name}")
+    log.debug(f"Running in conda env {env_name}")
 
     log.debug("Fetching Google credentials")
     google_creds = gutil.get_secrets_manager_credentials()
@@ -297,5 +297,5 @@ def main(
 
     if flowcell_errors:
         log.info(
-            f"Flowcells {', '.join(flowcell_errors)} had errors -- please see warnings above."
+            f"Flowcells {', '.join(flowcell_errors)} had errors -- see warnings above."
         )

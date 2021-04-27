@@ -125,7 +125,10 @@ def bipartite_matching(
 
     # verify that we don't have new collisions
     log.debug(
-        msg=f"Collapsed {len(bead_groups)} bead groups into {len(set(degen_bead_barcodes))} barcodes"
+        msg=(
+            f"Collapsed {len(bead_groups)} bead groups into"
+            f" {len(set(degen_bead_barcodes))} barcodes"
+        )
     )
 
     # just in case we'll add integer tags to each one, so they are unique
