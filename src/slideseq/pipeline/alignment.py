@@ -117,8 +117,8 @@ def main(
     polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
-    # prefix for aligned bam files
-    aligned_bam_prefix = output_dir / f"{bam_base}"
+    # prefix for aligned bam files. need to add 'tmp' so `with_suffix` works
+    aligned_bam_prefix = output_dir / f"{bam_base}.tmp"
 
     # intermediate files
     aligned_bam = aligned_bam_prefix.with_suffix(".star.Aligned.out.bam")
@@ -241,7 +241,7 @@ def main(
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        f"{aligned_bam_prefix}.star.",
+        f"{aligned_bam_prefix.with_suffix('.star')}",
         "--outStd",
         "Log",
         "--outSAMtype",
