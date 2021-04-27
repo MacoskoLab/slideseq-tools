@@ -241,7 +241,7 @@ def main(
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        f"{aligned_bam}",
+        f"{aligned_bam_prefix.with_suffix('.star.')}",
         "--outStd",
         "Log",
         "--outSAMtype",
