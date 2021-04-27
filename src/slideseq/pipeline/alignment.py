@@ -11,9 +11,9 @@ import click
 import pandas as pd
 
 import slideseq.util.constants as constants
-from slideseq.logger import create_logger
 from slideseq.pipeline.metadata import Manifest
 from slideseq.util import picard_cmd
+from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
 

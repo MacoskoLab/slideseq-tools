@@ -2,19 +2,21 @@ import logging
 import pathlib
 import sys
 
+log = logging.getLogger(__name__)
+
 
 def create_logger(
     debug: bool = False, dryrun: bool = False, log_file: pathlib.Path = None
 ):
-    log = logging.getLogger()
+    root_log = logging.getLogger()
 
     # google is noisy, turn up its logging level
     logging.getLogger("googleapiclient").setLevel(logging.WARNING)
 
     if debug:
-        log.setLevel(logging.DEBUG)
+        root_log.setLevel(logging.DEBUG)
     else:
-        log.setLevel(logging.INFO)
+        root_log.setLevel(logging.INFO)
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
@@ -28,14 +30,14 @@ def create_logger(
         )
     stream_handler.setFormatter(formatter)
 
-    log.addHandler(stream_handler)
+    root_log.addHandler(stream_handler)
     log.debug(msg="Added stream handler")
 
     if log_file is not None:
         log_handler = logging.FileHandler(log_file)
         log_handler.setLevel(logging.DEBUG)
         log_handler.setFormatter(formatter)
-        log.addHandler(log_handler)
+        root_log.addHandler(log_handler)
         log.debug(msg="Added file handler")
 
     if dryrun:

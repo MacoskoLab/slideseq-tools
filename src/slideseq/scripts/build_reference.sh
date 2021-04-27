@@ -71,6 +71,7 @@ fi
 
 STAR --runMode genomeGenerate \
   --genomeDir ${OUTPUT_DIR}/STAR \
+  --outFilenamePrefix ${OUTPUT_DIR}/ \
   --genomeFastaFiles ${OUTPUT_FASTA} \
   --sjdbGTFfile ${OUTPUT_GTF} \
   --sjdbOverhang 97 \

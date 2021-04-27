@@ -12,8 +12,8 @@ import click
 
 import slideseq.scripts
 import slideseq.util.constants as constants
-from slideseq.logger import create_logger
 from slideseq.util import qsub_args
+from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
 

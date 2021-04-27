@@ -12,7 +12,6 @@ import click
 import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.google as gutil
-from slideseq.logger import create_logger
 from slideseq.pipeline.metadata import (
     Manifest,
     split_sample_lanes,
@@ -21,6 +20,7 @@ from slideseq.pipeline.metadata import (
 from slideseq.pipeline.preparation import prepare_demux, validate_demux
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
 from slideseq.util.constants import MAX_QSUB
+from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ def main(
         ) as qsub_script:
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
-                log_file=log_dir / "demultiplex.$TASK_ID.log",
+                log_file=log_dir / "demultiplex.L00${TASK_ID}.log",
                 PICARD_JAR=constants.PICARD,
                 TMP_DIR=tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
