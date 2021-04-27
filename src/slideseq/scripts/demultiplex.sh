@@ -1,4 +1,5 @@
 #!/bin/bash
+#$ -N demux
 #$ -l os=RedHat7
 #$ -l h_vmem=16g
 #$ -l h_rt=4:0:0
