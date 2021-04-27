@@ -114,7 +114,7 @@ def main(
         output_dir / f"{bam_base}.unaligned_mc_tagged_polyA_filtered.bam"
     )
     polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
-    polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq")
+    polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
     # prefix for aligned bam file
     aligned_bam = output_dir / f"{bam_base}"
@@ -225,6 +225,8 @@ def main(
         f"{genome_dir}",
         "--readFilesIn",
         f"{polya_filtered_fastq}",
+        "--readFilesCommand",
+        "zcat",
         "--outFileNamePrefix",
         f"{aligned_bam}.star.",
         "--outStd",
@@ -241,7 +243,6 @@ def main(
     ]
 
     run_command(cmd, "STAR", manifest.flowcell, row.library, lane)
-    os.remove(polya_filtered_fastq)
 
     # TODO: this thing
 
