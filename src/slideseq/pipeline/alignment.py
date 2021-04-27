@@ -78,6 +78,7 @@ def main(
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
     metadata_df = pd.read_csv(manifest.metadata_file)
+    metadata_df = metadata_df.loc[metadata_df.lane == lane]
 
     tmp_dir = manifest.output_directory / "tmp"
 
@@ -249,9 +250,7 @@ def main(
     # commandStr = f"samtools view -h -o {star_file2} {star_file}"
     # os.system(commandStr)
     # commandStr = f"check_alignments_quality {star_file2}"
-    # log.info(
-    # f"{manifest.flowcell} - Check alignments quality for {library} in Lane {lane} is done."
-    # )
+
     # log.debug(f"Command = {commandStr}")
     # os.system(commandStr)
     # log.info(
