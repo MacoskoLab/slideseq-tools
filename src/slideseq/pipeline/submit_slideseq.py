@@ -179,7 +179,7 @@ def main(
         ) as qsub_script:
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
-                log_file=log_dir / "demultiplex.L00${TASK_ID}.log",
+                log_file=log_dir / "demultiplex.L00$TASK_ID.log",
                 PICARD_JAR=constants.PICARD,
                 TMP_DIR=tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
