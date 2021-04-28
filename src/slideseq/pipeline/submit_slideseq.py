@@ -207,6 +207,9 @@ def main(
                 demux_jid = None
                 log.debug("Skipping demux step")
 
+        if flowcell in flowcell_errors:
+            continue
+
         alignment_jids = dict()
 
         # this script processes/filters the extracted uBAMs and aligns them to the
@@ -248,6 +251,9 @@ def main(
                     alignment_jids[lane] = None
                     log.info("Skipping alignment step")
 
+        if flowcell in flowcell_errors:
+            continue
+
         # this script analyzes the alignment output, generates plots, matches to puck, etc
         # this is per-library, which means each library needs to wait on the alignment jobs
         # for the relevant lane(s) that contain that library. We're going to wait on all the
@@ -267,9 +273,8 @@ def main(
             )
 
             if align:
-                processing_args.extend(
-                    ["-hold_jid_ad", *(f"{alignment_jids[lane]}" for lane in lanes)]
-                )
+                for lane in lanes:
+                    processing_args.extend(["-hold_jid_ad", f"{alignment_jids[lane]}"])
 
             processing_args.extend(
                 [

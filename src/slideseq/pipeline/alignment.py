@@ -74,6 +74,7 @@ def main(
         log.debug("Library not present in this lane, nothing to do here")
 
     assert len(row) == 1, f"More than one library specified by {lane} and {library}"
+    row = row.iloc[0]  # convert single-row DataFrame to a Series
 
     tmp_dir = manifest.output_directory / "tmp"
 
