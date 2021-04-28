@@ -24,7 +24,7 @@ else
 fi
 
 # this will run slideseq.pipeline.alignment:main
-align_sample ${DEBUG} \
+align_library ${DEBUG} \
   --lane ${LANE} \
-  --sample-index ${SGE_TASK_ID} \
+  --library-index ${SGE_TASK_ID} \
   --manifest-file ${MANIFEST}

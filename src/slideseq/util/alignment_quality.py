@@ -1,6 +1,6 @@
 import pathlib
 import pickle
-from collections import defaultdict
+from collections import Counter
 
 import pysam
 
@@ -20,18 +20,18 @@ def write_alignment_stats(bam_file: pathlib.Path, out_file: pathlib.Path):
     """
     aligned_bam = pysam.AlignmentFile(bam_file, mode="rb")
 
-    mp = defaultdict(int)
+    mp = Counter()
     for a in aligned_bam:
         mp[a.qname] += 1
 
     aligned_bam.reset()
 
-    unique_score = defaultdict(int)
-    unique_mismatch = defaultdict(int)
-    unique_ratio = defaultdict(int)
-    multi_score = defaultdict(int)
-    multi_mismatch = defaultdict(int)
-    multi_ratio = defaultdict(int)
+    unique_score = Counter()
+    unique_mismatch = Counter()
+    unique_ratio = Counter()
+    multi_score = Counter()
+    multi_mismatch = Counter()
+    multi_ratio = Counter()
 
     for a in aligned_bam:
         if mp[a.qname] == 1:

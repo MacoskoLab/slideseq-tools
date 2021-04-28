@@ -4,30 +4,17 @@ import logging
 import os
 import pathlib
 import re
-import sys
-from subprocess import run
 
 import click
 import pandas as pd
 
 import slideseq.util.constants as constants
 from slideseq.pipeline.metadata import Manifest
-from slideseq.util import picard_cmd
+from slideseq.util import picard_cmd, run_command
 from slideseq.util.alignment_quality import write_alignment_stats
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
-
-
-def run_command(cmd: list[str], name: str, flowcell: str, library: str, lane: int):
-    log.info(f"{flowcell} - {name} for {library} in lane {lane}")
-    log.debug(f"Command = {' '.join(cmd)}")
-    proc = run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        log.error(f"Error running {name}:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info(f"{flowcell} - {name} completed")
 
 
 # Get bead structure range
@@ -47,16 +34,16 @@ def get_bead_structure_range(bs, structure_type):
     return res[:-1]
 
 
-@click.command(name="align_sample", no_args_is_help=True)
+@click.command(name="align_library", no_args_is_help=True)
 @click.option(
     "--lane", type=int, required=True, help="Lane of the flowcell being aligned"
 )
 @click.option(
     "-i",
-    "--sample-index",
+    "--library-index",
     type=int,
     required=True,
-    help="Which sample from the metadata to align",
+    help="Which library from the metadata to align",
 )
 @click.option(
     "--manifest-file",
@@ -68,7 +55,7 @@ def get_bead_structure_range(bs, structure_type):
 @click.option("--log-file", type=click.Path(exists=False))
 def main(
     lane: int,
-    sample_index: int,
+    library_index: int,
     manifest_file: str,
     dryrun: bool = False,
     debug: bool = False,
@@ -79,11 +66,16 @@ def main(
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
     metadata_df = pd.read_csv(manifest.metadata_file)
-    metadata_df = metadata_df.loc[metadata_df.lane == lane]
+
+    # task array is 1-indexed
+    library = sorted(set(metadata_df.library))[library_index - 1]
+    row = metadata_df.loc[(metadata_df.lane == lane) & (metadata_df.library == library)]
+    if len(row) == 0:
+        log.debug("Library not present in this lane, nothing to do here")
+
+    assert len(row) == 1, f"More than one library specified by {lane} and {library}"
 
     tmp_dir = manifest.output_directory / "tmp"
-
-    row = metadata_df.iloc[sample_index - 1]
 
     output_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
 
@@ -97,40 +89,37 @@ def main(
 
     # define all the intermediate files we need
     # TODO: figure out if we can combine some of these steps, maybe
-    bam_base = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}"
-    unmapped_bam = output_dir / f"{bam_base}.unmapped.bam"
+    bam_base = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.$"
+    bam_base = output_dir / bam_base
 
-    cellular_tagged_bam = output_dir / f"{bam_base}.unmapped_tagged_cellular.bam"
-    cellular_tagged_summary = output_dir / f"{bam_base}.cellular_tagging.summary.txt"
+    unmapped_bam = bam_base.with_suffix(".unmapped.bam")
 
-    molecular_tagged_bam = output_dir / f"{bam_base}.unmapped_tagged_molecular.bam"
-    molecular_tagged_summary = output_dir / f"{bam_base}.molecular_tagging.summary.txt"
+    cellular_tagged_bam = bam_base.with_suffix(".unmapped_tagged_cellular.bam")
+    cellular_tagged_summary = bam_base.with_suffix(".cellular_tagging.summary.txt")
 
-    filtered_ubam = output_dir / f"{bam_base}.unmapped.filtered.bam"
-    trimmed_ubam = output_dir / f"{bam_base}.unmapped_trimstartingsequence.filtered.bam"
+    molecular_tagged_bam = bam_base.with_suffix(".unmapped_tagged_molecular.bam")
+    molecular_tagged_summary = bam_base.with_suffix(".molecular_tagging.summary.txt")
 
-    trimming_summary = output_dir / f"{bam_base}.adapter_trimming.summary.txt"
+    filtered_ubam = bam_base.with_suffix(".unmapped.filtered.bam")
+    trimmed_ubam = bam_base.with_suffix(".unmapped_trimstartingsequence.filtered.bam")
 
-    polya_filtered_ubam = (
-        output_dir / f"{bam_base}.unaligned_mc_tagged_polyA_filtered.bam"
+    trimming_summary = bam_base.with_suffix(".adapter_trimming.summary.txt")
+
+    polya_filtered_ubam = bam_base.with_suffix(
+        ".unaligned_mc_tagged_polyA_filtered.bam"
     )
-    polya_filtered_summary = output_dir / f"{bam_base}.polyA_filtering.summary.txt"
+    polya_filtered_summary = bam_base.with_suffix(".polyA_filtering.summary.txt")
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
-    # prefix for aligned bam files. need to add 'tmp' so `with_suffix` works
-    aligned_bam_prefix = output_dir / f"{bam_base}.tmp"
-
     # intermediate files
-    aligned_bam = aligned_bam_prefix.with_suffix(".star.Aligned.out.bam")
-    alignment_statistics = aligned_bam_prefix.with_suffix(
-        ".alignment_statistics.pickle"
-    )
-    aligned_sorted_bam = aligned_bam_prefix.with_suffix(".aligned.sorted.bam")
-    aligned_merged_bam = aligned_bam_prefix.with_suffix(".merged.bam")
-    aligned_tagged_bam = aligned_bam.with_suffix(".merged.TagReadWithInterval.bam")
+    aligned_bam = bam_base.with_suffix(".star.Aligned.out.bam")
+    alignment_statistics = bam_base.with_suffix(".alignment_statistics.pickle")
+    aligned_sorted_bam = bam_base.with_suffix(".aligned.sorted.bam")
+    aligned_merged_bam = bam_base.with_suffix(".merged.bam")
+    aligned_tagged_bam = bam_base.with_suffix(".merged.TagReadWithInterval.bam")
 
     # the final file
-    final_aligned_bam = aligned_bam.with_suffix(".star_gene_exon_tagged2.bam")
+    final_aligned_bam = bam_base.with_suffix(".final.bam")
 
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(row.bead_structure, "M")
@@ -241,7 +230,7 @@ def main(
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        f"{aligned_bam_prefix.with_suffix('.star.')}",
+        f"{bam_base.with_suffix('.star.')}",
         "--outStd",
         "Log",
         "--outSAMtype",

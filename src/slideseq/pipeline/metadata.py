@@ -105,6 +105,15 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
             " before running.",
         )
 
+    # for runs that need barcode matching, check for the existence of necessary files
+    for _, row in flowcell_df.iterrows():
+        if row.run_barcodematching:
+            puck_dir = Path(row.puckcaller_path)
+            if not (puck_dir / "BeadBarcodes.txt").exists():
+                warning_logs.append(f"BeadBarcodes.txt not found in {puck_dir}")
+            if not (puck_dir / "BeadLocations.txt").exists():
+                warning_logs.append(f"BeadLocations.txt not found in {puck_dir}")
+
     if warning_logs:
         for msg in warning_logs:
             log.warning(msg)
@@ -118,13 +127,13 @@ def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
     new_rows = []
 
     for _, row in flowcell_df.iterrows():
-        if row["lane"] == "{LANE}":
+        if row.lane == "{LANE}":
             row_lanes = lanes
         else:
-            row_lanes = str(row["lane"]).split(",")
+            row_lanes = str(row.lane).split(",")
 
         for lane in row_lanes:
-            row["lane"] = int(lane)
+            row.lane = int(lane)
             new_rows.append(row.copy())
 
     return pd.DataFrame(new_rows, index=range(len(new_rows)))

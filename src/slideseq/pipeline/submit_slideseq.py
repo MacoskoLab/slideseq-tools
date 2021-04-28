@@ -160,6 +160,9 @@ def main(
         # break rows out per lane for processing
         flowcell_df = split_sample_lanes(flowcell_df, lanes)
 
+        libraries = sorted(set(flowcell_df.library))
+        n_libraries = len(libraries)
+
         if dryrun:
             log.info(f"Would write following in {metadata_file}")
             log.info(flowcell_df)
@@ -208,15 +211,12 @@ def main(
 
         # this script processes/filters the extracted uBAMs and aligns them to the
         # specified reference. this depends on previous jobs per lane, so we use
-        # -hold_jid on the specific lane
+        # -hold_jid on the lane-specific demux job
         with importlib.resources.path(slideseq.scripts, "alignment.sh") as qsub_script:
             for lane in lanes:
                 if demux and demux_jid is None:
                     log.debug(f"Not aligning {lane} because demux was not submitted")
                     continue
-
-                # number of samples in this lane
-                n_samples = (flowcell_df["lane"] == lane).sum()
 
                 # request a high-cpu, high-mem machine for this step
                 alignment_args = qsub_args(
@@ -233,7 +233,7 @@ def main(
                 alignment_args.extend(
                     [
                         "-t",
-                        f"1-{n_samples}",
+                        f"1-{n_libraries}",
                         f"{qsub_script.absolute()}",
                     ]
                 )
@@ -249,46 +249,43 @@ def main(
                     log.info("Skipping alignment step")
 
         # this script analyzes the alignment output, generates plots, matches to puck, etc
-        # need to wait on the individual alignment jobs to finish, so we use -hold_jid_ad on
-        # the jobs for a given lane
+        # this is per-library, which means each library needs to wait on the alignment jobs
+        # for the relevant lane(s) that contain that library. We're going to wait on all the
+        # lanes, but use hold_jid_ad to wait on only that library's alignments
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
-            for lane in lanes:
-                if align and alignment_jids[lane] is None:
-                    log.debug(
-                        f"Not processing {lane} because alignment was not submitted"
-                    )
-                    continue
+            if align and any(alignment_jids[lane] is None for lane in lanes):
+                log.debug("Not processing because some alignments were not submitted")
+                continue
 
-                # number of samples in this lane
-                n_samples = (flowcell_df["lane"] == lane).sum()
+            # this step requires considerably fewer resources
+            processing_args = qsub_args(
+                log_file=log_dir / "processing.$TASK_ID.log",
+                debug=debug,
+                CONDA_ENV=env_name,
+                LANE=lane,
+                MANIFEST=manifest_file,
+            )
 
-                # this step requires considerably fewer resources
-                processing_args = qsub_args(
-                    log_file=log_dir / f"processing.L00{lane}.$TASK_ID.log",
-                    debug=debug,
-                    CONDA_ENV=env_name,
-                    LANE=lane,
-                    MANIFEST=manifest_file,
-                )
-
-                if align:
-                    processing_args.extend(["-hold_jid_ad", f"{alignment_jids[lane]}"])
-
+            if align:
                 processing_args.extend(
-                    [
-                        "-t",
-                        f"1-{n_samples}",
-                        f"{qsub_script.absolute()}",
-                    ]
+                    ["-hold_jid_ad", *(f"{alignment_jids[lane]}" for lane in lanes)]
                 )
 
-                processing_jid = attempt_qsub(
-                    processing_args, flowcell, "processing", dryrun
-                )
-                if processing_jid is None:
-                    flowcell_errors.add(flowcell)
-                else:
-                    submitted.add(flowcell)
+            processing_args.extend(
+                [
+                    "-t",
+                    f"1-{n_libraries}",
+                    f"{qsub_script.absolute()}",
+                ]
+            )
+
+            processing_jid = attempt_qsub(
+                processing_args, flowcell, "processing", dryrun
+            )
+            if processing_jid is None:
+                flowcell_errors.add(flowcell)
+            else:
+                submitted.add(flowcell)
 
     if submitted and not dryrun:
         log.info(f"Flowcells {', '.join(submitted)} submitted for processing")

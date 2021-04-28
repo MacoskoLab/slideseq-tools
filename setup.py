@@ -47,8 +47,8 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "submit_job = slideseq.pipeline.submit_slideseq:main",
-            "align_sample = slideseq.pipeline.alignment:main",
-            # "process_alignment = slideseq.pipeline.processing:main",
+            "align_library = slideseq.pipeline.alignment:main",
+            "process_library = slideseq.pipeline.processing:main",
             "build_ref = slideseq.pipeline.reference:main",
         ]
     },

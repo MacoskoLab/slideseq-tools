@@ -1,9 +1,13 @@
+import logging
 import pathlib
 import sys
 import xml.etree.ElementTree as et
-from typing import Any
+from subprocess import run
+from typing import Any, Union
 
 import slideseq.util.constants as constants
+
+log = logging.getLogger(__name__)
 
 
 def get_env_name() -> str:
@@ -109,3 +113,16 @@ def get_lanes(run_info_file: pathlib.Path) -> range:
 
     lane_count = int(run_info.find("./Run/FlowcellLayout[@LaneCount]").get("LaneCount"))
     return range(1, lane_count + 1)
+
+
+def run_command(
+    cmd: list[str], name: str, flowcell: str, library: str, lane: Union[int, str]
+):
+    log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+    log.debug(f"Command = {' '.join(cmd)}")
+    proc = run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        log.error(f"Error running {name}:\n\t{proc.stderr}")
+        sys.exit(1)
+    else:
+        log.info(f"{flowcell} - {name} completed")
