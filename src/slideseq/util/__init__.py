@@ -3,7 +3,7 @@ import pathlib
 import sys
 import xml.etree.ElementTree as et
 from subprocess import run
-from typing import Any, Union
+from typing import Any
 
 import slideseq.util.constants as constants
 
@@ -44,6 +44,23 @@ def qsub_args(
         arg_list.extend(["-v", f"{name}={value}"])
 
     return arg_list
+
+
+def dropseq_cmd(command: str, input_file: pathlib.Path, output_file: pathlib.Path):
+    """Return the beginning of a Picard command, with standard options
+
+    :param command: name of the dropseq tool being invoked
+    :param input_file: path to the input file
+    :param output_file: path to the output file
+    """
+
+    return [
+        f"{constants.DROPSEQ_DIR / command}",
+        "-m",
+        "48g",
+        f"I={input_file}",
+        f"O={output_file}",
+    ]
 
 
 def picard_cmd(command: str, tmp_dir: pathlib.Path):
@@ -116,10 +133,17 @@ def get_lanes(run_info_file: pathlib.Path) -> range:
 
 
 def run_command(
-    cmd: list[str], name: str, flowcell: str, library: str, lane: Union[int, str]
+    cmd: list[Any], name: str, flowcell: str, library: str, lane: int = None
 ):
-    log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+    if lane is None:
+        log.info(f"{flowcell} - {name} for {library}")
+    else:
+        log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+
+    # convert args to strings rather than relying on the caller
+    cmd = [str(arg) for arg in cmd]
     log.debug(f"Command = {' '.join(cmd)}")
+
     proc = run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         log.error(f"Error running {name}:\n\t{proc.stderr}")

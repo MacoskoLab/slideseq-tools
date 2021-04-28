@@ -10,7 +10,7 @@ import pandas as pd
 
 import slideseq.util.constants as constants
 from slideseq.pipeline.metadata import Manifest
-from slideseq.util import picard_cmd, run_command
+from slideseq.util import dropseq_cmd, picard_cmd, run_command
 from slideseq.util.alignment_quality import write_alignment_stats
 from slideseq.util.logger import create_logger
 
@@ -125,18 +125,20 @@ def main(
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(row.bead_structure, "M")
 
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
-        f"I={unmapped_bam}",
-        f"O={cellular_tagged_bam}",
-        f"SUMMARY={cellular_tagged_summary}",
-        f"BASE_RANGE={bs_range1}",
-        f"BASE_QUALITY={row.base_quality}",
-        "BARCODED_READ=1",
-        "DISCARD_READ=false",
-        "TAG_NAME=XC",
-        "NUM_BASES_BELOW_QUALITY=1",
-    ]
+    cmd = dropseq_cmd(
+        "TagBamWithReadSequenceExtended", unmapped_bam, cellular_tagged_bam
+    )
+    cmd.extend(
+        [
+            f"SUMMARY={cellular_tagged_summary}",
+            f"BASE_RANGE={bs_range1}",
+            f"BASE_QUALITY={row.base_quality}",
+            "BARCODED_READ=1",
+            "DISCARD_READ=false",
+            "TAG_NAME=XC",
+            "NUM_BASES_BELOW_QUALITY=1",
+        ]
+    )
 
     run_command(
         cmd,
@@ -147,18 +149,20 @@ def main(
     )
 
     # Tag bam with read sequence extended molecular
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'TagBamWithReadSequenceExtended'}",
-        f"I={cellular_tagged_bam}",
-        f"O={molecular_tagged_bam}",
-        f"SUMMARY={molecular_tagged_summary}",
-        f"BASE_RANGE={bs_range2}",
-        f"BASE_QUALITY={row.base_quality}",
-        "BARCODED_READ=1",
-        "DISCARD_READ=true",
-        "TAG_NAME=XM",
-        "NUM_BASES_BELOW_QUALITY=1",
-    ]
+    cmd = dropseq_cmd(
+        "TagBamWithReadSequenceExtended", cellular_tagged_bam, molecular_tagged_bam
+    )
+    cmd.extend(
+        [
+            f"SUMMARY={molecular_tagged_summary}",
+            f"BASE_RANGE={bs_range2}",
+            f"BASE_QUALITY={row.base_quality}",
+            "BARCODED_READ=1",
+            "DISCARD_READ=true",
+            "TAG_NAME=XM",
+            "NUM_BASES_BELOW_QUALITY=1",
+        ]
+    )
 
     run_command(
         cmd,
@@ -170,68 +174,56 @@ def main(
     os.remove(cellular_tagged_bam)
 
     # Filter low-quality reads
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'FilterBam'}",
-        f"I={molecular_tagged_bam}",
-        f"O={filtered_ubam}",
-        "PASSING_READ_THRESHOLD=0.1",
-        "TAG_REJECT=XQ",
-    ]
+    cmd = dropseq_cmd("FilterBam", molecular_tagged_bam, filtered_ubam)
+    cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
     run_command(cmd, "FilterBam", manifest.flowcell, row.library, lane)
     os.remove(molecular_tagged_bam)
 
     # Trim reads with starting sequence
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'TrimStartingSequence'}",
-        f"I={filtered_ubam}",
-        f"O={trimmed_ubam}",
-        f"OUTPUT_SUMMARY={trimming_summary}",
-        f"SEQUENCE={row.start_sequence}",
-        "MISMATCHES=0",
-        "NUM_BASES=5",
-    ]
+    cmd = dropseq_cmd("TrimStartingSequence", filtered_ubam, trimmed_ubam)
+    cmd.extend(
+        [
+            f"OUTPUT_SUMMARY={trimming_summary}",
+            f"SEQUENCE={row.start_sequence}",
+            "MISMATCHES=0",
+            "NUM_BASES=5",
+        ]
+    )
 
     run_command(cmd, "TrimStartingSequence", manifest.flowcell, row.library, lane)
     os.remove(filtered_ubam)
 
     # Adapter-aware poly A trimming
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'PolyATrimmer'}",
-        f"I={trimmed_ubam}",
-        f"O={polya_filtered_ubam}",
-        f"OUTPUT_SUMMARY={polya_filtered_summary}",
-        "MISMATCHES=0",
-        "NUM_BASES=6",
-        "USE_NEW_TRIMMER=true",
-    ]
+    cmd = dropseq_cmd("PolyATrimmer", trimmed_ubam, polya_filtered_ubam)
+    cmd.extend(
+        [
+            f"OUTPUT_SUMMARY={polya_filtered_summary}",
+            "MISMATCHES=0",
+            "NUM_BASES=6",
+            "USE_NEW_TRIMMER=true",
+        ]
+    )
 
     run_command(cmd, "PolyATrimmer", manifest.flowcell, row.library, lane)
     os.remove(trimmed_ubam)
 
     # convert to fastq like a loser
     cmd = picard_cmd("SamToFastq", tmp_dir)
-    cmd.extend(
-        [
-            "-I",
-            f"{polya_filtered_ubam}",
-            "-F",
-            f"{polya_filtered_fastq}",
-        ]
-    )
+    cmd.extend(["-I", polya_filtered_ubam, "-F", polya_filtered_fastq])
     run_command(cmd, "SamToFastq", manifest.flowcell, row.library, lane)
 
     # Map reads to genome sequence using STARsolo
     cmd = [
         "STAR",
         "--genomeDir",
-        f"{genome_dir}",
+        genome_dir,
         "--readFilesIn",
-        f"{polya_filtered_fastq}",
+        polya_filtered_fastq,
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        f"{bam_base.with_suffix('.star.')}",
+        bam_base.with_suffix(".star."),
         "--outStd",
         "Log",
         "--outSAMtype",
@@ -256,14 +248,7 @@ def main(
     # Sort aligned bam
     cmd = picard_cmd("SortSam", tmp_dir)
     cmd.extend(
-        [
-            "-I",
-            f"{aligned_bam}",
-            "-O",
-            f"{aligned_sorted_bam}",
-            "--SORT_ORDER",
-            "queryname",
-        ]
+        ["-I", aligned_bam, "-O", aligned_sorted_bam, "--SORT_ORDER", "queryname"]
     )
     run_command(cmd, "SortSam", manifest.flowcell, row.library, lane)
     os.remove(aligned_bam)
@@ -273,13 +258,13 @@ def main(
     cmd.extend(
         [
             "-R",
-            f"{row.reference}",
+            row.reference,
             "--UNMAPPED",
-            f"{polya_filtered_ubam}",
+            polya_filtered_ubam,
             "--ALIGNED",
-            f"{aligned_sorted_bam}",
+            aligned_sorted_bam,
             "-O",
-            f"{aligned_merged_bam}",
+            aligned_merged_bam,
             "--COMPRESSION_LEVEL",
             "0",
             "--INCLUDE_SECONDARY_ALIGNMENTS",
@@ -294,25 +279,15 @@ def main(
     os.remove(aligned_sorted_bam)
 
     # Tag read with interval
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'TagReadWithInterval'}",
-        f"I={aligned_merged_bam}",
-        f"O={aligned_tagged_bam}",
-        f"INTERVALS={intervals}",
-        "TAG=XG",
-    ]
+    cmd = dropseq_cmd("TagReadWithInterval", aligned_merged_bam, aligned_tagged_bam)
+    cmd.extend([f"INTERVALS={intervals}", "TAG=XG"])
 
     run_command(cmd, "TagReadWithInterval", manifest.flowcell, row.library, lane)
     os.remove(aligned_merged_bam)
 
     # Tag read with gene function
-    cmd = [
-        f"{constants.DROPSEQ_DIR / 'TagReadWithGeneFunction'}",
-        f"I={aligned_tagged_bam}",
-        f"O={final_aligned_bam}",
-        f"ANNOTATIONS_FILE={annotations_file}",
-        "CREATE_INDEX=false",
-    ]
+    cmd = dropseq_cmd("TagReadWithGeneFunction", aligned_tagged_bam, final_aligned_bam)
+    cmd.extend([f"ANNOTATIONS_FILE={annotations_file}", "CREATE_INDEX=false"])
 
     run_command(cmd, "TagReadWithGeneFunction", manifest.flowcell, row.library, lane)
     os.remove(aligned_tagged_bam)
