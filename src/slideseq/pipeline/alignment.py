@@ -81,12 +81,12 @@ def main(
     output_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
 
     reference = pathlib.Path(row.reference)
-    reference_folder = reference.parent
+    reference_dir = reference.parent
 
     # assumes that reference always ends in .fasta, not .fasta.gz
-    genome_dir = reference_folder / "STAR"
-    intervals = reference_folder / f"{reference.stem}.genes.intervals"
-    annotations_file = reference_folder / f"{reference.stem}.gtf"
+    genome_dir = reference_dir / "STAR"
+    intervals = reference_dir / f"{reference.stem}.genes.intervals"
+    annotations_file = reference_dir / f"{reference.stem}.gtf"
 
     # define all the intermediate files we need
     # TODO: figure out if we can combine some of these steps, maybe

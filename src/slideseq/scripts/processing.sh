@@ -24,3 +24,6 @@ else
 fi
 
 # do whatever post-processing is needed
+process_library ${DEBUG} \
+  --library-index ${SGE_TASK_ID} \
+  --manifest-file ${MANIFEST}
