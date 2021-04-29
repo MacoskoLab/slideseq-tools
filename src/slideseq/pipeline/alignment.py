@@ -121,13 +121,20 @@ def main(
     cmd = dropseq_cmd("TagBamWithReadSequenceExtended", unmapped_bam, "/dev/stdout")
     cmd.extend(
         [
-            f"SUMMARY={cellular_tagged_summary}",
-            f"BASE_RANGE={bs_range1}",
-            f"BASE_QUALITY={row.base_quality}",
-            "BARCODED_READ=1",
-            "DISCARD_READ=false",
-            "TAG_NAME=XC",
-            "NUM_BASES_BELOW_QUALITY=1",
+            "--SUMMARY",
+            cellular_tagged_summary,
+            "--BASE_RANGE",
+            bs_range1,
+            "--BASE_QUALITY",
+            f"{row.base_quality}",
+            "--BARCODED_READ",
+            "1",
+            "--DISCARD_READ",
+            "false",
+            "--TAG_NAME",
+            "XC",
+            "--NUM_BASES_BELOW_QUALITY",
+            "1",
         ]
     )
 
@@ -145,13 +152,20 @@ def main(
     cmd = dropseq_cmd("TagBamWithReadSequenceExtended", "/dev/stdin", "/dev/stdout")
     cmd.extend(
         [
-            f"SUMMARY={molecular_tagged_summary}",
-            f"BASE_RANGE={bs_range2}",
-            f"BASE_QUALITY={row.base_quality}",
-            "BARCODED_READ=1",
-            "DISCARD_READ=true",
-            "TAG_NAME=XM",
-            "NUM_BASES_BELOW_QUALITY=1",
+            "--SUMMARY",
+            molecular_tagged_summary,
+            "--BASE_RANGE",
+            bs_range2,
+            "--BASE_QUALITY",
+            f"{row.base_quality}",
+            "--BARCODED_READ",
+            "1",
+            "--DISCARD_READ",
+            "true",
+            "--TAG_NAME",
+            "XM",
+            "--NUM_BASES_BELOW_QUALITY",
+            "1",
         ]
     )
     procs.append(
@@ -175,10 +189,14 @@ def main(
     cmd = dropseq_cmd("TrimStartingSequence", "/dev/stdin", "/dev/stdout")
     cmd.extend(
         [
-            f"OUTPUT_SUMMARY={trimming_summary}",
-            f"SEQUENCE={row.start_sequence}",
-            "MISMATCHES=0",
-            "NUM_BASES=5",
+            "--OUTPUT_SUMMARY",
+            trimming_summary,
+            "--SEQUENCE",
+            row.start_sequence,
+            "--MISMATCHES",
+            "0",
+            "--NUM_BASES",
+            "5",
         ]
     )
 
@@ -190,10 +208,14 @@ def main(
     cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", polya_filtered_ubam)
     cmd.extend(
         [
-            f"OUTPUT_SUMMARY={polya_filtered_summary}",
-            "MISMATCHES=0",
-            "NUM_BASES=6",
-            "USE_NEW_TRIMMER=true",
+            "--OUTPUT_SUMMARY",
+            polya_filtered_summary,
+            "--MISMATCHES",
+            "0",
+            "--NUM_BASES",
+            "6",
+            "--USE_NEW_TRIMMER",
+            "true",
         ]
     )
 
@@ -245,9 +267,9 @@ def main(
     procs = []
 
     # Sort aligned bam
-    cmd = picard_cmd("SortSam", tmp_dir)
+    cmd = picard_cmd("SortSam", tmp_dir, mem="24g")
     cmd.extend(["-I", aligned_bam, "-O", "/dev/stdout", "--SORT_ORDER", "queryname"])
-    procs.append(start_popen(cmd, "SortSam", flowcell, library, lane, mem="24g"))
+    procs.append(start_popen(cmd, "SortSam", flowcell, library, lane))
 
     # Merge unmapped bam and aligned bam
     cmd = picard_cmd("MergeBamAlignment", tmp_dir, mem="24g")

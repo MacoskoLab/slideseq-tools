@@ -64,11 +64,14 @@ def dropseq_cmd(
         f"{constants.DROPSEQ_DIR / command}",
         "-m",
         mem,
-        f"I={input_file}",
-        f"O={output_file}",
-        "VALIDATION_STRINGENCY=SILENT",
-        "COMPRESSION_LEVEL=0",
-        "QUIET=true",
+        f"-I {input_file}",
+        f"-O {output_file}",
+        "--VALIDATION_STRINGENCY",
+        "SILENT",
+        "--COMPRESSION_LEVEL",
+        "0",
+        "--QUIET",
+        "true",
     ]
 
 
