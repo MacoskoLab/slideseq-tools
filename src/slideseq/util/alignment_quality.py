@@ -1,9 +1,14 @@
+import logging
 import os
 import pickle
 from collections import Counter
 from pathlib import Path
 
+import matplotlib.figure
 import pysam
+from matplotlib.backends.backend_pdf import PdfPages
+
+log = logging.getLogger(__name__)
 
 
 def write_alignment_stats(bam_file: Path, out_file: Path):
@@ -40,15 +45,17 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
                 unique_score[a.get_tag("AS")] += 1
             if a.has_tag("nM"):
                 unique_mismatch[a.get_tag("nM")] += 1
-            r = 100 * round(a.get_cigar_stats()[0][0] / a.qlen)
+            r = round(100 * a.get_cigar_stats()[0][0] / a.qlen)
             unique_ratio[r] += 1
         else:
             if a.has_tag("AS"):
                 multi_score[a.get_tag("AS")] += 1
             if a.has_tag("nM"):
                 multi_mismatch[a.get_tag("nM")] += 1
-            r = 100 * round(a.get_cigar_stats()[0][0] / a.qlen)
+            r = round(100 * a.get_cigar_stats()[0][0] / a.qlen)
             multi_ratio[r] += 1
+
+    log.debug(f"Writing alignment stats for {bam_file} to {out_file}")
 
     with out_file.open("wb") as out:
         pickle.dump(
@@ -62,6 +69,29 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
             ),
             out,
         )
+
+
+def plot_hist(suffix: str, dist: Counter, xlabel: str, pdf_pages: PdfPages):
+    """
+    Bar plot of a given alignment stat distribution and adds the plot to
+    a PDF
+
+    :param suffix: File suffix contains the type of data we're plotting
+    :param dist: The distribution of counts
+    :param xlabel: Label for the x axis
+    :param pdf_pages: PDF to add the figure to
+    """
+
+    _, kind, metric = suffix.split(".")  # suffix is ".[kind].[metric]"
+
+    x, y = zip(*sorted(dist.items()))
+    fig = matplotlib.figure.Figure(figsize=(8, 8))
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+    ax.bar(x, y, width=0.7, color="lightskyblue", edgecolor="black")
+    ax.set_xlabel(xlabel)
+    ax.set_title(f"Histogram of {kind} alignment {metric}")
+
+    pdf_pages.savefig(fig)
 
 
 def parse_star_log(log_file: Path) -> dict[str, str]:
@@ -111,18 +141,24 @@ def combine_alignment_stats(
 
         os.remove(stat_file)
 
-    # write out the combined statistics
-    for suffix, dist in (
-        (".unique.score", unique_score),
-        (".unique.mismatch", unique_mismatch),
-        (".unique.ratio", unique_ratio),
-        (".multi.score", unique_score),
-        (".multi.mismatch", multi_mismatch),
-        (".multi.ratio", multi_ratio),
+    log.debug(f"Plotting alignment stats for {out_base}")
+    alignment_quality_pdf = PdfPages(out_base.with_suffix(".alignment_quality.pdf"))
+
+    # write out the combined statistics and make PDF
+    for suffix, dist, xlabel in (
+        (".unique.ratio", unique_ratio, "alignment ratio %"),
+        (".multi.ratio", multi_ratio, "alignment ratio %"),
+        (".unique.score", unique_score, "alignment score"),
+        (".multi.score", multi_score, "alignment score"),
+        (".unique.mismatch", unique_mismatch, "alignment mismatch"),
+        (".multi.mismatch", multi_mismatch, "alignment mismatch"),
     ):
+        plot_hist(suffix, dist, xlabel, alignment_quality_pdf)
         with out_base.with_suffix(suffix).open("w") as out:
             for k, v in sorted(dist.items()):
                 print(f"{k}\t{v}", file=out)
+
+    alignment_quality_pdf.close()
 
     total_reads = 0
     unique_reads = 0
