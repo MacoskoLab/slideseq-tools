@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -N alignment
 #$ -l os=RedHat7
-#$ -l h_vmem=8g
+#$ -l h_vmem=8G
 #$ -l h_rt=24:0:0
 #$ -pe smp 8
 #$ -binding linear:8

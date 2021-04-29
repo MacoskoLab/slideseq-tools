@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -N demux
 #$ -l os=RedHat7
-#$ -l h_vmem=16g
+#$ -l h_vmem=16G
 #$ -l h_rt=4:0:0
 #$ -pe smp 8
 #$ -binding linear:8
