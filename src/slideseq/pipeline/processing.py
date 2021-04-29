@@ -7,10 +7,11 @@ import pathlib
 import click
 import pandas as pd
 
+import slideseq.pipeline.analysis as analysis
 import slideseq.util.alignment_quality as alignment_quality
 import slideseq.util.constants as constants
 from slideseq.pipeline.metadata import Manifest
-from slideseq.util import picard_cmd, run_command
+from slideseq.util import dropseq_cmd, picard_cmd, run_command
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -67,22 +68,46 @@ def main(
     row = library_df.iloc[0]
 
     lanes = sorted(set(library_df.lanes))
-    lane_str = f"{min(lanes)}-{max(lanes)}"
 
-    output_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
+    library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
+
+    reference = pathlib.Path(row.reference)
+    reference_dir = reference.parent
+
+    # assumes that reference always ends in .fasta, not .fasta.gz
+    ref_flat = reference_dir / f"{reference.stem}.refFlat"
+    ribosomal_intervals = reference_dir / f"{reference.stem}.rRNA.intervals"
 
     bam_base = [
         f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}"
         for lane in lanes
     ]
-    bam_files = [output_dir / f"{base}.final.bam" for base in bam_base]
+    bam_files = [library_dir / f"{base}.final.bam" for base in bam_base]
     alignment_stats = [
-        output_dir / f"{base}.alignment_statistics.pickle" for base in bam_base
+        library_dir / f"{base}.alignment_statistics.pickle" for base in bam_base
     ]
-    star_logs = [output_dir / f"{base}.star.Log.final.out" for base in bam_base]
+    star_logs = [library_dir / f"{base}.star.Log.final.out" for base in bam_base]
 
     # Merge bam files
-    combined_bam = output_dir / f"{library}.bam"
+    combined_bam = library_dir / f"{library}.bam"
+
+    reads_per_cell = combined_bam.with_suffix(
+        f".numReads_perCell_XC_mq_{row.base_quality}.txt.gz"
+    )
+    frac_intronic_exonic = combined_bam.with_suffix(".fracIntronicExonic.txt")
+    xc_barcode_distribution = combined_bam.with_suffix(".barcode_distribution_XC.txt")
+    xm_barcode_distribution = combined_bam.with_suffix(".barcode_distribution_XM.txt")
+    read_quality_metrics = combined_bam.with_suffix(".ReadQualityMetrics.txt")
+
+    selected_cells = combined_bam.with_suffix(
+        f".{row.min_transcripts_per_cell}_transcripts_mq_{row.base_quality}_selected_cells.txt.gz"
+    )
+    digital_expression = combined_bam.with_suffix(
+        ".AllIllumina.digital_expression.txt.gz"
+    )
+    digital_expression_summary = combined_bam.with_suffix(
+        ".AllIllumina.digital_expression_summary.txt"
+    )
 
     cmd = picard_cmd("MergeSamFiles", tmp_dir)
     cmd.extend(
@@ -92,7 +117,7 @@ def main(
             "--CREATE_MD5_FILE",
             "false",
             "--OUTPUT",
-            f"{combined_bam}",
+            combined_bam,
             "--SORT_ORDER",
             "coordinate",
             "--ASSUMED_SORTED",
@@ -101,108 +126,131 @@ def main(
     )
 
     for bam_file in bam_files:
-        cmd.extend(["--INPUT", f"{bam_file}"])
+        cmd.extend(["--INPUT", bam_file])
 
-    run_command(cmd, "MergeBamFiles", manifest.flowcell, library, lane_str)
+    run_command(cmd, "MergeBamFiles", manifest.flowcell, library)
+
+    # remove the individual bam files after merging
+    for bam_file in bam_files:
+        log.debug(f"Removing {bam_file}")
+        os.remove(bam_file)
 
     # Validate bam file
     cmd = picard_cmd("ValidateSamFile", tmp_dir)
-    cmd.extend(
-        [
-            "--INPUT",
-            f"{combined_bam}",
-            "--MODE",
-            "SUMMARY",
-        ]
-    )
+    cmd.extend(["--INPUT", combined_bam, "--MODE", "SUMMARY"])
     # is this necessary?
     if not row.illuminaplatform.startswith("NovaSeq"):
         cmd.extend(
             ["--IGNORE", "MISSING_PLATFORM_VALUE", "--IGNORE", "INVALID_VERSION_NUMBER"]
         )
 
-    run_command(cmd, "ValidateSamFile", manifest.flowcell, library, lane_str)
+    run_command(cmd, "ValidateSamFile", manifest.flowcell, library)
 
-    # TODO: generate_plots
-    # output_file = f"{output_dir}/logs/generate_plots_{library}.log"
-    # submission_script = f"{scripts_folder}/generate_plots.sh"
-    # call_args = [
-    #     "qsub",
-    #     "-o",
-    #     output_file,
-    #     submission_script,
-    #     manifest_file,
-    #     library,
-    #     scripts_folder,
-    #     output_dir,
-    #     analysis_folder,
-    # ]
-    # call(call_args)
+    # Bam tag histogram
+    cmd = dropseq_cmd("BamTagHistogram", combined_bam, reads_per_cell)
+    cmd.extend(
+        [
+            "TAG=XC",
+            "FILTER_PCR_DUPLICATES=false",
+            f"READ_MQ={row.base_quality}",
+            f"TMP_DIR={tmp_dir}",
+        ]
+    )
 
-    # reference = pathlib.Path(row.reference)
-    # reference_dir = reference.parent
+    run_command(cmd, "BamTagHistogram", manifest.flowcell, library)
 
-    # assumes that reference always ends in .fasta, not .fasta.gz
-    # genome_dir = reference_dir / "STAR"
-    # intervals = reference_dir / f"{reference.stem}.genes.intervals"
-    # annotations_file = reference_dir / f"{reference.stem}.gtf"
+    # Collect RnaSeq metrics
+    cmd = picard_cmd("CollectRnaSeqMetrics", tmp_dir)
+    cmd.extend(
+        [
+            "--INPUT",
+            combined_bam,
+            "--REF_FLAT",
+            ref_flat,
+            "--OUTPUT",
+            frac_intronic_exonic,
+            "--STRAND_SPECIFICITY",
+            "NONE",
+            "--RIBOSOMAL_INTERVALS",
+            ribosomal_intervals,
+        ]
+    )
 
-    # not gonna support multiple values in this column, for now
-    # lists = locus_function_list.split(",")
+    run_command(cmd, "CollectRnaSeqMetrics", manifest.flowcell, library)
 
-    # TODO: make output dirs?
-    # for j in lists:
-    #     call(["mkdir", "-p", f"{analysis_folder}/{reference.stem}.{j}"])
-    #     call(
-    #         [
-    #             "mkdir",
-    #             "-p",
-    #             f"{analysis_folder}/{reference.stem}.{j}/alignment",
-    #         ]
-    #     )
-    #
-    #     if run_barcodematching:
-    #         barcode_matching_folder = (
-    #             f"{analysis_folder}/{reference.stem}.{j}/barcode_matching/"
-    #         )
-    #         call(["mkdir", "-p", barcode_matching_folder])
-    #         for i in range(len(lanes)):
-    #             if libraries[i] != library:
-    #                 continue
-    #             for lane_slice in slice_id[lanes[i]]:
-    #                 toCopyFile = f"{analysis_folder}/{flowcell_barcode}.{lanes[i]}.{lane_slice}.{library}"
-    #                 if barcodes[i]:
-    #                     toCopyFile += "." + barcodes[i]
-    #                 toCopyFile += ".star_gene_exon_tagged2.bam"
-    #                 if os.path.isfile(toCopyFile):
-    #                     call(["cp", toCopyFile, barcode_matching_folder])
+    # Base distribution at read position for cellular barcode
+    cmd = dropseq_cmd(
+        "BaseDistributionAtReadPosition", combined_bam, xc_barcode_distribution
+    )
+    cmd.extend(["TAG=XC"])
+
+    run_command(
+        cmd, "BaseDistributionAtReadPosition (Cellular)", manifest.flowcell, library
+    )
+
+    # Base distribution at read position for molecular barcode
+    cmd = dropseq_cmd(
+        "BaseDistributionAtReadPosition", combined_bam, xm_barcode_distribution
+    )
+    cmd.extend(["TAG=XM"])
+
+    run_command(
+        cmd, "BaseDistributionAtReadPosition (Molecular)", manifest.flowcell, library
+    )
+
+    # Gather read quality metrics
+    cmd = dropseq_cmd("GatherReadQualityMetrics", combined_bam, read_quality_metrics)
+
+    run_command(cmd, "GatherReadQualityMetrics", manifest.flowcell, library)
+
+    # Select cells by num transcripts
+    cmd = dropseq_cmd("SelectCellsByNumTranscripts", combined_bam, selected_cells)
+    cmd.extend(
+        [
+            f"MIN_TRANSCRIPTS_PER_CELL={row.min_transcripts_per_cell}",
+            f"READ_MQ={row.base_quality}",
+        ]
+    )
+    if row.locus_function_list == "intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=null", "LOCUS_FUNCTION_LIST=INTRONIC"])
+    elif row.locus_function_list == "exonic+intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
+
+    run_command(cmd, "SelectCellsByNumTranscripts", manifest.flowcell, library)
+
+    # Generate digital expression files for all Illumina barcodes
+    cmd = dropseq_cmd("DigitalExpression", combined_bam, digital_expression)
+    cmd.extend(
+        [
+            f"SUMMARY={digital_expression_summary}",
+            "EDIT_DISTANCE=1",
+            f"READ_MQ={row.base_quality}",
+            "MIN_BC_READ_THRESHOLD=0",
+            f"CELL_BC_FILE={selected_cells}",
+            "OUTPUT_HEADER=false",
+            f"UEI={library}",
+        ]
+    )
+    if row.locus_function_list == "intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=null", "LOCUS_FUNCTION_LIST=INTRONIC"])
+    elif row.locus_function_list == "exonic+intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
+
+    run_command(cmd, "DigitalExpression", library)
 
     # TODO: run_analysis_spec
-    # output_file = f"{output_dir}/logs/run_analysis_spec_{library}_{j}.log"
-    # submission_script = f"{scripts_folder}/run_analysis_spec.sh"
-    # call_args = [
-    #     "qsub",
-    #     "-o",
-    #     output_file,
-    #     submission_script,
-    #     manifest_file,
-    #     library,
-    #     scripts_folder,
-    #     j,
-    #     output_dir,
-    #     f"{analysis_folder}/{reference.stem}.{j}",
-    # ]
-    # call(call_args)
+    # barcode matching and downsampling
 
-    for bam_file in bam_files:
-        log.debug(f"Removing {bam_file}")
-        os.remove(bam_file)
+    if row.run_barcodematching:
+        analysis.run_barcodematching(selected_cells, row, library_dir)
+
+    # gen_downsampling
+    if row.gen_downsampling:
+        analysis.gen_downsampling()
 
     # Combine check_alignments_quality files
     alignment_quality.combine_alignment_stats(
-        alignment_stats,
-        star_logs,
-        output_dir / f"{library}.$",
+        alignment_stats, star_logs, library_dir / f"{library}.$"
     )
 
     # TODO: plot alignment histogram
