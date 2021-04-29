@@ -2,8 +2,8 @@ import logging
 import pathlib
 import sys
 import xml.etree.ElementTree as et
-from subprocess import run
-from typing import Any
+from subprocess import PIPE, Popen, run
+from typing import Any, Union
 
 import slideseq.util.constants as constants
 
@@ -46,34 +46,41 @@ def qsub_args(
     return arg_list
 
 
-def dropseq_cmd(command: str, input_file: pathlib.Path, output_file: pathlib.Path):
-    """Return the beginning of a Picard command, with standard options
+def dropseq_cmd(
+    command: str,
+    input_file: Union[pathlib.Path, str],
+    output_file: Union[pathlib.Path, str],
+    mem: str = "8g",
+):
+    """Return the beginning of a DropSeq command, with standard options
 
     :param command: name of the dropseq tool being invoked
     :param input_file: path to the input file
     :param output_file: path to the output file
+    :param mem: memory for the heap. default is to share with other jobs
     """
 
     return [
         f"{constants.DROPSEQ_DIR / command}",
         "-m",
-        "48g",
+        mem,
         f"I={input_file}",
         f"O={output_file}",
     ]
 
 
-def picard_cmd(command: str, tmp_dir: pathlib.Path):
+def picard_cmd(command: str, tmp_dir: pathlib.Path, mem: str = "62g"):
     """Return the beginning of a Picard command, with standard options
 
     :param command: name of the picard tool being invoked
     :param tmp_dir: Location of the tmp directory to use
+    :param mem: Memory for the heap. Lower this for piped commands
     """
     return [
         "java",
         f"-Djava.io.tmp_dir={tmp_dir}",
-        "-Xms32g",
-        "-Xmx62g",
+        f"-Xms{mem}",
+        f"-Xmx{mem}",
         "-XX:+UseParallelGC",
         "-XX:GCTimeLimit=20",
         "-XX:GCHeapFreeLimit=10",
@@ -150,3 +157,26 @@ def run_command(
         sys.exit(1)
     else:
         log.info(f"{flowcell} - {name} completed")
+
+
+def start_popen(
+    cmd: list[Any],
+    name: str,
+    flowcell: str,
+    library: str,
+    lane: int = None,
+    input_proc: Popen = None,
+):
+    if lane is None:
+        log.info(f"{flowcell} - {name} for {library}")
+    else:
+        log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+
+    # convert args to strings rather than relying on the caller
+    cmd = [str(arg) for arg in cmd]
+    log.debug(f"Command = {' '.join(cmd)}")
+
+    if input_proc is not None:
+        return Popen(cmd, stdin=input_proc.stdout, stdout=PIPE)
+    else:
+        return Popen(cmd, stdout=PIPE)

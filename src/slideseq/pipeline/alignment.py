@@ -10,7 +10,7 @@ import pandas as pd
 
 import slideseq.util.constants as constants
 from slideseq.pipeline.metadata import Manifest
-from slideseq.util import dropseq_cmd, picard_cmd, run_command
+from slideseq.util import dropseq_cmd, picard_cmd, run_command, start_popen
 from slideseq.util.alignment_quality import write_alignment_stats
 from slideseq.util.logger import create_logger
 
@@ -65,6 +65,7 @@ def main(
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
+    flowcell = manifest.flowcell
     metadata_df = pd.read_csv(manifest.metadata_file)
 
     # task array is 1-indexed
@@ -78,7 +79,7 @@ def main(
 
     tmp_dir = manifest.output_directory / "tmp"
 
-    output_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
+    output_dir = constants.LIBRARY_DIR / f"{row.date}_{library}" / f"L{lane:03d}"
 
     reference = pathlib.Path(row.reference)
     reference_dir = reference.parent
@@ -90,20 +91,13 @@ def main(
 
     # define all the intermediate files we need
     # TODO: figure out if we can combine some of these steps, maybe
-    bam_base = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.$"
+    bam_base = f"{flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
     bam_base = output_dir / bam_base
 
     unmapped_bam = bam_base.with_suffix(".unmapped.bam")
 
-    cellular_tagged_bam = bam_base.with_suffix(".unmapped_tagged_cellular.bam")
     cellular_tagged_summary = bam_base.with_suffix(".cellular_tagging.summary.txt")
-
-    molecular_tagged_bam = bam_base.with_suffix(".unmapped_tagged_molecular.bam")
     molecular_tagged_summary = bam_base.with_suffix(".molecular_tagging.summary.txt")
-
-    filtered_ubam = bam_base.with_suffix(".unmapped.filtered.bam")
-    trimmed_ubam = bam_base.with_suffix(".unmapped_trimstartingsequence.filtered.bam")
-
     trimming_summary = bam_base.with_suffix(".adapter_trimming.summary.txt")
 
     polya_filtered_ubam = bam_base.with_suffix(
@@ -115,9 +109,6 @@ def main(
     # intermediate files
     aligned_bam = bam_base.with_suffix(".star.Aligned.out.bam")
     alignment_statistics = bam_base.with_suffix(".alignment_statistics.pickle")
-    aligned_sorted_bam = bam_base.with_suffix(".aligned.sorted.bam")
-    aligned_merged_bam = bam_base.with_suffix(".merged.bam")
-    aligned_tagged_bam = bam_base.with_suffix(".merged.TagReadWithInterval.bam")
 
     # the final file
     final_aligned_bam = bam_base.with_suffix(".final.bam")
@@ -125,9 +116,9 @@ def main(
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(row.bead_structure, "M")
 
-    cmd = dropseq_cmd(
-        "TagBamWithReadSequenceExtended", unmapped_bam, cellular_tagged_bam
-    )
+    procs = []
+
+    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", unmapped_bam, "/dev/stdout")
     cmd.extend(
         [
             f"SUMMARY={cellular_tagged_summary}",
@@ -140,18 +131,18 @@ def main(
         ]
     )
 
-    run_command(
-        cmd,
-        "TagBamWithReadSequenceExtended (Cellular)",
-        manifest.flowcell,
-        row.library,
-        lane,
+    procs.append(
+        start_popen(
+            cmd,
+            "TagBamWithReadSequenceExtended (Cellular)",
+            flowcell,
+            library,
+            lane,
+        )
     )
 
     # Tag bam with read sequence extended molecular
-    cmd = dropseq_cmd(
-        "TagBamWithReadSequenceExtended", cellular_tagged_bam, molecular_tagged_bam
-    )
+    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", "/dev/stdin", "/dev/stdout")
     cmd.extend(
         [
             f"SUMMARY={molecular_tagged_summary}",
@@ -163,25 +154,25 @@ def main(
             "NUM_BASES_BELOW_QUALITY=1",
         ]
     )
-
-    run_command(
-        cmd,
-        "TagBamWithReadSequenceExtended (Molecular)",
-        manifest.flowcell,
-        row.library,
-        lane,
+    procs.append(
+        start_popen(
+            cmd,
+            "TagBamWithReadSequenceExtended (Molecular)",
+            flowcell,
+            library,
+            lane,
+            procs[-1],
+        )
     )
-    os.remove(cellular_tagged_bam)
 
     # Filter low-quality reads
-    cmd = dropseq_cmd("FilterBam", molecular_tagged_bam, filtered_ubam)
+    cmd = dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout")
     cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
-    run_command(cmd, "FilterBam", manifest.flowcell, row.library, lane)
-    os.remove(molecular_tagged_bam)
+    procs.append(start_popen(cmd, "FilterBam", flowcell, library, lane, procs[-1]))
 
     # Trim reads with starting sequence
-    cmd = dropseq_cmd("TrimStartingSequence", filtered_ubam, trimmed_ubam)
+    cmd = dropseq_cmd("TrimStartingSequence", "/dev/stdin", "/dev/stdout")
     cmd.extend(
         [
             f"OUTPUT_SUMMARY={trimming_summary}",
@@ -191,11 +182,12 @@ def main(
         ]
     )
 
-    run_command(cmd, "TrimStartingSequence", manifest.flowcell, row.library, lane)
-    os.remove(filtered_ubam)
+    procs.append(
+        start_popen(cmd, "TrimStartingSequence", flowcell, library, lane, procs[-1])
+    )
 
     # Adapter-aware poly A trimming
-    cmd = dropseq_cmd("PolyATrimmer", trimmed_ubam, polya_filtered_ubam)
+    cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", polya_filtered_ubam)
     cmd.extend(
         [
             f"OUTPUT_SUMMARY={polya_filtered_summary}",
@@ -205,13 +197,18 @@ def main(
         ]
     )
 
-    run_command(cmd, "PolyATrimmer", manifest.flowcell, row.library, lane)
-    os.remove(trimmed_ubam)
+    procs.append(start_popen(cmd, "PolyATrimmer", flowcell, library, lane, procs[-1]))
+
+    # close intermediate streams
+    for p in procs[:-1]:
+        p.stdout.close()
+    # wait for final process to finish
+    log.debug(f"Finished with pre-alignment: {procs[-1].communicate()[0]}")
 
     # convert to fastq like a loser
     cmd = picard_cmd("SamToFastq", tmp_dir)
     cmd.extend(["-I", polya_filtered_ubam, "-F", polya_filtered_fastq])
-    run_command(cmd, "SamToFastq", manifest.flowcell, row.library, lane)
+    run_command(cmd, "SamToFastq", flowcell, library, lane)
 
     # Map reads to genome sequence using STARsolo
     cmd = [
@@ -237,7 +234,7 @@ def main(
         "8",
     ]
 
-    run_command(cmd, "STAR", manifest.flowcell, row.library, lane)
+    run_command(cmd, "STAR", flowcell, library, lane)
 
     # Check alignments quality
     log.debug(
@@ -245,16 +242,15 @@ def main(
     )
     write_alignment_stats(aligned_bam, alignment_statistics)
 
+    procs = []
+
     # Sort aligned bam
     cmd = picard_cmd("SortSam", tmp_dir)
-    cmd.extend(
-        ["-I", aligned_bam, "-O", aligned_sorted_bam, "--SORT_ORDER", "queryname"]
-    )
-    run_command(cmd, "SortSam", manifest.flowcell, row.library, lane)
-    os.remove(aligned_bam)
+    cmd.extend(["-I", aligned_bam, "-O", "/dev/stdout", "--SORT_ORDER", "queryname"])
+    procs.append(start_popen(cmd, "SortSam", flowcell, library, lane, mem="24g"))
 
     # Merge unmapped bam and aligned bam
-    cmd = picard_cmd("MergeBamAlignment", tmp_dir)
+    cmd = picard_cmd("MergeBamAlignment", tmp_dir, mem="24g")
     cmd.extend(
         [
             "-R",
@@ -262,9 +258,9 @@ def main(
             "--UNMAPPED",
             polya_filtered_ubam,
             "--ALIGNED",
-            aligned_sorted_bam,
+            "/dev/stdin",
             "-O",
-            aligned_merged_bam,
+            "/dev/stdout",
             "--COMPRESSION_LEVEL",
             "0",
             "--INCLUDE_SECONDARY_ALIGNMENTS",
@@ -274,22 +270,31 @@ def main(
         ]
     )
 
-    run_command(cmd, "MergeBamAlignment", manifest.flowcell, row.library, lane)
+    procs.append(
+        start_popen(cmd, "MergeBamAlignment", flowcell, library, lane, procs[-1])
+    )
     os.remove(polya_filtered_ubam)
-    os.remove(aligned_sorted_bam)
 
     # Tag read with interval
-    cmd = dropseq_cmd("TagReadWithInterval", aligned_merged_bam, aligned_tagged_bam)
+    cmd = dropseq_cmd("TagReadWithInterval", "/dev/stdin", "/dev/stdout")
     cmd.extend([f"INTERVALS={intervals}", "TAG=XG"])
 
-    run_command(cmd, "TagReadWithInterval", manifest.flowcell, row.library, lane)
-    os.remove(aligned_merged_bam)
+    procs.append(
+        start_popen(cmd, "TagReadWithInterval", flowcell, library, lane, procs[-1])
+    )
 
     # Tag read with gene function
-    cmd = dropseq_cmd("TagReadWithGeneFunction", aligned_tagged_bam, final_aligned_bam)
+    cmd = dropseq_cmd("TagReadWithGeneFunction", "/dev/stdin", final_aligned_bam)
     cmd.extend([f"ANNOTATIONS_FILE={annotations_file}", "CREATE_INDEX=false"])
 
-    run_command(cmd, "TagReadWithGeneFunction", manifest.flowcell, row.library, lane)
-    os.remove(aligned_tagged_bam)
+    procs.append(
+        start_popen(cmd, "TagReadWithGeneFunction", flowcell, library, lane, procs[-1])
+    )
 
-    log.info(f"Alignment for {row.library} completed")
+    # close intermediate streams
+    for p in procs[:-1]:
+        p.stdout.close()
+    # wait for final process to finish
+    log.debug(f"Finished with post-alignment: {procs[-1].communicate()[0]}")
+
+    log.info(f"Alignment for {library} completed")
