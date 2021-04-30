@@ -97,6 +97,10 @@ def picard_cmd(command: str, tmp_dir: pathlib.Path, mem: str = "62g"):
         tmp_dir,
         "--VALIDATION_STRINGENCY",
         "SILENT",
+        "--VERBOSITY",
+        "WARNING",
+        "--QUIET",
+        "true",
     ]
 
 

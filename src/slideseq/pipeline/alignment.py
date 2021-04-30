@@ -105,7 +105,7 @@ def main(
     )
     polya_filtered_summary = bam_base.with_suffix(".polyA_filtering.summary.txt")
 
-    # needed for STAR alignment, might as well keep it for later
+    # needed for STAR alignment
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
     aligned_bam = bam_base.with_suffix(".star.Aligned.out.bam")
@@ -203,8 +203,10 @@ def main(
     # close intermediate streams
     for p in procs[:-1]:
         p.stdout.close()
+
     # wait for final process to finish
-    log.debug(f"Finished with pre-alignment: {procs[-1].communicate()[0]}")
+    procs[-1].communicate()
+    log.debug("Finished with pre-alignment processing")
 
     # convert to fastq like a loser
     cmd = picard_cmd("SamToFastq", tmp_dir)
@@ -298,9 +300,12 @@ def main(
         p.stdout.close()
 
     # wait for final process to finish
-    log.debug(f"Finished with post-alignment: {procs[-1].communicate()[0]}")
+    procs[-1].communicate()
+    log.debug("Finished with post-alignment processing")
 
+    # removed unneeded files
     os.remove(polya_filtered_ubam)
+    os.remove(polya_filtered_fastq)
     os.remove(aligned_bam)
 
     log.info(f"Alignment for {library} completed")
