@@ -68,6 +68,7 @@ def dropseq_cmd(
         f"O={output_file}",
         "VALIDATION_STRINGENCY=SILENT",
         "COMPRESSION_LEVEL=0",
+        "VERBOSITY=WARNING",
         "QUIET=true",
     ]
 

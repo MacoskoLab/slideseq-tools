@@ -89,11 +89,11 @@ def main(
     intervals = reference_dir / f"{reference.stem}.genes.intervals"
     annotations_file = reference_dir / f"{reference.stem}.gtf"
 
-    # define all the intermediate files we need
-    # TODO: figure out if we can combine some of these steps, maybe
+    # define all the files we will produce
     bam_base = f"{flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
     bam_base = output_dir / bam_base
 
+    # unmapped input. Keep this for posterity
     unmapped_bam = bam_base.with_suffix(".unmapped.bam")
 
     cellular_tagged_summary = bam_base.with_suffix(".cellular_tagging.summary.txt")
@@ -104,13 +104,14 @@ def main(
         ".unaligned_mc_tagged_polyA_filtered.bam"
     )
     polya_filtered_summary = bam_base.with_suffix(".polyA_filtering.summary.txt")
+
+    # needed for STAR alignment, might as well keep it for later
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
-    # intermediate files
     aligned_bam = bam_base.with_suffix(".star.Aligned.out.bam")
     alignment_statistics = bam_base.with_suffix(".alignment_statistics.pickle")
 
-    # the final file
+    # the final bam file
     final_aligned_bam = bam_base.with_suffix(".final.bam")
 
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
@@ -273,7 +274,6 @@ def main(
     procs.append(
         start_popen(cmd, "MergeBamAlignment", flowcell, library, lane, procs[-1])
     )
-    os.remove(polya_filtered_ubam)
 
     # Tag read with interval
     cmd = dropseq_cmd("TagReadWithInterval", "/dev/stdin", "/dev/stdout")
@@ -294,7 +294,11 @@ def main(
     # close intermediate streams
     for p in procs[:-1]:
         p.stdout.close()
+
     # wait for final process to finish
     log.debug(f"Finished with post-alignment: {procs[-1].communicate()[0]}")
+
+    os.remove(polya_filtered_ubam)
+    os.remove(aligned_bam)
 
     log.info(f"Alignment for {library} completed")
