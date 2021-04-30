@@ -188,7 +188,7 @@ def main(
     )
 
     # Adapter-aware poly A trimming
-    cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", polya_filtered_ubam)
+    cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", polya_filtered_ubam, compression=5)
     cmd.extend(
         [
             f"OUTPUT_SUMMARY={polya_filtered_summary}",
@@ -284,7 +284,9 @@ def main(
     )
 
     # Tag read with gene function
-    cmd = dropseq_cmd("TagReadWithGeneFunction", "/dev/stdin", final_aligned_bam)
+    cmd = dropseq_cmd(
+        "TagReadWithGeneFunction", "/dev/stdin", final_aligned_bam, compression=5
+    )
     cmd.extend([f"ANNOTATIONS_FILE={annotations_file}", "CREATE_INDEX=false"])
 
     procs.append(

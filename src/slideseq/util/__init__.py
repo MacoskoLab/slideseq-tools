@@ -51,6 +51,7 @@ def dropseq_cmd(
     input_file: Union[pathlib.Path, str],
     output_file: Union[pathlib.Path, str],
     mem: str = "8g",
+    compression: int = 0,
 ):
     """Return the beginning of a DropSeq command, with standard options
 
@@ -58,6 +59,7 @@ def dropseq_cmd(
     :param input_file: path to the input file
     :param output_file: path to the output file
     :param mem: memory for the heap. default is to share with other jobs
+    :param compression: compression level for output. Use 0 for speed, 5 for storage
     """
 
     return [
@@ -67,7 +69,7 @@ def dropseq_cmd(
         f"I={input_file}",
         f"O={output_file}",
         "VALIDATION_STRINGENCY=SILENT",
-        "COMPRESSION_LEVEL=0",
+        f"COMPRESSION_LEVEL={compression}",
         "VERBOSITY=WARNING",
         "QUIET=true",
     ]
