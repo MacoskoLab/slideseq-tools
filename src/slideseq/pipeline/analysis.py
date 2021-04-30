@@ -7,16 +7,15 @@ import pathlib
 
 import pandas as pd
 
-import slideseq.util.constants as constants
 from slideseq.util import dropseq_cmd, picard_cmd, start_popen
 from slideseq.util.bead_matching import match_barcodes
 
 log = logging.getLogger(__name__)
 
 
-def run_barcodematching(selected_cells: pathlib.Path, row: pd.Series):
-    library_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}"
-
+def run_barcodematching(
+    selected_cells: pathlib.Path, row: pd.Series, library_dir: pathlib.Path
+):
     reference = pathlib.Path(row.reference)
     puckcaller_dir = pathlib.Path(row.puckcaller_path)
 
@@ -61,7 +60,7 @@ def downsample_dge(
     # Downsample reads
     cmd = picard_cmd("DownsampleSam", tmp_dir)
     cmd.extend(["--INPUT", bam_file, "--OUTPUT", "/dev/stdout", "-P", ratio])
-    procs.append(start_popen(cmd, "DownsampleSam", row.flowcell, row.library))
+    procs.append(start_popen(cmd, "DownsampleSam", row.library))
 
     # output to /dev/null because we don't want to keep the DGE matrix
     cmd = dropseq_cmd("DigitalExpression", "/dev/stdin", "/dev/null")
@@ -81,9 +80,7 @@ def downsample_dge(
     elif row.locus_function_list == "exonic+intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
 
-    procs.append(
-        start_popen(cmd, "DigitalExpression", row.flowcell, row.library, procs[-1])
-    )
+    procs.append(start_popen(cmd, "DigitalExpression", row.library, procs[-1]))
 
     # close intermediate streams
     for p in procs[:-1]:

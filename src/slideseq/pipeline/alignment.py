@@ -65,7 +65,6 @@ def main(
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
-    flowcell = manifest.flowcell
     metadata_df = pd.read_csv(manifest.metadata_file)
 
     # task array is 1-indexed
@@ -78,8 +77,6 @@ def main(
     assert len(row) == 1, f"More than one library specified by {lane} and {library}"
     row = row.iloc[0]  # convert single-row DataFrame to a Series
 
-    tmp_dir = manifest.output_directory / "tmp"
-
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}" / f"L{lane:03d}"
 
     reference = pathlib.Path(row.reference)
@@ -91,7 +88,7 @@ def main(
     annotations_file = reference_dir / f"{reference.stem}.gtf"
 
     # define the base name for the library we're aligning here
-    library_base = f"{flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
+    library_base = f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
 
     # unmapped input. we'll keep this file for posterity
     unmapped_bam = (library_dir / library_base).with_suffix(".unmapped.bam")
@@ -144,7 +141,6 @@ def main(
         start_popen(
             cmd,
             "TagBamWithReadSequenceExtended (Cellular)",
-            flowcell,
             library,
             lane,
         )
@@ -167,7 +163,6 @@ def main(
         start_popen(
             cmd,
             "TagBamWithReadSequenceExtended (Molecular)",
-            flowcell,
             library,
             lane,
             procs[-1],
@@ -178,7 +173,7 @@ def main(
     cmd = dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout")
     cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
-    procs.append(start_popen(cmd, "FilterBam", flowcell, library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "FilterBam", library, lane, procs[-1]))
 
     # Trim reads with starting sequence
     cmd = dropseq_cmd("TrimStartingSequence", "/dev/stdin", "/dev/stdout")
@@ -191,9 +186,7 @@ def main(
         ]
     )
 
-    procs.append(
-        start_popen(cmd, "TrimStartingSequence", flowcell, library, lane, procs[-1])
-    )
+    procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
 
     # Adapter-aware poly A trimming
     cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", polya_filtered_ubam, compression=5)
@@ -206,7 +199,7 @@ def main(
         ]
     )
 
-    procs.append(start_popen(cmd, "PolyATrimmer", flowcell, library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "PolyATrimmer", library, lane, procs[-1]))
 
     # close intermediate streams
     for p in procs[:-1]:
@@ -217,9 +210,9 @@ def main(
     log.debug("Finished with pre-alignment processing")
 
     # convert to fastq like a loser
-    cmd = picard_cmd("SamToFastq", tmp_dir)
+    cmd = picard_cmd("SamToFastq", manifest.tmp_dir)
     cmd.extend(["-I", polya_filtered_ubam, "-F", polya_filtered_fastq])
-    run_command(cmd, "SamToFastq", flowcell, library, lane)
+    run_command(cmd, "SamToFastq", library, lane)
 
     # Map reads to genome sequence using STARsolo
     cmd = [
@@ -245,7 +238,7 @@ def main(
         "8",
     ]
 
-    run_command(cmd, "STAR", flowcell, library, lane)
+    run_command(cmd, "STAR", library, lane)
 
     # Check alignments quality
     log.debug(
@@ -256,12 +249,12 @@ def main(
     procs = []
 
     # Sort aligned bam
-    cmd = picard_cmd("SortSam", tmp_dir, mem="24g")
+    cmd = picard_cmd("SortSam", manifest.tmp_dir, mem="24g")
     cmd.extend(["-I", aligned_bam, "-O", "/dev/stdout", "--SORT_ORDER", "queryname"])
-    procs.append(start_popen(cmd, "SortSam", flowcell, library, lane))
+    procs.append(start_popen(cmd, "SortSam", library, lane))
 
     # Merge unmapped bam and aligned bam
-    cmd = picard_cmd("MergeBamAlignment", tmp_dir, mem="24g")
+    cmd = picard_cmd("MergeBamAlignment", manifest.tmp_dir, mem="24g")
     cmd.extend(
         [
             "-R",
@@ -281,17 +274,13 @@ def main(
         ]
     )
 
-    procs.append(
-        start_popen(cmd, "MergeBamAlignment", flowcell, library, lane, procs[-1])
-    )
+    procs.append(start_popen(cmd, "MergeBamAlignment", library, lane, procs[-1]))
 
     # Tag read with interval
     cmd = dropseq_cmd("TagReadWithInterval", "/dev/stdin", "/dev/stdout")
     cmd.extend([f"INTERVALS={intervals}", "TAG=XG"])
 
-    procs.append(
-        start_popen(cmd, "TagReadWithInterval", flowcell, library, lane, procs[-1])
-    )
+    procs.append(start_popen(cmd, "TagReadWithInterval", library, lane, procs[-1]))
 
     # Tag read with gene function
     cmd = dropseq_cmd(
@@ -299,9 +288,7 @@ def main(
     )
     cmd.extend([f"ANNOTATIONS_FILE={annotations_file}", "CREATE_INDEX=false"])
 
-    procs.append(
-        start_popen(cmd, "TagReadWithGeneFunction", flowcell, library, lane, procs[-1])
-    )
+    procs.append(start_popen(cmd, "TagReadWithGeneFunction", library, lane, procs[-1]))
 
     # close intermediate streams
     for p in procs[:-1]:

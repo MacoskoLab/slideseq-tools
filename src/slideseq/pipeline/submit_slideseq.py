@@ -121,8 +121,6 @@ def main(
 
         # data locations
         output_dir = constants.WORKFLOW_DIR / flowcell
-        log_dir = output_dir / "logs"
-        tmp_dir = output_dir / "tmp"
         flowcell_dir = pathlib.Path(flowcell_df.bclpath.values[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
@@ -146,13 +144,13 @@ def main(
             log.debug("Creating output directories")
             output_dir.mkdir(exist_ok=True)
 
-            log_dir.mkdir(exist_ok=True)
-            if list(log_dir.glob("*.log")):
+            manifest.log_dir.mkdir(exist_ok=True)
+            if list(manifest.log_dir.glob("*.log")):
                 log.warning(
                     "Log files already exist for this job, new output will be appended"
                 )
 
-            tmp_dir.mkdir(exist_ok=True)
+            manifest.tmp_dir.mkdir(exist_ok=True)
 
             log.debug(f"Writing manifest to {manifest_file}")
             manifest.to_file(manifest_file)
@@ -182,9 +180,9 @@ def main(
         ) as qsub_script:
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
-                log_file=log_dir / "demultiplex.L00$TASK_ID.log",
+                log_file=manifest.log_dir / "demultiplex.L00$TASK_ID.log",
                 PICARD_JAR=constants.PICARD,
-                TMP_DIR=tmp_dir,
+                TMP_DIR=manifest.tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
                 READ_STRUCTURE=read_structure,
                 OUTPUT_DIR=output_dir,
@@ -223,7 +221,7 @@ def main(
 
                 # request a high-cpu, high-mem machine for this step
                 alignment_args = qsub_args(
-                    log_file=log_dir / f"alignment.L00{lane}.$TASK_ID.log",
+                    log_file=manifest.log_dir / f"alignment.L00{lane}.$TASK_ID.log",
                     debug=debug,
                     CONDA_ENV=env_name,
                     LANE=lane,
@@ -265,7 +263,7 @@ def main(
 
             # this step requires considerably fewer resources
             processing_args = qsub_args(
-                log_file=log_dir / "processing.$TASK_ID.log",
+                log_file=manifest.log_dir / "processing.$TASK_ID.log",
                 debug=debug,
                 CONDA_ENV=env_name,
                 LANE=lane,

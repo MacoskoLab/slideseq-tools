@@ -24,6 +24,8 @@ class Manifest:
         with input_file.open() as fh:
             data = yaml.safe_load(fh)
 
+        log.debug(f"Read manifest file {input_file} for flowcell {data['flowcell']}")
+
         return Manifest(
             flowcell=data["flowcell"],
             flowcell_directory=Path(data["flowcell_directory"]),
@@ -43,6 +45,16 @@ class Manifest:
 
         with output_file.open("w") as out:
             yaml.safe_dump(data, stream=out)
+
+        log.debug(f"Wrote manifest file {output_file} for flowcell {data['flowcell']}")
+
+    @property
+    def tmp_dir(self):
+        return self.output_directory / "tmp"
+
+    @property
+    def log_dir(self):
+        return self.output_directory / "logs"
 
 
 def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:

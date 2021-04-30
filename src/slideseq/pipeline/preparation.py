@@ -58,7 +58,7 @@ def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"{manifest.flowcell} - Creating directories")
+    log.info(f"Creating directories in {output_dir}")
     for lane in lanes:
         output_lane_dir = output_dir / f"L{lane:03d}"
         output_lane_dir.mkdir(exist_ok=True)
@@ -88,7 +88,7 @@ def validate_demux(manifest: Manifest):
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"{manifest.flowcell} - Checking directories")
+    log.info(f"Checking directories in {output_dir}")
     for lane in lanes:
         for p in (
             output_dir / f"L{lane:03d}",

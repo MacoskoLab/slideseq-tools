@@ -58,7 +58,6 @@ def main(
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
     metadata_df = pd.read_csv(manifest.metadata_file)
-    tmp_dir = manifest.output_directory / "tmp"
 
     # task array is 1-indexed
     library = sorted(set(metadata_df.library))[library_index - 1]
@@ -81,13 +80,17 @@ def main(
     reference2 = f"{reference.stem}.{row.locus_function_list}"
 
     library_bases = [
-        f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.$"
+        f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
         for lane in lanes
     ]
-    alignment_bases = [library_dir / "alignment" / base for base in library_bases]
+    alignment_bases = [
+        library_dir / f"L{lane:03d}" / "alignment" / base
+        for lane, base in zip(lanes, library_bases)
+    ]
 
     bam_files = [
-        (library_dir / base).with_suffix(".final.bam") for base in library_bases
+        (library_dir / f"L{lane:03d}" / base).with_suffix(".final.bam")
+        for lane, base in zip(lanes, library_bases)
     ]
     alignment_stats = [
         base.with_suffix(".alignment_statistics.pickle") for base in alignment_bases
@@ -120,7 +123,7 @@ def main(
         ".AllIllumina.digital_expression_summary.txt"
     )
 
-    cmd = picard_cmd("MergeSamFiles", tmp_dir)
+    cmd = picard_cmd("MergeSamFiles", manifest.tmp_dir)
     cmd.extend(
         [
             "--CREATE_INDEX",
@@ -139,7 +142,7 @@ def main(
     for bam_file in bam_files:
         cmd.extend(["--INPUT", bam_file])
 
-    run_command(cmd, "MergeBamFiles", manifest.flowcell, library)
+    run_command(cmd, "MergeBamFiles", library)
 
     # remove the individual bam files after merging
     for bam_file in bam_files:
@@ -147,7 +150,7 @@ def main(
         os.remove(bam_file)
 
     # Validate bam file
-    cmd = picard_cmd("ValidateSamFile", tmp_dir)
+    cmd = picard_cmd("ValidateSamFile", manifest.tmp_dir)
     cmd.extend(["--INPUT", combined_bam, "--MODE", "SUMMARY"])
     # is this necessary?
     if not row.illuminaplatform.startswith("NovaSeq"):
@@ -155,7 +158,7 @@ def main(
             ["--IGNORE", "MISSING_PLATFORM_VALUE", "--IGNORE", "INVALID_VERSION_NUMBER"]
         )
 
-    run_command(cmd, "ValidateSamFile", manifest.flowcell, library)
+    run_command(cmd, "ValidateSamFile", library)
 
     # Bam tag histogram
     cmd = dropseq_cmd("BamTagHistogram", combined_bam, reads_per_cell)
@@ -164,14 +167,14 @@ def main(
             "TAG=XC",
             "FILTER_PCR_DUPLICATES=false",
             f"READ_MQ={row.base_quality}",
-            f"TMP_DIR={tmp_dir}",
+            f"TMP_DIR={manifest.tmp_dir}",
         ]
     )
 
-    run_command(cmd, "BamTagHistogram", manifest.flowcell, library)
+    run_command(cmd, "BamTagHistogram", library)
 
     # Collect RnaSeq metrics
-    cmd = picard_cmd("CollectRnaSeqMetrics", tmp_dir)
+    cmd = picard_cmd("CollectRnaSeqMetrics", manifest.tmp_dir)
     cmd.extend(
         [
             "--INPUT",
@@ -187,7 +190,7 @@ def main(
         ]
     )
 
-    run_command(cmd, "CollectRnaSeqMetrics", manifest.flowcell, library)
+    run_command(cmd, "CollectRnaSeqMetrics", library)
 
     # Base distribution at read position for cellular barcode
     cmd = dropseq_cmd(
@@ -195,9 +198,7 @@ def main(
     )
     cmd.extend(["TAG=XC"])
 
-    run_command(
-        cmd, "BaseDistributionAtReadPosition (Cellular)", manifest.flowcell, library
-    )
+    run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", library)
 
     # Base distribution at read position for molecular barcode
     cmd = dropseq_cmd(
@@ -205,14 +206,12 @@ def main(
     )
     cmd.extend(["TAG=XM"])
 
-    run_command(
-        cmd, "BaseDistributionAtReadPosition (Molecular)", manifest.flowcell, library
-    )
+    run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", library)
 
     # Gather read quality metrics
     cmd = dropseq_cmd("GatherReadQualityMetrics", combined_bam, read_quality_metrics)
 
-    run_command(cmd, "GatherReadQualityMetrics", manifest.flowcell, library)
+    run_command(cmd, "GatherReadQualityMetrics", library)
 
     # Select cells by num transcripts
     cmd = dropseq_cmd("SelectCellsByNumTranscripts", combined_bam, selected_cells)
@@ -227,7 +226,7 @@ def main(
     elif row.locus_function_list == "exonic+intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
 
-    run_command(cmd, "SelectCellsByNumTranscripts", manifest.flowcell, library)
+    run_command(cmd, "SelectCellsByNumTranscripts", library)
 
     # Generate digital expression files for all Illumina barcodes
     cmd = dropseq_cmd("DigitalExpression", combined_bam, digital_expression)
@@ -266,5 +265,5 @@ def main(
                 downsample_dir=downsample_dir,
                 row=row,
                 ratio=ratio,
-                tmp_dir=tmp_dir,
+                tmp_dir=manifest.tmp_dir,
             )

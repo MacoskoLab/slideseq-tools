@@ -125,21 +125,6 @@ def get_read_structure(run_info_file: pathlib.Path) -> str:
     return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
 
 
-def get_tiles(run_info_file: pathlib.Path, lane: str) -> list[str]:
-    # open the RunInfo.xml file and parse it with element tree
-    with run_info_file.open() as f:
-        run_info = et.parse(f)
-
-    # extract all tile elements
-    tile_elems = run_info.findall("./Run/FlowcellLayout/TileSet/Tiles/Tile")
-    # convert to tuple of (lane, tile)
-    tiles = [el.text.split("_") for el in tile_elems]
-    # filter for desired lane, and sort
-    tiles = sorted(tile for ln, tile in tiles if ln == lane)
-
-    return tiles
-
-
 def get_lanes(run_info_file: pathlib.Path) -> range:
     # open the RunInfo.xml file and parse it with element tree
     with run_info_file.open() as f:
@@ -149,13 +134,11 @@ def get_lanes(run_info_file: pathlib.Path) -> range:
     return range(1, lane_count + 1)
 
 
-def run_command(
-    cmd: list[Any], name: str, flowcell: str, library: str, lane: int = None
-):
+def run_command(cmd: list[Any], name: str, library: str, lane: int = None):
     if lane is None:
-        log.info(f"{flowcell} - {name} for {library}")
+        log.info(f"{name} for {library}")
     else:
-        log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+        log.info(f"{name} for {library} in lane {lane}")
 
     # convert args to strings rather than relying on the caller
     cmd = [str(arg) for arg in cmd]
@@ -166,21 +149,20 @@ def run_command(
         log.error(f"Error running {name}:\n\t{proc.stderr}")
         sys.exit(1)
     else:
-        log.info(f"{flowcell} - {name} completed")
+        log.info(f"{name} completed")
 
 
 def start_popen(
     cmd: list[Any],
     name: str,
-    flowcell: str,
     library: str,
     lane: int = None,
     input_proc: Popen = None,
 ):
     if lane is None:
-        log.info(f"{flowcell} - {name} for {library}")
+        log.info(f"{name} for {library}")
     else:
-        log.info(f"{flowcell} - {name} for {library} in lane {lane}")
+        log.info(f"{name} for {library} in lane {lane}")
 
     # convert args to strings rather than relying on the caller
     cmd = [str(arg) for arg in cmd]
