@@ -61,17 +61,14 @@ def dropseq_cmd(
     """
 
     return [
-        f"{constants.DROPSEQ_DIR / command}",
+        constants.DROPSEQ_DIR / command,
         "-m",
         mem,
-        f"-I {input_file}",
-        f"-O {output_file}",
-        "--VALIDATION_STRINGENCY",
-        "SILENT",
-        "--COMPRESSION_LEVEL",
-        "0",
-        "--QUIET",
-        "true",
+        f"I={input_file}",
+        f"O={output_file}",
+        "VALIDATION_STRINGENCY=SILENT",
+        "COMPRESSION_LEVEL=0",
+        "QUIET=true",
     ]
 
 
@@ -91,10 +88,10 @@ def picard_cmd(command: str, tmp_dir: pathlib.Path, mem: str = "62g"):
         "-XX:GCTimeLimit=20",
         "-XX:GCHeapFreeLimit=10",
         "-jar",
-        f"{constants.PICARD}",
+        constants.PICARD,
         command,
         "--TMP_DIR",
-        f"{tmp_dir}",
+        tmp_dir,
         "--VALIDATION_STRINGENCY",
         "SILENT",
     ]
