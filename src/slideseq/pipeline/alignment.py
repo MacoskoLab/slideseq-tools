@@ -72,14 +72,15 @@ def main(
     library = sorted(set(metadata_df.library))[library_index - 1]
     row = metadata_df.loc[(metadata_df.lane == lane) & (metadata_df.library == library)]
     if len(row) == 0:
-        log.debug("Library not present in this lane, nothing to do here")
+        log.warning("Library not present in this lane, nothing to do here")
+        return
 
     assert len(row) == 1, f"More than one library specified by {lane} and {library}"
     row = row.iloc[0]  # convert single-row DataFrame to a Series
 
     tmp_dir = manifest.output_directory / "tmp"
 
-    output_dir = constants.LIBRARY_DIR / f"{row.date}_{library}" / f"L{lane:03d}"
+    library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}" / f"L{lane:03d}"
 
     reference = pathlib.Path(row.reference)
     reference_dir = reference.parent
@@ -89,30 +90,37 @@ def main(
     intervals = reference_dir / f"{reference.stem}.genes.intervals"
     annotations_file = reference_dir / f"{reference.stem}.gtf"
 
-    # define all the files we will produce
-    bam_base = f"{flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
-    bam_base = output_dir / bam_base
+    # define the base name for the library we're aligning here
+    library_base = f"{flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
 
-    # unmapped input. Keep this for posterity
-    unmapped_bam = bam_base.with_suffix(".unmapped.bam")
+    # unmapped input. we'll keep this file for posterity
+    unmapped_bam = (library_dir / library_base).with_suffix(".unmapped.bam")
 
-    cellular_tagged_summary = bam_base.with_suffix(".cellular_tagging.summary.txt")
-    molecular_tagged_summary = bam_base.with_suffix(".molecular_tagging.summary.txt")
-    trimming_summary = bam_base.with_suffix(".adapter_trimming.summary.txt")
+    # create a subdirectory for alignment
+    (library_dir / "alignment").mkdir(exist_ok=True)
+    alignment_base = library_dir / "alignment" / library_base
 
-    polya_filtered_ubam = bam_base.with_suffix(
+    cellular_tagged_summary = alignment_base.with_suffix(
+        ".cellular_tagging.summary.txt"
+    )
+    molecular_tagged_summary = alignment_base.with_suffix(
+        ".molecular_tagging.summary.txt"
+    )
+    trimming_summary = alignment_base.with_suffix(".adapter_trimming.summary.txt")
+
+    polya_filtered_ubam = alignment_base.with_suffix(
         ".unaligned_mc_tagged_polyA_filtered.bam"
     )
-    polya_filtered_summary = bam_base.with_suffix(".polyA_filtering.summary.txt")
+    polya_filtered_summary = alignment_base.with_suffix(".polyA_filtering.summary.txt")
 
     # needed for STAR alignment
     polya_filtered_fastq = polya_filtered_ubam.with_suffix(".fastq.gz")
 
-    aligned_bam = bam_base.with_suffix(".star.Aligned.out.bam")
-    alignment_statistics = bam_base.with_suffix(".alignment_statistics.pickle")
+    aligned_bam = alignment_base.with_suffix(".star.Aligned.out.bam")
+    alignment_statistics = alignment_base.with_suffix(".alignment_statistics.pickle")
 
     # the final bam file
-    final_aligned_bam = bam_base.with_suffix(".final.bam")
+    final_aligned_bam = (library_dir / library_base).with_suffix(".final.bam")
 
     bs_range1 = get_bead_structure_range(row.bead_structure, "C")
     bs_range2 = get_bead_structure_range(row.bead_structure, "M")
@@ -223,7 +231,7 @@ def main(
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        bam_base.with_suffix(".star."),
+        alignment_base.with_suffix(".star."),
         "--outStd",
         "Log",
         "--outSAMtype",

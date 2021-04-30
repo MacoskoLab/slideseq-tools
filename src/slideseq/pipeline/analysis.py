@@ -8,6 +8,7 @@ import pathlib
 import pandas as pd
 
 import slideseq.util.constants as constants
+from slideseq.util import dropseq_cmd, picard_cmd, start_popen
 from slideseq.util.bead_matching import match_barcodes
 
 log = logging.getLogger(__name__)
@@ -44,46 +45,50 @@ def run_barcodematching(selected_cells: pathlib.Path, row: pd.Series):
     # Doesn't seem necessary for the main pipeline?
 
 
-def gen_downsampling(downsample_dir: pathlib.Path, row: pd.Series):
-    # Downsample bam
-    downsample_dir.mkdir(exist_ok=True, parents=True)
+def downsample_dge(
+    bam_file: pathlib.Path,
+    downsample_dir: pathlib.Path,
+    row: pd.Series,
+    ratio: float,
+    tmp_dir: pathlib.Path,
+):
+    digital_expression_summary = (
+        downsample_dir / f"{row.library}_{ratio}.digital_expression_summary.txt"
+    )
 
-    # call(["mkdir", "-p", downsample_folder])
-    # f1 = f"{alignment_folder}/{library}.AllIllumina.digital_expression_summary.txt"
-    # f2 = f"{downsample_folder}/{library}_1.digital_expression_summary.txt"
-    # call(["cp", f1, f2])
-    # ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    # for i in range(0, 9, 1):
-    #     output_file = f"{output_folder}/logs/gen_downsample_dge_{library}_{reference2}_{str(ratio[i])}.log"
-    #     submission_script = f"{scripts_folder}/gen_downsample_dge.sh"
-    #     call_args = [
-    #         "qsub",
-    #         "-o",
-    #         output_file,
-    #         submission_script,
-    #         manifest_file,
-    #         library,
-    #         scripts_folder,
-    #         locus_function_list,
-    #         str(ratio[i]),
-    #         output_folder,
-    #         downsample_folder,
-    #     ]
-    #     call(call_args)
+    procs = []
 
-    # Call generate_plot_downsampling
-    # output_file = f"{output_folder}/logs/generate_plot_downsampling_{library}_{reference2}.log"
-    # submission_script = f"{scripts_folder}/generate_plot_downsampling.sh"
-    # call_args = [
-    #     "qsub",
-    #     "-o",
-    #     output_file,
-    #     submission_script,
-    #     manifest_file,
-    #     library,
-    #     scripts_folder,
-    #     locus_function_list,
-    #     output_folder,
-    #     barcode_matching_folder,
-    # ]
-    # call(call_args)
+    # Downsample reads
+    cmd = picard_cmd("DownsampleSam", tmp_dir)
+    cmd.extend(["--INPUT", bam_file, "--OUTPUT", "/dev/stdout", "-P", ratio])
+    procs.append(start_popen(cmd, "DownsampleSam", row.flowcell, row.library))
+
+    # output to /dev/null because we don't want to keep the DGE matrix
+    cmd = dropseq_cmd("DigitalExpression", "/dev/stdin", "/dev/null")
+    cmd.extend(
+        [
+            f"SUMMARY={digital_expression_summary}",
+            "EDIT_DISTANCE=1",
+            f"MIN_NUM_TRANSCRIPTS_PER_CELL={row.min_transcripts_per_cell}",
+            f"READ_MQ={row.base_quality}",
+            "MIN_BC_READ_THRESHOLD=0",
+            "OUTPUT_HEADER=true",
+            f"UEI={row.library}",
+        ]
+    )
+    if row.locus_function_list == "intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=null", "LOCUS_FUNCTION_LIST=INTRONIC"])
+    elif row.locus_function_list == "exonic+intronic":
+        cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
+
+    procs.append(
+        start_popen(cmd, "DigitalExpression", row.flowcell, row.library, procs[-1])
+    )
+
+    # close intermediate streams
+    for p in procs[:-1]:
+        p.stdout.close()
+
+    # wait for final process to finish
+    procs[-1].communicate()
+    log.debug(f"Finished with downsampling at ratio {ratio}")

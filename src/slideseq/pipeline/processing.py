@@ -5,6 +5,7 @@ import os
 import pathlib
 
 import click
+import numpy as np
 import pandas as pd
 
 import slideseq.pipeline.analysis as analysis
@@ -77,16 +78,26 @@ def main(
     # assumes that reference always ends in .fasta, not .fasta.gz
     ref_flat = reference_dir / f"{reference.stem}.refFlat"
     ribosomal_intervals = reference_dir / f"{reference.stem}.rRNA.intervals"
+    reference2 = f"{reference.stem}.{row.locus_function_list}"
 
-    bam_base = [
-        f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}"
+    library_bases = [
+        f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.$"
         for lane in lanes
     ]
-    bam_files = [library_dir / f"{base}.final.bam" for base in bam_base]
-    alignment_stats = [
-        library_dir / f"{base}.alignment_statistics.pickle" for base in bam_base
+    alignment_bases = [library_dir / "alignment" / base for base in library_bases]
+
+    bam_files = [
+        (library_dir / base).with_suffix(".final.bam") for base in library_bases
     ]
-    star_logs = [library_dir / f"{base}.star.Log.final.out" for base in bam_base]
+    alignment_stats = [
+        base.with_suffix(".alignment_statistics.pickle") for base in alignment_bases
+    ]
+    star_logs = [base.with_suffix(".star.Log.final.out") for base in alignment_bases]
+
+    # Combine check_alignments_quality files, and plot histograms
+    alignment_quality.combine_alignment_stats(
+        alignment_stats, star_logs, library_dir / f"{library}.$"
+    )
 
     # Merge bam files
     combined_bam = library_dir / f"{library}.bam"
@@ -244,17 +255,16 @@ def main(
     if row.run_barcodematching:
         analysis.run_barcodematching(selected_cells, row, library_dir)
 
-    # gen_downsampling
     if row.gen_downsampling:
-        analysis.gen_downsampling()
+        downsample_dir = library_dir / reference2 / "downsample"
+        downsample_dir.mkdir(exist_ok=True, parents=True)
 
-    # Combine check_alignments_quality files
-    alignment_quality.combine_alignment_stats(
-        alignment_stats, star_logs, library_dir / f"{library}.$"
-    )
-
-    # TODO: plot alignment histogram
-    # commandStr = "python {}/plot_alignment_histogram.py {} {} {}".format(
-    #     scripts_folder, analysis_folder, library, library
-    # )
-    # os.system(commandStr)
+        # this might take a long time, we'll see...
+        for ratio in np.linspace(0.1, 0.9, 9):
+            analysis.downsample_dge(
+                bam_file=combined_bam,
+                downsample_dir=downsample_dir,
+                row=row,
+                ratio=ratio,
+                tmp_dir=tmp_dir,
+            )
