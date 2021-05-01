@@ -38,7 +38,7 @@ def hamming_set(h_set: set[tuple[int]], d: int = 1, include_N: bool = True):
     :param h_set: initial set of barcodes to file the hamming set for, encoded as tuples
                   of integers that index into the ACGTN ordering.
     :param d: maximum distance to allow
-    :param include_N: include N when generating possible indexes
+    :param include_N: include N when generating hamming ball
     :return: set of indexes within hamming distance d
     """
 
@@ -134,7 +134,7 @@ def bipartite_matching(
     # just in case we'll add integer tags to each one, so they are unique
     barcode_counter = Counter()
 
-    for i, barcode in degen_bead_barcodes:
+    for i, barcode in enumerate(degen_bead_barcodes):
         barcode_counter[barcode] += 1
         degen_bead_barcodes[i] = f"{barcode}-{barcode_counter[barcode]}"
 
