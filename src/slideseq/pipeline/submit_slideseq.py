@@ -11,7 +11,7 @@ import click
 
 import slideseq.scripts
 import slideseq.util.constants as constants
-import slideseq.util.google as gutil
+import slideseq.util.gutil as gutil
 from slideseq.pipeline.metadata import (
     Manifest,
     split_sample_lanes,
