@@ -92,7 +92,11 @@ def hamming1_adjacency(barcodes: list[str]):
 def bipartite_matching(
     bead_barcodes: list[str], bead_groups: list[set[int]], seq_barcodes: list[str]
 ):
-    assert set(map(len, bead_barcodes)) == set(map(len, seq_barcodes))
+    bead_lens = set(map(len, bead_barcodes))
+    seq_lens = set(map(len, seq_barcodes))
+    assert (
+        bead_lens == seq_lens
+    ), f"Beads have length {bead_lens} but sequenced lengths {seq_lens}"
     log.debug(msg=f"Barcodes all have length {set(map(len, bead_barcodes))}")
 
     assert {c for bc in bead_barcodes for c in bc} == set("ACGTN")
@@ -196,7 +200,8 @@ def match_barcodes(
     log.info(f"Found {len(bead_groups)} groups of connected beads")
     log.debug(f"Size distribution: {Counter(map(len, bead_groups))}")
 
-    max_dists = [
+    # calculate max cluster diameter for groups of >1 bead
+    cluster_d = [
         max(
             np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
             for j, k in itertools.combinations(bg, 2)
@@ -204,19 +209,23 @@ def match_barcodes(
         for bg in bead_groups
         if len(bg) > 1
     ]
+    cluster_d2 = [
+        max(
+            np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
+            for j, k in itertools.combinations(bg, 2)
+        )
+        for bg in bead_groups
+        if len(bg) > 2
+    ]
 
-    dist_counts, dist_bins = np.histogram(max_dists)
+    dist_counts, _ = np.histogram(cluster_d, bins=np.arange(0, max(cluster_d) + 1.1))
+    dist2_counts, _ = np.histogram(cluster_d, bins=np.arange(0, max(cluster_d2) + 1.1))
 
-    dist_counts = np.array2string(
-        dist_counts, formatter={"int": lambda i: f"{i:6d}"}, max_line_width=120
+    return (
+        bipartite_matching(bead_barcodes, bead_groups, seq_barcodes),
+        dist_counts,
+        dist2_counts,
     )
-    dist_bins = np.array2string(
-        dist_bins[:-1], formatter={"float": lambda i: f"{i:6.2f}"}, max_line_width=120
-    )
-
-    log.debug(f"Max distances across clusters: \n\t{dist_counts}\n\t{dist_bins}")
-
-    return bipartite_matching(bead_barcodes, bead_groups, seq_barcodes)
 
 
 @click.command(name="bead_matching")
@@ -268,7 +277,7 @@ def main(
     bead_locations = pathlib.Path(bead_locations)
     output_file = pathlib.Path(output_file)
 
-    barcode_mapping = match_barcodes(
+    barcode_mapping, d_counts, d2_counts = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius
     )
 
@@ -281,6 +290,12 @@ def main(
             ),
             file=out,
         )
+
+    with output_file.with_suffix(".diameters.npy").open("wb") as out:
+        np.save(out, d_counts)
+
+    with output_file.with_suffix(".diameters2.npy").open("wb") as out:
+        np.save(out, d2_counts)
 
 
 if __name__ == "__main__":
