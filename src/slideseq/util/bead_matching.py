@@ -1,5 +1,4 @@
 import gzip
-import itertools
 import logging
 import pathlib
 import sys
@@ -187,37 +186,26 @@ def match_barcodes(
     log.debug(f"radius matrix (<{radius}) with {radius_matrix.nnz // 2} edges")
     # adjacency matrix for all barcodes within hamming distance 1
     hamming_matrix = hamming1_adjacency(bead_barcodes)
-    log.debug(f"hamming matrix with {hamming_matrix.nnz // 2} edges")
+    log.debug(f"hamming matrix (≤1) with {hamming_matrix.nnz // 2} edges")
 
     # just multiply together to get the combined adjacency matrix!
+    combined_graph = nx.from_scipy_sparse_matrix(radius_matrix.multiply(hamming_matrix))
+    log.debug(f"combined graph with {combined_graph.number_of_edges()} edges")
+
+    # add xy coordinates to graph so we can analyze later
+    for n, (x, y) in zip(combined_graph.nodes, xy):
+        combined_graph.nodes[n]["x"] = x
+        combined_graph.nodes[n]["y"] = y
+
     # get connected components to find groups of similar/close barcodes
-    bead_groups = list(
-        nx.connected_components(
-            nx.from_scipy_sparse_matrix(radius_matrix.multiply(hamming_matrix))
-        )
-    )
+    bead_groups = list(nx.connected_components(combined_graph))
 
     log.info(f"Found {len(bead_groups)} groups of connected beads")
     log.debug(f"Size distribution: {Counter(map(len, bead_groups))}")
 
-    # calculate max cluster diameter for groups of >1 bead
-    cluster_diameters = np.array(
-        [
-            (
-                len(bg),
-                max(
-                    np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
-                    for j, k in itertools.combinations(bg, 2)
-                ),
-            )
-            for bg in bead_groups
-            if len(bg) > 1
-        ]
-    )
-
     return (
         bipartite_matching(bead_barcodes, bead_groups, seq_barcodes),
-        cluster_diameters,
+        combined_graph,
     )
 
 
@@ -270,7 +258,7 @@ def main(
     bead_locations = pathlib.Path(bead_locations)
     output_file = pathlib.Path(output_file)
 
-    barcode_mapping, diameters = match_barcodes(
+    barcode_mapping, bead_graph = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius
     )
 
@@ -284,8 +272,7 @@ def main(
             file=out,
         )
 
-    with output_file.with_suffix(".diameters.npy").open("wb") as out:
-        np.save(out, diameters)
+    nx.write_gpickle(bead_graph, output_file.with_suffix(".bead_graph.pickle.gz"))
 
 
 if __name__ == "__main__":
