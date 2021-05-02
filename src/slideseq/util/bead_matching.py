@@ -201,30 +201,23 @@ def match_barcodes(
     log.debug(f"Size distribution: {Counter(map(len, bead_groups))}")
 
     # calculate max cluster diameter for groups of >1 bead
-    cluster_d = [
-        max(
-            np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
-            for j, k in itertools.combinations(bg, 2)
-        )
-        for bg in bead_groups
-        if len(bg) > 1
-    ]
-    cluster_d2 = [
-        max(
-            np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
-            for j, k in itertools.combinations(bg, 2)
-        )
-        for bg in bead_groups
-        if len(bg) > 2
-    ]
-
-    dist_counts, _ = np.histogram(cluster_d, bins=np.arange(0, max(cluster_d) + 1.1))
-    dist2_counts, _ = np.histogram(cluster_d, bins=np.arange(0, max(cluster_d2) + 1.1))
+    cluster_diameters = np.array(
+        [
+            (
+                len(bg),
+                max(
+                    np.sqrt(((xy[j, :] - xy[k, :]) ** 2).sum())
+                    for j, k in itertools.combinations(bg, 2)
+                ),
+            )
+            for bg in bead_groups
+            if len(bg) > 1
+        ]
+    )
 
     return (
         bipartite_matching(bead_barcodes, bead_groups, seq_barcodes),
-        dist_counts,
-        dist2_counts,
+        cluster_diameters,
     )
 
 
@@ -277,7 +270,7 @@ def main(
     bead_locations = pathlib.Path(bead_locations)
     output_file = pathlib.Path(output_file)
 
-    barcode_mapping, d_counts, d2_counts = match_barcodes(
+    barcode_mapping, diameters = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius
     )
 
@@ -292,10 +285,7 @@ def main(
         )
 
     with output_file.with_suffix(".diameters.npy").open("wb") as out:
-        np.save(out, d_counts)
-
-    with output_file.with_suffix(".diameters2.npy").open("wb") as out:
-        np.save(out, d2_counts)
+        np.save(out, diameters)
 
 
 if __name__ == "__main__":
