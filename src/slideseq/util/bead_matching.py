@@ -1,7 +1,6 @@
 import gzip
 import logging
 import pathlib
-import sys
 from collections import Counter
 
 import click
@@ -243,7 +242,7 @@ def main(
     radius: float = 10.0,
 ):
     log.setLevel(logging.DEBUG)
-    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

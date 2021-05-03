@@ -1,6 +1,5 @@
 import logging
 import pathlib
-import sys
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ def create_logger(
     else:
         root_log.setLevel(logging.INFO)
 
-    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
     if dryrun:
         formatter = logging.Formatter(
