@@ -1,2 +1,0 @@
-library	experiment_date	lane	sample_barcode	bead_structure	estimated_num_cells	estimated_num_beads	reference	locus_function_list	start_sequence	base_quality	min_transcripts_per_cell	run_barcodematching	bead_barcode_file
-Puck_190926_01	2020-02-02	{LANE}	TAAGGCGA	8C18X7C8M1X|*T	90000	90000	/path/GRCm38.81/GRCm38.81.fasta	exonic+intronic	AAGCAGTGGTATCAACGCAGAGTGAATGGG	10	10	TRUE	/path/example.beadbarcodes.txt

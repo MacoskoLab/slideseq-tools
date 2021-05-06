@@ -40,6 +40,8 @@ def run_barcodematching(
             file=out,
         )
 
+    # TODO: need to actually filter the data with this
+
     # TODO: standalone script to analyze FDR by shuffling barcodes.
     # Doesn't seem necessary for the main pipeline?
 

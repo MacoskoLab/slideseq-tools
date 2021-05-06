@@ -69,3 +69,22 @@ METADATA_TYPES = {
     "gen_read1_plot": bool,
     "gen_downsampling": bool,
 }
+
+
+# columns used from the output of GatherReadQualityMetrics
+READ_QUALITY_METRICS = {
+    "totalReads": "Total",
+    "mappedReads": "Mapped",
+    "hqMappedReads": "HQ",
+    "hqMappedReadNoPCRDupes": "HQ No Dupes",
+}
+
+
+# columns used from the output of CollectRnaSeqMetrics
+FRAC_INTRONIC_EXONIC = {
+    "PCT_RIBOSOMAL_BASES": "ribosomal",
+    "PCT_CODING_BASES": "coding_bases",
+    "PCT_UTR_BASES": "utr_bases",
+    "PCT_INTRONIC_BASES": "intronic",
+    "PCT_INTERGENIC_BASES": "intergenic",
+}
