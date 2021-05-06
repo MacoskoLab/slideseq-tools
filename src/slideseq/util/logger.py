@@ -1,12 +1,10 @@
 import logging
-import pathlib
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
 
-def create_logger(
-    debug: bool = False, dryrun: bool = False, log_file: pathlib.Path = None
-):
+def create_logger(debug: bool = False, dryrun: bool = False, log_file: Path = None):
     root_log = logging.getLogger()
 
     # google is noisy, turn up its logging level

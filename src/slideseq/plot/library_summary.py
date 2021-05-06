@@ -12,7 +12,7 @@ import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
 import slideseq.util.constants as constants
-from slideseq.pipeline.metadata import Manifest
+from slideseq.metadata import Manifest
 
 log = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ def make_library_summary(row: pd.Series, lanes: list[int], manifest: Manifest):
 
     plot_base_distribution(
         library_base.with_suffix(".barcode_distribution_XM.txt"),
-        "Cell barcodes for all reads",
+        "Molecular barcodes for all reads",
         pdf_pages,
     )
 

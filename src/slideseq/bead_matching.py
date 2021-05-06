@@ -1,7 +1,7 @@
 import gzip
 import logging
-import pathlib
 from collections import Counter
+from pathlib import Path
 
 import click
 import networkx as nx
@@ -152,9 +152,9 @@ def bipartite_matching(
 
 
 def match_barcodes(
-    seq_barcode_file: pathlib.Path,
-    bead_barcode_file: pathlib.Path,
-    bead_location_file: pathlib.Path,
+    seq_barcode_file: Path,
+    bead_barcode_file: Path,
+    bead_location_file: Path,
     radius: float = 10.0,
 ):
     with bead_barcode_file.open() as fh:
@@ -252,10 +252,10 @@ def main(
     log.addHandler(stream_handler)
     log.info(msg="Added stream handler")
 
-    sequence_barcodes = pathlib.Path(sequence_barcodes)
-    bead_barcodes = pathlib.Path(bead_barcodes)
-    bead_locations = pathlib.Path(bead_locations)
-    output_file = pathlib.Path(output_file)
+    sequence_barcodes = Path(sequence_barcodes)
+    bead_barcodes = Path(bead_barcodes)
+    bead_locations = Path(bead_locations)
+    output_file = Path(output_file)
 
     barcode_mapping, bead_graph = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius

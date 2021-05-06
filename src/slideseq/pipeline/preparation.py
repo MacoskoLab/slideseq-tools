@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 
 import slideseq.util.constants as constants
-from slideseq.pipeline.metadata import Manifest
+from slideseq.metadata import Manifest
 from slideseq.util import get_lanes
 
 log = logging.getLogger(__name__)

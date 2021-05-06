@@ -8,10 +8,12 @@ import click
 import numpy as np
 import pandas as pd
 
-import slideseq.pipeline.analysis as analysis
-import slideseq.util.alignment_quality as alignment_quality
+import slideseq.alignment_quality as alignment_quality
 import slideseq.util.constants as constants
-from slideseq.pipeline.metadata import Manifest
+from slideseq.bead_matching import match_barcodes
+from slideseq.metadata import Manifest
+from slideseq.pipeline.downsampling import downsample_dge
+from slideseq.retag_bam import write_retagged_bam
 from slideseq.util import dropseq_cmd, picard_cmd, run_command
 from slideseq.util.logger import create_logger
 
@@ -104,14 +106,19 @@ def main(
 
     # Merge bam files
     combined_bam = library_dir / f"{library}.bam"
+    retagged_bam = combined_bam.with_suffix(".tagged.bam")
 
     reads_per_cell = combined_bam.with_suffix(
         f".numReads_perCell_XC_mq_{row.base_quality}.txt.gz"
+    )
+    reads_per_umi = combined_bam.with_suffix(
+        f".numReads_perUMI_XC_mq_{row.base_quality}.txt.gz"
     )
     frac_intronic_exonic = combined_bam.with_suffix(".fracIntronicExonic.txt")
     xc_barcode_distribution = combined_bam.with_suffix(".barcode_distribution_XC.txt")
     xm_barcode_distribution = combined_bam.with_suffix(".barcode_distribution_XM.txt")
     read_quality_metrics = combined_bam.with_suffix(".ReadQualityMetrics.txt")
+    retagged_quality_metrics = retagged_bam.with_suffix(".ReadQualityMetrics.txt")
 
     selected_cells = combined_bam.with_suffix(
         f".{row.min_transcripts_per_cell}_transcripts_mq_{row.base_quality}_selected_cells.txt.gz"
@@ -160,7 +167,7 @@ def main(
 
     run_command(cmd, "ValidateSamFile", library)
 
-    # Bam tag histogram
+    # Bam tag histogram (cells)
     cmd = dropseq_cmd("BamTagHistogram", combined_bam, reads_per_cell)
     cmd.extend(
         [
@@ -171,7 +178,20 @@ def main(
         ]
     )
 
-    run_command(cmd, "BamTagHistogram", library)
+    run_command(cmd, "BamTagHistogram (cells)", library)
+
+    # Bam tag histogram (UMIs)
+    cmd = dropseq_cmd("BamTagHistogram", combined_bam, reads_per_umi)
+    cmd.extend(
+        [
+            "TAG=XM",
+            "FILTER_PCR_DUPLICATES=false",
+            f"READ_MQ={row.base_quality}",
+            f"TMP_DIR={manifest.tmp_dir}",
+        ]
+    )
+
+    run_command(cmd, "BamTagHistogram (UMIs)", library)
 
     # Collect RnaSeq metrics
     cmd = picard_cmd("CollectRnaSeqMetrics", manifest.tmp_dir)
@@ -248,11 +268,38 @@ def main(
 
     run_command(cmd, "DigitalExpression", library)
 
-    # TODO: run_analysis_spec
-    # barcode matching and downsampling
-
     if row.run_barcodematching:
-        analysis.run_barcodematching(selected_cells, row, library_dir)
+        puckcaller_dir = pathlib.Path(row.puckcaller_path)
+
+        barcode_matching_folder = library_dir / reference2 / "barcode_matching"
+        barcode_matching_folder.mkdir(exist_ok=True, parents=True)
+        barcode_matching_file = (
+            barcode_matching_folder / f"{row.library}_barcode_matching.txt"
+        )
+
+        barcode_mapping = match_barcodes(
+            selected_cells,
+            puckcaller_dir / "BeadBarcodes.txt",
+            puckcaller_dir / "BeadLocations.txt",
+        )
+
+        with barcode_matching_file.open("w") as out:
+            print(
+                "\n".join(
+                    f"{bead_bc}\t{seq_bc}"
+                    for bead_bc, seq_bc in barcode_mapping.items()
+                ),
+                file=out,
+            )
+
+        write_retagged_bam(combined_bam, retagged_bam, barcode_mapping)
+
+        # Gather read quality metrics
+        cmd = dropseq_cmd(
+            "GatherReadQualityMetrics", retagged_bam, retagged_quality_metrics
+        )
+
+        run_command(cmd, "GatherReadQualityMetrics", library)
 
     if row.gen_downsampling:
         downsample_dir = library_dir / reference2 / "downsample"
@@ -260,7 +307,7 @@ def main(
 
         # this might take a long time, we'll see...
         for ratio in np.linspace(0.1, 0.9, 9):
-            analysis.downsample_dge(
+            downsample_dge(
                 bam_file=combined_bam,
                 downsample_dir=downsample_dir,
                 row=row,

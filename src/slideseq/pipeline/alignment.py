@@ -9,29 +9,35 @@ import click
 import pandas as pd
 
 import slideseq.util.constants as constants
-from slideseq.pipeline.metadata import Manifest
+from slideseq.alignment_quality import write_alignment_stats
+from slideseq.metadata import Manifest
 from slideseq.util import dropseq_cmd, picard_cmd, run_command, start_popen
-from slideseq.util.alignment_quality import write_alignment_stats
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
 
 
-# Get bead structure range
-def get_bead_structure_range(bs, structure_type):
-    # 12C8M|*T
-    # 7C18X7C8M2X|*T
-    ell = re.split("[CXM]", bs.split("|")[0])
-    res = ""
+def get_bead_structure(bead_structure: str):
+    """Extract bead structure ranges from a format string. Take input like:
+    8C18X6C9M1X and return:
+      [('C', 1, 8), ('X', 9, 26), ('C', 27, 32), ('M', 33, 41), ('X', 42, 42)]
+
+    :param bead_structure: the structure to parse, using C for cell barcode, M
+                           for UMI, and X for spacers/fixed sequences
+    """
     i = 1
-    p = -1
-    for it in ell:
-        if it:
-            p += len(it) + 1
-            if bs[p] == structure_type:
-                res += str(i) + "-" + str(i + int(it) - 1) + ":"
-            i += int(it)
-    return res[:-1]
+    intervals = []
+    # this is obfuscated to hell but I can't help myself
+    #   - regex splits on C, X or M but retains the character found
+    #   - 2 * (iter(re),) makes a second reference (not copy) to the iterator
+    #   - zip(*(2iter)) zips together pairs of elements
+    # then, add up the lengths to get ranges
+    for j, c in zip(*(2 * (iter(re.split("([CXM])", bead_structure)),))):
+        j = int(j)
+        intervals.append((c, i, i + j - 1))
+        i += j
+
+    return intervals
 
 
 @click.command(name="align_library", no_args_is_help=True)
@@ -119,8 +125,10 @@ def main(
     # the final bam file
     final_aligned_bam = (library_dir / library_base).with_suffix(".final.bam")
 
-    bs_range1 = get_bead_structure_range(row.bead_structure, "C")
-    bs_range2 = get_bead_structure_range(row.bead_structure, "M")
+    bead_structure = get_bead_structure(row.bead_structure)
+
+    xc_range = ":".join(f"{i}-{j}" for c, i, j in bead_structure if c == "C")
+    xm_range = ":".join(f"{i}-{j}" for c, i, j in bead_structure if c == "M")
 
     procs = []
 
@@ -128,7 +136,7 @@ def main(
     cmd.extend(
         [
             f"SUMMARY={cellular_tagged_summary}",
-            f"BASE_RANGE={bs_range1}",
+            f"BASE_RANGE={xc_range}",
             f"BASE_QUALITY={row.base_quality}",
             "BARCODED_READ=1",
             "DISCARD_READ=false",
@@ -151,7 +159,7 @@ def main(
     cmd.extend(
         [
             f"SUMMARY={molecular_tagged_summary}",
-            f"BASE_RANGE={bs_range2}",
+            f"BASE_RANGE={xm_range}",
             f"BASE_QUALITY={row.base_quality}",
             "BARCODED_READ=1",
             "DISCARD_READ=true",

@@ -1,57 +1,15 @@
-#!/usr/bin/python
-
-# This script is to generate digital expression and other analysis outputs
-
 import logging
-import pathlib
+from pathlib import Path
 
 import pandas as pd
 
 from slideseq.util import dropseq_cmd, picard_cmd, start_popen
-from slideseq.util.bead_matching import match_barcodes
 
 log = logging.getLogger(__name__)
 
 
-def run_barcodematching(
-    selected_cells: pathlib.Path, row: pd.Series, library_dir: pathlib.Path
-):
-    reference = pathlib.Path(row.reference)
-    puckcaller_dir = pathlib.Path(row.puckcaller_path)
-
-    reference2 = f"{reference.stem}.{row.locus_function_list}"
-
-    barcode_matching_folder = library_dir / reference2 / "barcode_matching"
-    barcode_matching_folder.mkdir(exist_ok=True, parents=True)
-
-    barcode_mapping = match_barcodes(
-        selected_cells,
-        puckcaller_dir / "BeadBarcodes.txt",
-        puckcaller_dir / "BeadLocations.txt",
-    )
-
-    with (barcode_matching_folder / f"{row.library}_barcode_matching.txt").open(
-        "w"
-    ) as out:
-        print(
-            "\n".join(
-                f"{bead_bc}\t{seq_bc}" for bead_bc, seq_bc in barcode_mapping.items()
-            ),
-            file=out,
-        )
-
-    # TODO: need to actually filter the data with this
-
-    # TODO: standalone script to analyze FDR by shuffling barcodes.
-    # Doesn't seem necessary for the main pipeline?
-
-
 def downsample_dge(
-    bam_file: pathlib.Path,
-    downsample_dir: pathlib.Path,
-    row: pd.Series,
-    ratio: float,
-    tmp_dir: pathlib.Path,
+    bam_file: Path, downsample_dir: Path, row: pd.Series, ratio: float, tmp_dir: Path
 ):
     digital_expression_summary = (
         downsample_dir / f"{row.library}_{ratio}.digital_expression_summary.txt"

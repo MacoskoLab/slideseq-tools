@@ -12,11 +12,7 @@ import click
 import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.gutil as gutil
-from slideseq.pipeline.metadata import (
-    Manifest,
-    split_sample_lanes,
-    validate_flowcell_df,
-)
+from slideseq.metadata import Manifest, split_sample_lanes, validate_flowcell_df
 from slideseq.pipeline.preparation import prepare_demux, validate_demux
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
 from slideseq.util.constants import MAX_QSUB
