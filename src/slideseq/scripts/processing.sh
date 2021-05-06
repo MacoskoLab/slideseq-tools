@@ -12,6 +12,8 @@
 #$ -j y
 #$ -m beas
 
+set -e
+
 source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8

@@ -12,7 +12,7 @@
 #$ -j y
 #$ -m beas
 
-# This script is to build genome reference
+set -e
 
 source /broad/software/scripts/useuse
 reuse Anaconda3
