@@ -261,7 +261,7 @@ def main(
             combined_bam,
             "--SORT_ORDER",
             "coordinate",
-            "--ASSUMED_SORTED",
+            "--ASSUME_SORTED",
             "true",
         ]
     )
