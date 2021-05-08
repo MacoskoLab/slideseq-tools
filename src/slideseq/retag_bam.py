@@ -27,7 +27,7 @@ def write_retagged_bam(
         ) as tagged_bam:
             for a in mapped_bam:
                 if a.get_tag("XC") in barcode_matching:
-                    a.set_tag("XC", barcode_matching[a.get_tag("XC")])
+                    a.set_tag("XB", barcode_matching[a.get_tag("XC")])
                     tagged_bam.write(a)
 
     log.debug(f"Finished writing to {retagged_bam_file}")

@@ -88,7 +88,10 @@ def hamming1_adjacency(barcodes: list[str]):
 
 
 def bipartite_matching(
-    bead_barcodes: list[str], bead_groups: list[set[int]], seq_barcodes: list[str]
+    bead_barcodes: list[str],
+    degen_barcodes: list[str],
+    bead_groups: list[set[int]],
+    seq_barcodes: list[str],
 ):
     bead_lens = set(map(len, bead_barcodes))
     seq_lens = set(map(len, seq_barcodes))
@@ -120,33 +123,13 @@ def bipartite_matching(
 
     barcode_mapping = dict()
 
-    # calculate degenerate (ambiguous bases -> N) barcodes
-    degen_bead_barcodes = [
-        degen_barcode({bead_barcodes[j] for j in bg}) for bg in bead_groups
-    ]
-
-    # verify that we don't have new collisions
-    log.debug(
-        msg=(
-            f"Collapsed {len(bead_groups)} bead groups into"
-            f" {len(set(degen_bead_barcodes))} barcodes"
-        )
-    )
-
-    # just in case we'll add integer tags to each one, so they are unique
-    barcode_counter = Counter()
-
-    for i, barcode in enumerate(degen_bead_barcodes):
-        barcode_counter[barcode] += 1
-        degen_bead_barcodes[i] = f"{barcode}-{barcode_counter[barcode]}"
-
     # find unambiguous matches from sequencing: within distance one of a single group
     for seq_bc in seq_barcodes:
         if seq_bc in matching_graph:
             sample_set = set(matching_graph[seq_bc])
 
             if len(sample_set) == 1:
-                barcode_mapping[seq_bc] = degen_bead_barcodes[sample_set.pop()]
+                barcode_mapping[seq_bc] = degen_barcodes[sample_set.pop()]
 
     return barcode_mapping
 
@@ -161,6 +144,7 @@ def match_barcodes(
         bead_barcodes = ["".join(line.strip().split(",")) for line in fh]
 
     with bead_location_file.open() as fh:
+        # this file has x and y on two super long lines
         x = np.array([float(v) for v in fh.readline().strip().split(",")])
         y = np.array([float(v) for v in fh.readline().strip().split(",")])
         xy = np.vstack((x, y)).T
@@ -199,13 +183,48 @@ def match_barcodes(
     # get connected components to find groups of similar/close barcodes
     bead_groups = list(nx.connected_components(combined_graph))
 
+    # calculate degenerate (ambiguous bases -> N) barcodes
+    degen_bead_barcodes = [
+        degen_barcode({bead_barcodes[j] for j in bg}) for bg in bead_groups
+    ]
+
+    # check if we have new collisions
+    log.debug(
+        msg=(
+            f"Collapsed {len(bead_groups)} bead groups into"
+            f" {len(set(degen_bead_barcodes))} barcodes"
+        )
+    )
+
+    # just in case, we'll add integer tags to each one so they are unique
+    barcode_counter = Counter()
+    for i, barcode in enumerate(degen_bead_barcodes):
+        barcode_counter[barcode] += 1
+        degen_bead_barcodes[i] = f"{barcode}-{barcode_counter[barcode]}"
+
+    # average xy for grouped beads to get centroids
+    bead_xy = dict()
+    for bg, degen_bc in zip(bead_groups, degen_bead_barcodes):
+        if len(bg) == 1:
+            bead_xy[degen_bc] = (
+                combined_graph.nodes[bg[0]]["x"],
+                combined_graph.nodes[bg[0]]["y"],
+            )
+        else:
+            bg_graph = combined_graph.subgraph(bg)
+            mean_x, mean_y = np.array(
+                [[nd["x"], nd["y"]] for _, nd in bg_graph.nodes(data=True)]
+            ).mean(0)
+            bead_xy[degen_bc] = (mean_x, mean_y)
+
     log.info(f"Found {len(bead_groups)} groups of connected beads")
     log.debug(f"Size distribution: {Counter(map(len, bead_groups))}")
 
-    return (
-        bipartite_matching(bead_barcodes, bead_groups, seq_barcodes),
-        combined_graph,
+    barcode_matching = bipartite_matching(
+        bead_barcodes, degen_bead_barcodes, bead_groups, seq_barcodes
     )
+
+    return barcode_matching, bead_xy, combined_graph
 
 
 @click.command(name="bead_matching")
@@ -257,19 +276,16 @@ def main(
     bead_locations = Path(bead_locations)
     output_file = Path(output_file)
 
-    barcode_mapping, bead_graph = match_barcodes(
+    barcode_mapping, bead_xy, bead_graph = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius
     )
 
     log.info(msg=f"Found {len(set(barcode_mapping.values()))} matches")
 
     with output_file.open("w") as out:
-        print(
-            "\n".join(
-                f"{bead_bc}\t{seq_bc}" for bead_bc, seq_bc in barcode_mapping.items()
-            ),
-            file=out,
-        )
+        for seq_bc, bead_bc in barcode_mapping.items():
+            x, y = bead_xy[bead_bc]
+            print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
 
     nx.write_gpickle(bead_graph, output_file.with_suffix(".bead_graph.pickle.gz"))
 
