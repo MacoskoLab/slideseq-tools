@@ -9,6 +9,8 @@ def create_logger(debug: bool = False, dryrun: bool = False, log_file: Path = No
 
     # google is noisy, turn up its logging level
     logging.getLogger("googleapiclient").setLevel(logging.WARNING)
+    # matplotlib has a lot of debug output we don't need
+    logging.getLogger("matplotlib").setLevel(logging.INFO)
 
     if debug:
         root_log.setLevel(logging.DEBUG)

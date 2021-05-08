@@ -12,12 +12,11 @@
 #$ -j y
 #$ -m beas
 
-set -e
-
 source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8
 
+set -e
 
 # check that the data directory has all the needed files
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \

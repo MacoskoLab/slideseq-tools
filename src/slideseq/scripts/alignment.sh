@@ -12,11 +12,11 @@
 #$ -j y
 #$ -m beas
 
-set -e
-
 source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8
+
+set -e
 
 if [ -z "${CONDA_ENV}" ]; then
   echo "Error: conda environment is not set"

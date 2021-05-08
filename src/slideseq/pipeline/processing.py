@@ -27,10 +27,10 @@ def validate_library_df(library: str, library_df: pd.DataFrame):
     for the lane which was expanded out earlier"""
 
     for col in constants.METADATA_COLS:
-        if col == "lane":
+        if col.lower() == "lane":
             continue
 
-        if len(set(library_df[col])) != 1:
+        if len(set(library_df[col.lower()])) != 1:
             raise ValueError(f"Library {library} has multiple values in column {col}")
 
 
@@ -216,7 +216,7 @@ def main(
     validate_library_df(library, library_df)
     row = library_df.iloc[0]
 
-    lanes = sorted(set(library_df.lanes))
+    lanes = sorted(set(library_df.lane))
 
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
     reference = Path(row.reference)
