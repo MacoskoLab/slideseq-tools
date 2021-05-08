@@ -119,7 +119,7 @@ def get_read_structure(run_info_file: pathlib.Path) -> str:
     read_elems = run_info.findall("./Run/Reads/Read[@NumCycles][@Number]")
     read_elems.sort(key=lambda el: int(el.get("Number")))
 
-    assert len(read_elems) == 3
+    assert len(read_elems) == 3, f"Expected three reads, got {len(read_elems)}"
 
     # I guess Picard wants this string format for some reason
     return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))

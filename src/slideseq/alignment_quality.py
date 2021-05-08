@@ -28,7 +28,7 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
 
     mp = Counter()
     for a in aligned_bam:
-        mp[a.qname] += 1
+        mp[a.query_name] += 1
 
     aligned_bam.reset()
 
@@ -40,7 +40,7 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
     multi_ratio = Counter()
 
     for a in aligned_bam:
-        if mp[a.qname] == 1:
+        if mp[a.query_name] == 1:
             if a.has_tag("AS"):
                 unique_score[a.get_tag("AS")] += 1
             if a.has_tag("nM"):
@@ -180,14 +180,14 @@ def combine_alignment_stats(
     with out_base.with_suffix(".mapping_rate.txt").open("w") as out:
         print(f"total_reads\t{total_reads}", file=out)
         print(f"unique_aligned_reads\t{unique_reads}", file=out)
-        print(f"unique_aligned_ratio\t{100 * unique_reads / total_reads:.3g}", file=out)
+        print(f"unique_aligned_ratio\t{unique_reads / total_reads:.3%}", file=out)
         print(f"multi_aligned_reads\t{multi_reads}", file=out)
-        print("multi_aligned_ratio\t{100 * multi_reads / total_reads:.3g}", file=out)
+        print(f"multi_aligned_ratio\t{multi_reads / total_reads:.3%}", file=out)
         print(f"too_many_aligned_reads\t{too_many_reads}", file=out)
         print(
-            f"too_many_aligned_ratio\t{100 * too_many_reads / total_reads:.3g}",
+            f"too_many_aligned_ratio\t{too_many_reads / total_reads:.3%}",
             file=out,
         )
-        print(f"mismatch1_rate\t{100 * mismatch1 / total_reads:.3g}", file=out)
-        print(f"mismatch2_rate\t{100 * mismatch2 / total_reads:.3g}", file=out)
-        print(f"mismatch3_rate\t{100 * mismatch3 / total_reads:.3g}", file=out)
+        print(f"mismatch1_rate\t{mismatch1 / total_reads:.3%}", file=out)
+        print(f"mismatch2_rate\t{mismatch2 / total_reads:.3%}", file=out)
+        print(f"mismatch3_rate\t{mismatch3 / total_reads:.3%}", file=out)
