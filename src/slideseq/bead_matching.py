@@ -169,7 +169,7 @@ def match_barcodes(
     log.debug(f"radius matrix (<{radius}) with {radius_matrix.nnz // 2} edges")
     # adjacency matrix for all barcodes within hamming distance 1
     hamming_matrix = hamming1_adjacency(bead_barcodes)
-    log.debug(f"hamming matrix (≤1) with {hamming_matrix.nnz // 2} edges")
+    log.debug(f"hamming matrix (<=1) with {hamming_matrix.nnz // 2} edges")
 
     # just multiply together to get the combined adjacency matrix!
     combined_graph = nx.from_scipy_sparse_matrix(radius_matrix.multiply(hamming_matrix))
@@ -205,17 +205,11 @@ def match_barcodes(
     # average xy for grouped beads to get centroids
     bead_xy = dict()
     for bg, degen_bc in zip(bead_groups, degen_bead_barcodes):
-        if len(bg) == 1:
-            bead_xy[degen_bc] = (
-                combined_graph.nodes[bg[0]]["x"],
-                combined_graph.nodes[bg[0]]["y"],
-            )
-        else:
-            bg_graph = combined_graph.subgraph(bg)
-            mean_x, mean_y = np.array(
-                [[nd["x"], nd["y"]] for _, nd in bg_graph.nodes(data=True)]
-            ).mean(0)
-            bead_xy[degen_bc] = (mean_x, mean_y)
+        bg_graph = combined_graph.subgraph(bg)
+        mean_x, mean_y = np.array(
+            [[nd["x"], nd["y"]] for _, nd in bg_graph.nodes(data=True)]
+        ).mean(0)
+        bead_xy[degen_bc] = (mean_x, mean_y)
 
     log.info(f"Found {len(bead_groups)} groups of connected beads")
     log.debug(f"Size distribution: {Counter(map(len, bead_groups))}")

@@ -271,11 +271,6 @@ def main(
 
     run_command(cmd, "MergeBamFiles", library)
 
-    # remove the individual bam files after merging
-    for bam_file in bam_files:
-        log.debug(f"Removing {bam_file}")
-        os.remove(bam_file)
-
     # Validate bam file
     cmd = picard_cmd("ValidateSamFile", manifest.tmp_dir)
     cmd.extend(["--INPUT", combined_bam, "--MODE", "SUMMARY"])
@@ -342,3 +337,14 @@ def main(
                 ratio=ratio,
                 tmp_dir=manifest.tmp_dir,
             )
+
+    # remove the individual bam files now that we're done
+    for bam_file in bam_files:
+        log.debug(f"Removing {bam_file}")
+        os.remove(bam_file)
+
+    for stats_file in alignment_stats:
+        log.debug(f"Removing {stats_file}")
+        os.remove(stats_file)
+
+    log.info(f"Processing for {library} complete")

@@ -263,6 +263,7 @@ def make_library_plots(
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}"
     library_base = library_dir / f"{row.library}.$"
 
+    log.info(f"Creating report file {library_base.with_suffix('.pdf')}")
     pdf_pages = PdfPages(library_base.with_suffix(".pdf"))
 
     qm = plot_mapping_quality(

@@ -1,5 +1,4 @@
 import logging
-import os
 import pickle
 from collections import Counter
 from pathlib import Path
@@ -109,9 +108,7 @@ def parse_star_log(log_file: Path) -> dict[str, str]:
 
 
 def combine_alignment_stats(
-    stats_files: list[Path],
-    star_logs: list[Path],
-    out_base: Path,
+    stats_files: list[Path], star_logs: list[Path], out_base: Path
 ):
     """
     Combines the alignment statistics files from multiple lanes into one aggregate,
@@ -129,6 +126,8 @@ def combine_alignment_stats(
     multi_mismatch = Counter()
     multi_ratio = Counter()
 
+    log.debug(f"Combining {', '.join(stat_file.name for stat_file in stats_files)}")
+
     for stat_file in stats_files:
         with stat_file.open("rb") as fh:
             us, um, ur, ms, mm, mr = pickle.load(fh)
@@ -138,8 +137,6 @@ def combine_alignment_stats(
             multi_score += ms
             multi_mismatch += mm
             multi_ratio += mr
-
-        os.remove(stat_file)
 
     log.debug(f"Plotting alignment stats for {out_base}")
     alignment_quality_pdf = PdfPages(out_base.with_suffix(".alignment_quality.pdf"))
