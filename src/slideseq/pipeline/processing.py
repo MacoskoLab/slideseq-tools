@@ -42,11 +42,10 @@ def calc_alignment_metrics(
     matched_barcodes: Path = None,
     cell_tag: str = "XC",
 ):
-    reference_dir = reference.parent
-
     # assumes that reference always ends in .fasta, not .fasta.gz
-    ref_flat = reference_dir / f"{reference.stem}.refFlat"
-    ribosomal_intervals = reference_dir / f"{reference.stem}.rRNA.intervals"
+    ref_flat = reference.with_suffix(".refFlat")
+    ribosomal_intervals = reference.with_suffix(".rRNA.intervals")
+    annotations_file = reference.with_suffix(".gtf")
 
     reads_per_cell = input_bam.with_suffix(
         f".numReads_perCell_{cell_tag}_mq_{row.base_quality}.txt.gz"
@@ -139,6 +138,7 @@ def calc_alignment_metrics(
                 f"READ_MQ={row.base_quality}",
                 f"CELL_BC_FILE={matched_barcodes}",
                 f"RIBOSOMAL_INTERVALS={ribosomal_intervals}",
+                f"ANNOTATIONS_FILE={annotations_file}",
             ]
         )
         run_command(cmd, "SingleCellRnaSeqMetricsCollector", row.library)
@@ -220,7 +220,7 @@ def main(
 
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
     reference = Path(row.reference)
-    reference_dir = library_dir / f"{reference.stem}.{row.locus_function_list}"
+    alignment_dir = library_dir / f"{reference.stem}.{row.locus_function_list}"
 
     library_bases = [
         f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
@@ -288,7 +288,7 @@ def main(
     if row.run_barcodematching:
         puckcaller_dir = Path(row.puckcaller_path)
 
-        barcode_matching_folder = reference_dir / "barcode_matching"
+        barcode_matching_folder = alignment_dir / "barcode_matching"
         barcode_matching_folder.mkdir(exist_ok=True, parents=True)
         barcode_matching_file = (
             barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
@@ -325,7 +325,7 @@ def main(
     make_library_plots(row, lanes, manifest, matched_bam, bead_xy)
 
     if row.gen_downsampling:
-        downsample_dir = reference_dir / "downsample"
+        downsample_dir = alignment_dir / "downsample"
         downsample_dir.mkdir(exist_ok=True, parents=True)
 
         # this might take a long time, we'll see...

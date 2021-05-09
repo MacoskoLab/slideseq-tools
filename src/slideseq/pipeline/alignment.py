@@ -86,12 +86,11 @@ def main(
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}" / f"L{lane:03d}"
 
     reference = pathlib.Path(row.reference)
-    reference_dir = reference.parent
 
     # assumes that reference always ends in .fasta, not .fasta.gz
-    genome_dir = reference_dir / "STAR"
-    intervals = reference_dir / f"{reference.stem}.genes.intervals"
-    annotations_file = reference_dir / f"{reference.stem}.gtf"
+    genome_dir = reference.parent / "STAR"
+    intervals = reference.with_suffix(".genes.intervals")
+    annotations_file = reference.with_suffix(".gtf")
 
     # define the base name for the library we're aligning here
     library_base = f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
