@@ -76,7 +76,7 @@ READ_QUALITY_METRICS = {
     "totalReads": "Total",
     "mappedReads": "Mapped",
     "hqMappedReads": "HQ",
-    "hqMappedReadNoPCRDupes": "HQ No Dupes",
+    "hqMappedReadsNoPCRDupes": "HQ No Dupes",
 }
 
 
