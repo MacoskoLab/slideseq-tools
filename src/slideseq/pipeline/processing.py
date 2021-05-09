@@ -294,7 +294,7 @@ def main(
             barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
         )
         matched_barcodes_file = (
-            barcode_matching_file / f"{row.library}_matched_barcodes.txt.gz"
+            barcode_matching_folder / f"{row.library}_matched_barcodes.txt.gz"
         )
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
