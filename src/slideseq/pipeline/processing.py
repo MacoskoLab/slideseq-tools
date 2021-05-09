@@ -231,6 +231,7 @@ def main(
         for lane, base in zip(lanes, library_bases)
     ]
 
+    # final output from alignment jobs, per lane
     bam_files = [
         (library_dir / f"L{lane:03d}" / base).with_suffix(".final.bam")
         for lane, base in zip(lanes, library_bases)
@@ -239,6 +240,15 @@ def main(
         base.with_suffix(".alignment_statistics.pickle") for base in alignment_bases
     ]
     star_logs = [base.with_suffix(".star.Log.final.out") for base in alignment_bases]
+
+    # define barcode matching files, if needed
+    barcode_matching_folder = alignment_dir / "barcode_matching"
+    barcode_matching_file = (
+        barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
+    )
+    matched_barcodes_file = (
+        barcode_matching_folder / f"{row.library}_matched_barcodes.txt.gz"
+    )
 
     # Combine check_alignments_quality files, and plot histograms
     alignment_quality.combine_alignment_stats(
@@ -287,15 +297,7 @@ def main(
 
     if row.run_barcodematching:
         puckcaller_dir = Path(row.puckcaller_path)
-
-        barcode_matching_folder = alignment_dir / "barcode_matching"
         barcode_matching_folder.mkdir(exist_ok=True, parents=True)
-        barcode_matching_file = (
-            barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
-        )
-        matched_barcodes_file = (
-            barcode_matching_folder / f"{row.library}_matched_barcodes.txt.gz"
-        )
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
             selected_cells,
@@ -304,11 +306,13 @@ def main(
         )
 
         with gzip.open(barcode_matching_file, "wt") as out:
-            with gzip.open(matched_barcodes_file, "wt") as out2:
-                for seq_bc, bead_bc in barcode_mapping.items():
-                    x, y = bead_xy[bead_bc]
-                    print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
-                    print(bead_bc, file=out2)
+            for seq_bc, bead_bc in barcode_mapping.items():
+                x, y = bead_xy[bead_bc]
+                print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
+
+        with gzip.open(matched_barcodes_file, "wt") as out:
+            for bead_bc in sorted(set(barcode_mapping.values())):
+                print(bead_bc, file=out)
 
         # subset to the matched beads and add combined barcode as XB tag
         write_retagged_bam(combined_bam, matched_bam, barcode_mapping)
@@ -317,12 +321,10 @@ def main(
         calc_alignment_metrics(
             matched_bam, reference, row, manifest, matched_barcodes_file, "XB"
         )
-        os.remove(matched_barcodes_file)
-    else:
-        matched_bam = None
-        bead_xy = None
 
-    make_library_plots(row, lanes, manifest, matched_bam, bead_xy)
+        make_library_plots(row, lanes, manifest, matched_bam, bead_xy)
+    else:
+        make_library_plots(row, lanes, manifest)
 
     if row.gen_downsampling:
         downsample_dir = alignment_dir / "downsample"
@@ -338,7 +340,7 @@ def main(
                 tmp_dir=manifest.tmp_dir,
             )
 
-    # remove the individual bam files now that we're done
+    # remove unneeded files now that we're done
     for bam_file in bam_files:
         log.debug(f"Removing {bam_file}")
         os.remove(bam_file)
@@ -346,5 +348,9 @@ def main(
     for stats_file in alignment_stats:
         log.debug(f"Removing {stats_file}")
         os.remove(stats_file)
+
+    if matched_barcodes_file.exists():
+        log.debug(f"Removing {matched_barcodes_file}")
+        os.remove(matched_barcodes_file)
 
     log.info(f"Processing for {library} complete")
