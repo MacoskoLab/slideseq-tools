@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 BeadXY = dict[str, tuple[float, float]]
 
 
-def read_dropseq_metrics(metrics_file: Path, key_translate: dict[str, str] = None):
+def read_dropseq_metrics(metrics_file: Path, key_dict: dict[str, str] = None):
     """Reads the output from a dropseq analysis command, which is in a standard
     output. This works for ReadQualityMetrics.txt, fracExonicIntronic.txt and
     polyA_filtering.summary.txt
@@ -27,18 +27,20 @@ def read_dropseq_metrics(metrics_file: Path, key_translate: dict[str, str] = Non
     :param metrics_file: File to read. Should be text with # as comment char,
                          metric keys on first non-comment row and values on second,
                          then a histogram
-    :param key_translate: Dictionary of strings to translate the keys for metrics
+    :param key_dict: Dictionary of strings to translate the keys for metrics
     """
 
-    if key_translate is None:
-        key_translate = dict()  # don't translate any names
+    if key_dict is None:
+        key_dict = dict()  # don't translate any names
 
     with metrics_file.open() as fh:
         rows = [r for r in csv.reader(fh, delimiter="\t") if r and r[0][0] != "#"]
 
         # translate keys to nicer names
         metrics = {
-            key_translate.get(k, k): float(v) for k, v in zip(rows[0][1:], rows[1][1:])
+            key_dict[k]: float(v)
+            for k, v in zip(rows[0][1:], rows[1][1:])
+            if k in key_dict
         }
         # histogram is of form `{bin: num reads}`
         histogram = Counter({int(r[0]): int(r[1]) for r in rows[3:]})
