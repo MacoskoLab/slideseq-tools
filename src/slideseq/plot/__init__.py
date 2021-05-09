@@ -1,8 +1,11 @@
+from contextlib import contextmanager
+
 import matplotlib.figure
 from matplotlib.axes import Axes
 from matplotlib.backends.backend_pdf import PdfPages
 
 
+@contextmanager
 def new_ax(pdf_pages: PdfPages, include_fig=False):
     """
     Simple helper to make a new figure and provide the axes for plotting,
