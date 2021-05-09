@@ -38,7 +38,7 @@ def read_dropseq_metrics(metrics_file: Path, key_translate: dict[str, str] = Non
 
         # translate keys to nicer names
         metrics = {
-            key_translate.get(k, k): int(v) for k, v in zip(rows[0][1:], rows[1][1:])
+            key_translate.get(k, k): float(v) for k, v in zip(rows[0][1:], rows[1][1:])
         }
         # histogram is of form `{bin: num reads}`
         histogram = Counter({int(r[0]): int(r[1]) for r in rows[3:]})
