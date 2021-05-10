@@ -262,7 +262,6 @@ def main(
                 log_file=manifest.log_dir / "processing.$TASK_ID.log",
                 debug=debug,
                 CONDA_ENV=env_name,
-                LANE=lane,
                 MANIFEST=manifest_file,
             )
 
