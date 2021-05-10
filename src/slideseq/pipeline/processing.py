@@ -131,7 +131,9 @@ def calc_alignment_metrics(
     run_command(cmd, "GatherReadQualityMetrics", row.library)
 
     if matched_barcodes is not None:
-        cmd = dropseq_cmd("SingleCellRnaSeqMetricsCollector", input_bam, scnra_metrics)
+        cmd = dropseq_cmd(
+            "SingleCellRnaSeqMetricsCollector", input_bam, scnra_metrics, compression=6
+        )
         cmd.extend(
             [
                 f"CELL_BARCODE_TAG={cell_tag}",
@@ -144,9 +146,12 @@ def calc_alignment_metrics(
         run_command(cmd, "SingleCellRnaSeqMetricsCollector", row.library)
 
     # Select cells by num transcripts
-    cmd = dropseq_cmd("SelectCellsByNumTranscripts", input_bam, selected_cells)
+    cmd = dropseq_cmd(
+        "SelectCellsByNumTranscripts", input_bam, selected_cells, compression=6
+    )
     cmd.extend(
         [
+            f"CELL_BARCODE_TAG={cell_tag}",
             f"MIN_TRANSCRIPTS_PER_CELL={row.min_transcripts_per_cell}",
             f"READ_MQ={row.base_quality}",
         ]
@@ -161,11 +166,10 @@ def calc_alignment_metrics(
     cmd = dropseq_cmd("DigitalExpression", input_bam, digital_expression, compression=6)
     cmd.extend(
         [
-            f"SUMMARY={digital_expression_summary}",
-            "EDIT_DISTANCE=1",
-            f"READ_MQ={row.base_quality}",
-            "MIN_BC_READ_THRESHOLD=0",
+            f"CELL_BARCODE_TAG={cell_tag}",
             f"CELL_BC_FILE={selected_cells}",
+            f"SUMMARY={digital_expression_summary}",
+            f"READ_MQ={row.base_quality}",
             "OUTPUT_HEADER=false",
             f"UEI={row.library}",
         ]

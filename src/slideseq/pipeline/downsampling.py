@@ -27,11 +27,9 @@ def downsample_dge(
     cmd.extend(
         [
             f"SUMMARY={digital_expression_summary}",
-            "EDIT_DISTANCE=1",
             f"MIN_NUM_TRANSCRIPTS_PER_CELL={row.min_transcripts_per_cell}",
             f"READ_MQ={row.base_quality}",
-            "MIN_BC_READ_THRESHOLD=0",
-            "OUTPUT_HEADER=true",
+            "OUTPUT_HEADER=false",
             f"UEI={row.library}",
         ]
     )
@@ -40,7 +38,9 @@ def downsample_dge(
     elif row.locus_function_list == "exonic+intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
 
-    procs.append(start_popen(cmd, "DigitalExpression", row.library, procs[-1]))
+    procs.append(
+        start_popen(cmd, "DigitalExpression", row.library, input_proc=procs[-1])
+    )
 
     # close intermediate streams
     for p in procs[:-1]:

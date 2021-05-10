@@ -69,7 +69,7 @@ def plot_mapping_quality(
     with new_ax(pdf_pages) as ax:
         keys = ["Total", "Mapped", "HQ", "HQ No Dupes"]
         ax.bar(
-            [f"{k}\n{qm[k]:,}\n({qm[k] / qm['Total']:.1%})" for k in keys],
+            [f"{k}\n{int(qm[k]):,}\n({qm[k] / qm['Total']:.1%})" for k in keys],
             [qm[k] for k in keys],
             width=0.7,
             color="lightskyblue",
@@ -165,7 +165,8 @@ def plot_base_distribution(pdf_pages: PdfPages, base_dist_file: Path, title: str
             base_distribution,
             linewidth=0,
             marker="o",
-            markersize=20,
+            markersize=10,
+            alpha=0.8,
             label=["A", "C", "G", "T"],
         )
         ax.legend(loc="lower right")
@@ -181,7 +182,15 @@ def plot_spatial_distribution(
     pdf_pages: PdfPages, bead_xy: np.ndarray, dist: list[float], title: str
 ):
     with new_ax(pdf_pages, include_fig=True) as (fig, ax):
-        c = ax.scatter(bead_xy[:, 0], bead_xy[:, 1], c=dist, cmap="viridis_r", vmin=0)
+        c = ax.scatter(
+            bead_xy[:, 0],
+            bead_xy[:, 1],
+            c=dist,
+            s=1,
+            cmap="viridis_r",
+            vmin=0,
+            alpha=0.2,
+        )
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.axis("equal")
