@@ -284,6 +284,7 @@ def make_library_plots(
     poly_a_summaries = [
         library_dir
         / f"L{lane:03d}"
+        / "alignment"
         / f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.polyA_filtering.summary.txt"
         for lane in lanes
     ]
