@@ -88,7 +88,7 @@ def plot_frac_intronic_exonic(pdf_pages: PdfPages, frac_intron_exon: Path):
 
     # calculate some derivative measures
     frac_ie["exonic"] = frac_ie["coding_bases"] + frac_ie["utr_bases"]
-    frac_ie["genic"] = frac_ie["exonic"] + frac_ie["intronic_bases"]
+    frac_ie["genic"] = frac_ie["exonic"] + frac_ie["intronic"]
     keys = ["ribosomal", "exonic", "genic", "intronic", "intergenic"]
 
     with new_ax(pdf_pages) as ax:

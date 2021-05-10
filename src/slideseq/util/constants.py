@@ -83,8 +83,8 @@ READ_QUALITY_METRICS = {
 # columns used from the output of CollectRnaSeqMetrics
 FRAC_INTRONIC_EXONIC = {
     "PCT_RIBOSOMAL_BASES": "ribosomal",
-    "PCT_CODING_BASES": "coding_bases",
-    "PCT_UTR_BASES": "utr_bases",
+    "PCT_CODING_BASES": "coding",
+    "PCT_UTR_BASES": "utr",
     "PCT_INTRONIC_BASES": "intronic",
     "PCT_INTERGENIC_BASES": "intergenic",
 }
