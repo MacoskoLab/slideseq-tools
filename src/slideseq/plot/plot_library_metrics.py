@@ -43,7 +43,7 @@ def read_dropseq_metrics(metrics_file: Path, key_dict: dict[str, str] = None):
             if k in key_dict
         }
         # histogram is of form `{bin: num reads}`
-        histogram = Counter({int(r[0]): int(r[1]) for r in rows[3:]})
+        histogram = Counter({int(r[0]): float(r[1]) for r in rows[3:]})
 
     return metrics, histogram
 
