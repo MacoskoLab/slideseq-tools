@@ -56,18 +56,16 @@ def get_bead_structure(bead_structure: str):
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
     help="YAML file containing the flowcell manifest",
 )
-@click.option("-d", "--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False))
 def main(
     lane: int,
     library_index: int,
     manifest_file: str,
-    dryrun: bool = False,
     debug: bool = False,
     log_file: str = None,
 ):
-    create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
+    create_logger(debug=debug, log_file=log_file)
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(pathlib.Path(manifest_file))
