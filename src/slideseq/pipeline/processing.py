@@ -280,17 +280,6 @@ def main(
 
     run_command(cmd, "MergeBamFiles", library)
 
-    # Validate bam file
-    cmd = picard_cmd("ValidateSamFile", manifest.tmp_dir)
-    cmd.extend(["--INPUT", combined_bam, "--MODE", "SUMMARY"])
-    # is this necessary?
-    if not row.illuminaplatform.startswith("NovaSeq"):
-        cmd.extend(
-            ["--IGNORE", "MISSING_PLATFORM_VALUE", "--IGNORE", "INVALID_VERSION_NUMBER"]
-        )
-
-    run_command(cmd, "ValidateSamFile", library)
-
     # generate various metrics files, including digital expression matrix
     selected_cells = calc_alignment_metrics(combined_bam, reference, row, manifest)
 
