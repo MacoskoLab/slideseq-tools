@@ -6,6 +6,7 @@ import logging
 from collections import Counter
 from pathlib import Path
 
+import matplotlib.colors
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
@@ -188,9 +189,10 @@ def plot_spatial_distribution(
             c=dist,
             s=1,
             cmap="viridis_r",
-            vmin=0,
-            alpha=0.2,
+            norm=matplotlib.colors.Normalize(0, np.percentile(dist, 95), clip=True),
+            alpha=0.5,
         )
+        c.set_rasterized(True)
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.axis("equal")

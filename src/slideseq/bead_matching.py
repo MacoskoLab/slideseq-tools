@@ -142,6 +142,8 @@ def match_barcodes(
 ):
     with bead_barcode_file.open() as fh:
         bead_barcodes = ["".join(line.strip().split(",")) for line in fh]
+        # remove poly-T/N sequences
+        bead_barcodes = [bc for bc in bead_barcodes if not set(bc).issubset({"T", "N"})]
 
     with bead_location_file.open() as fh:
         # this file has x and y on two super long lines
@@ -159,6 +161,8 @@ def match_barcodes(
 
     with gzip.open(seq_barcode_file, mode="rt") as fh:
         seq_barcodes = sorted(line.strip().split("-")[0] for line in fh)
+        # remove poly-T sequence if present
+        seq_barcodes = [seq for seq in seq_barcodes if set(seq) != {"T"}]
 
     log.debug(
         msg=f"Read {len(seq_barcodes)} ({len(set(seq_barcodes))}) sequencing barcodes"

@@ -219,7 +219,6 @@ def main(
 
     library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
     reference = Path(row.reference)
-    alignment_dir = library_dir / f"{reference.stem}.{row.locus_function_list}"
 
     library_bases = [
         f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
@@ -241,13 +240,17 @@ def main(
     star_logs = [base.with_suffix(".star.Log.final.out") for base in alignment_bases]
 
     # define barcode matching files, if needed
-    barcode_matching_folder = alignment_dir / "barcode_matching"
+    puckcaller_dir = Path(row.puckcaller_path)
+    barcode_matching_folder = library_dir / "barcode_matching"
     barcode_matching_file = (
         barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
     )
     matched_barcodes_file = (
         barcode_matching_folder / f"{row.library}_matched_barcodes.txt.gz"
     )
+
+    # directory for downsampling, if needed
+    downsample_dir = library_dir / "downsample"
 
     # Combine check_alignments_quality files, and plot histograms
     alignment_quality.combine_alignment_stats(
@@ -284,7 +287,6 @@ def main(
     selected_cells = calc_alignment_metrics(combined_bam, reference, row, manifest)
 
     if row.run_barcodematching:
-        puckcaller_dir = Path(row.puckcaller_path)
         barcode_matching_folder.mkdir(exist_ok=True, parents=True)
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
@@ -315,7 +317,6 @@ def main(
         make_library_plots(row, lanes, manifest)
 
     if row.gen_downsampling:
-        downsample_dir = alignment_dir / "downsample"
         downsample_dir.mkdir(exist_ok=True, parents=True)
 
         # this might take a long time, we'll see...
