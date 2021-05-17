@@ -142,14 +142,12 @@ def match_barcodes(
 ):
     with bead_barcode_file.open() as fh:
         bead_barcodes = ["".join(line.strip().split(",")) for line in fh]
-        # remove poly-T/N sequences
-        bead_barcodes = [bc for bc in bead_barcodes if not set(bc).issubset({"T", "N"})]
 
     with bead_location_file.open() as fh:
         # this file has x and y on two super long lines
-        x = np.array([float(v) for v in fh.readline().strip().split(",")])
-        y = np.array([float(v) for v in fh.readline().strip().split(",")])
-        xy = np.vstack((x, y)).T
+        x_line = np.array([float(v) for v in fh.readline().strip().split(",")])
+        y_line = np.array([float(v) for v in fh.readline().strip().split(",")])
+        xy = np.vstack((x_line, y_line)).T
 
     log.debug(
         msg=f"Read {len(bead_barcodes)} ({len(set(bead_barcodes))}) bead barcodes"
@@ -158,6 +156,15 @@ def match_barcodes(
     assert xy.shape[0] == len(
         bead_barcodes
     ), f"Got {xy.shape[0]} bead locations for {len(bead_barcodes)} beads"
+
+    # pre-emptively remove poly-T/N sequences
+    ok_barcodes = [not set(bc).issubset({"T", "N"}) for bc in bead_barcodes]
+    xy = xy[ok_barcodes, :]
+    bead_barcodes = [bc for ok, bc in zip(ok_barcodes, bead_barcodes) if ok]
+
+    assert xy.shape[0] == len(
+        bead_barcodes
+    ), "Removed different numbers of T/N barcodes somehow"
 
     with gzip.open(seq_barcode_file, mode="rt") as fh:
         seq_barcodes = sorted(line.strip().split("-")[0] for line in fh)
