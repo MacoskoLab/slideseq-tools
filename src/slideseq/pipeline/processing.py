@@ -14,6 +14,7 @@ import slideseq.util.constants as constants
 from slideseq.bead_matching import match_barcodes
 from slideseq.metadata import Manifest
 from slideseq.pipeline.downsampling import downsample_dge
+from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
 from slideseq.util import dropseq_cmd, picard_cmd, run_command
@@ -318,16 +319,28 @@ def main(
 
     if row.gen_downsampling:
         downsample_dir.mkdir(exist_ok=True, parents=True)
+        downsample_output = []
 
         # this might take a long time, we'll see...
         for ratio in np.linspace(0.1, 0.9, 9):
-            downsample_dge(
-                bam_file=combined_bam,
-                downsample_dir=downsample_dir,
-                row=row,
-                ratio=ratio,
-                tmp_dir=manifest.tmp_dir,
+            downsample_output.append(
+                downsample_dge(
+                    bam_file=combined_bam,
+                    downsample_dir=downsample_dir,
+                    row=row,
+                    ratio=ratio,
+                    tmp_dir=manifest.tmp_dir,
+                )
             )
+
+        # add the full DGE summary to the end
+        downsample_output.append(
+            (1.0, combined_bam.with_suffix(".digital_expression_summary.txt"))
+        )
+
+        plot_downsampling(
+            downsample_output, combined_bam.with_suffix(".downsampling.pdf")
+        )
 
     # remove unneeded files now that we're done
     for bam_file in bam_files:

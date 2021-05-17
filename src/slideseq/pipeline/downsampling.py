@@ -43,3 +43,5 @@ def downsample_dge(
 
     log.debug(f"Finished with downsampling at ratio {ratio:.1f}")
     os.remove(downsampled_bam)
+
+    return ratio, digital_expression_summary
