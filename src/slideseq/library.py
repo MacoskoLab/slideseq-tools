@@ -97,6 +97,14 @@ class Library:
         return Path(self.row.puckcaller_path)
 
     @property
+    def bead_barcodes(self) -> Path:
+        return self.puckcaller_path / "BeadBarcodes.txt"
+
+    @property
+    def bead_locations(self) -> Path:
+        return self.puckcaller_path / "BeadLocations.txt"
+
+    @property
     def run_barcodematching(self) -> bool:
         return self.row.run_barcodematching
 
@@ -121,6 +129,16 @@ class Library:
     def base(self) -> str:
         """base filename for the library. The '.$' is for with_suffix()"""
         return f"{self.name}.$"
+
+    @property
+    def merged_bam(self) -> Path:
+        """Processed BAMs merged across all lanes"""
+        return (self.dir / self.base).with_suffix(".all_illumina.bam")
+
+    @property
+    def matched_bam(self) -> Path:
+        """Processed BAMs merged across all lanes, filtered to matched barcodes"""
+        return (self.dir / self.base).with_suffix(".matched.bam")
 
     def per_lane(self, *args, suffix) -> list[Path]:
         return [
@@ -147,7 +165,7 @@ class Library:
 
     @property
     def processed_bams(self) -> list[Path]:
-        """Final merged, aligned output BAMs"""
+        """Final aligned+unmapped output BAMs"""
         return self.per_lane(suffix=".final.bam")
 
     def __str__(self):

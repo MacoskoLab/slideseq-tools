@@ -15,6 +15,7 @@ from slideseq.bead_matching import match_barcodes
 from slideseq.library import Library
 from slideseq.metadata import Manifest
 from slideseq.pipeline.downsampling import downsample_dge
+from slideseq.pipeline.write_matrix import write_sparse_matrix
 from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
@@ -208,7 +209,6 @@ def main(
     log.debug(f"Processing alignments for library {library.name}")
 
     # define barcode matching files, if needed
-    puckcaller_dir = Path(library.puckcaller_path)
     barcode_matching_file = (
         library.barcode_matching_dir / f"{library}_barcode_matching.txt.gz"
     )
@@ -219,10 +219,6 @@ def main(
     # Combine check_alignments_quality files, and plot histograms
     alignment_quality.combine_alignment_stats(library)
 
-    # paths for merged full BAM and BAM filtererd to matched barcodes
-    combined_bam = library.dir / f"{library}.bam"
-    matched_bam = combined_bam.with_suffix(".matched.bam")
-
     # Merge bam files
     cmd = picard_cmd("MergeSamFiles", manifest.tmp_dir)
     cmd.extend(
@@ -232,7 +228,7 @@ def main(
             "--CREATE_MD5_FILE",
             "false",
             "--OUTPUT",
-            combined_bam,
+            library.merged_bam,
             "--SORT_ORDER",
             "coordinate",
             "--ASSUME_SORTED",
@@ -246,15 +242,15 @@ def main(
     run_command(cmd, "MergeBamFiles", library)
 
     # generate various metrics files, including digital expression matrix
-    selected_cells = calc_alignment_metrics(combined_bam, library, manifest.tmp_dir)
+    selected_cells = calc_alignment_metrics(
+        library.merged_bam, library, manifest.tmp_dir
+    )
 
     if library.run_barcodematching:
         library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
-            selected_cells,
-            puckcaller_dir / "BeadBarcodes.txt",
-            puckcaller_dir / "BeadLocations.txt",
+            selected_cells, library.bead_barcodes, library.bead_locations
         )
 
         with gzip.open(barcode_matching_file, "wt") as out:
@@ -267,14 +263,16 @@ def main(
                 print(bead_bc, file=out)
 
         # subset to the matched beads and add combined barcode as XB tag
-        write_retagged_bam(combined_bam, matched_bam, barcode_mapping)
+        write_retagged_bam(library.merged_bam, library.matched_bam, barcode_mapping)
 
         # do it all again, but should be faster on the smaller file
         calc_alignment_metrics(
-            matched_bam, library, manifest.tmp_dir, matched_barcodes_file, "XB"
+            library.matched_bam, library, manifest.tmp_dir, matched_barcodes_file, "XB"
         )
 
-        make_library_plots(library, matched_bam, bead_xy)
+        make_library_plots(library, bead_xy)
+
+        write_sparse_matrix(library)
     else:
         make_library_plots(library)
 
@@ -283,13 +281,15 @@ def main(
 
         # start with the full DGE summary
         downsample_output = [
-            (1.0, combined_bam.with_suffix(".digital_expression_summary.txt"))
+            (1.0, library.merged_bam.with_suffix(".digital_expression_summary.txt"))
         ]
 
         # Progressively downsample the BAM from largest to smallest
-        input_bam = combined_bam
+        input_bam = library.merged_bam
         for ratio in np.linspace(0.1, 0.9, 9)[::-1]:
-            downsampled_bam = combined_bam.with_suffix(f".downsample_{ratio:.1f}.bam")
+            downsampled_bam = library.merged_bam.with_suffix(
+                f".downsample_{ratio:.1f}.bam"
+            )
             downsample_output.append(
                 downsample_dge(
                     bam_file=input_bam,
@@ -299,21 +299,25 @@ def main(
                     tmp_dir=manifest.tmp_dir,
                 )
             )
-            if input_bam != combined_bam:
+            if input_bam != library.merged_bam:
                 os.remove(input_bam)
             input_bam = downsampled_bam
 
         # remove final downsampled_bam
-        os.remove(downsampled_bam)
+        if input_bam != library.merged_bam:
+            os.remove(input_bam)
 
         plot_downsampling(
-            downsample_output, combined_bam.with_suffix(".downsampling.pdf")
+            downsample_output, library.merged_bam.with_suffix(".downsampling.pdf")
         )
 
     # remove unneeded files now that we're done
     for bam_file in library.processed_bams:
         log.debug(f"Removing {bam_file}")
         os.remove(bam_file)
+
+    log.debug(f"Removing {library.merged_bam}")
+    os.remove(library.merged_bam)
 
     for stats_file in library.alignment_pickles:
         log.debug(f"Removing {stats_file}")

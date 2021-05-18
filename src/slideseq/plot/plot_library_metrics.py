@@ -209,15 +209,12 @@ def plot_scrna_metrics(pdf_pages: PdfPages, metrics_file: Path, bead_xy: BeadXY)
         plot_spatial_distribution(pdf_pages, bead_xy, dist, title)
 
 
-def make_library_plots(
-    library: Library, matched_bam: Path = None, bead_xy: BeadXY = None
-):
+def make_library_plots(library: Library, bead_xy: BeadXY = None):
     """
     Creates a PDF with various library QA plots. This version is for slideseq runs
     that don't perform barcode matching
 
     :param library: contains metadata about the library
-    :param matched_bam: the matched_bam, if matching was performed
     :param bead_xy: xy coordinates for matched beads, if matching was performed
     """
     library_base = library.dir / library.base
@@ -252,26 +249,28 @@ def make_library_plots(
             f"{title} barcodes for all reads",
         )
 
-    if matched_bam is not None:
-        assert bead_xy is not None, "Missing bead coordinates"
+    if bead_xy is not None:
+        assert library.matched_bam.exists(), f"{library.matched_bam} does not exist"
 
         plot_mapping_quality(
-            pdf_pages, matched_bam.with_suffix(".ReadQualityMetrics.txt"), "matched"
+            pdf_pages,
+            library.matched_bam.with_suffix(".ReadQualityMetrics.txt"),
+            "matched",
         )
 
         plot_frac_intronic_exonic(
-            pdf_pages, matched_bam.with_suffix(".fracIntronicExonic.txt")
+            pdf_pages, library.matched_bam.with_suffix(".fracIntronicExonic.txt")
         )
 
         plot_dge_summary(
             pdf_pages,
-            matched_bam.with_suffix(".digital_expression_summary.txt"),
+            library.matched_bam.with_suffix(".digital_expression_summary.txt"),
             bead_xy,
         )
 
         plot_scrna_metrics(
             pdf_pages,
-            matched_bam.with_suffix(".fracIntronicExonicPerCell.txt.gz"),
+            library.matched_bam.with_suffix(".fracIntronicExonicPerCell.txt.gz"),
             bead_xy,
         )
 
@@ -281,7 +280,7 @@ def make_library_plots(
         ):
             plot_base_distribution(
                 pdf_pages,
-                matched_bam.with_suffix(file_suffix),
+                library.matched_bam.with_suffix(file_suffix),
                 f"{title} barcodes for matched reads",
             )
 
