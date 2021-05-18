@@ -44,8 +44,8 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
         return None
 
 
-@click.command(name="submit_slideseq", no_args_is_help=True)
-@click.argument("flowcells", nargs=-1)
+@click.command(name="submit_flowcell", no_args_is_help=True)
+@click.argument("flowcells", nargs=-1, metavar="FLOWCELL [FLOWCELL ...]")
 @click.option(
     "--spreadsheet",
     default="1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic",
@@ -70,7 +70,7 @@ def main(
     log_file: str = None,
 ):
     """
-    Submit FLOWCELLS to the Slide-Seq alignment pipeline.
+    Submit each FLOWCELL to the Slide-seq alignment pipeline.
 
     See README.md for instructions and requirements: github.com/MacoskoLab/slideseq-tools
     """
@@ -78,6 +78,11 @@ def main(
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = get_env_name()
     log.debug(f"Running in conda env {env_name}")
+
+    # you shouldn't demux without aligning, that's weird
+    if demux and not align:
+        log.debug("Assuming --no-align should also set --no-demux")
+        demux = False
 
     log.debug("Fetching Google credentials")
     google_creds = gutil.get_secrets_manager_credentials()
