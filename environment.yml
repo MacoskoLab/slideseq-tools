@@ -1,0 +1,25 @@
+name: slideseq
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - Click>=7.1
+  - PyYAML>=5.4
+  - google-api-python-client>=2.2
+  - google-auth>=1.29
+  - google-cloud-secret-manager>=2.4
+  - matplotlib>=3.4,<3.5
+  - networkx>=2.5
+  - numpy>=1.20
+  - openpyxl>=3.0
+  - pandas>=1.2
+  - pip
+  - pysam>=0.16
+  - python=3.9
+  - samtools>=1.12
+  - scikit-learn>=0.24
+  - scipy>=1.6
+  - star>=2.7.8a,<2.8
+  - pip:
+      - -e .
