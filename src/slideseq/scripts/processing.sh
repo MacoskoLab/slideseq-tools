@@ -2,7 +2,7 @@
 #$ -N processing
 #$ -l os=RedHat7
 #$ -l h_vmem=16G
-#$ -l h_rt=24:0:0
+#$ -l h_rt=48:0:0
 #$ -pe smp 4
 #$ -binding linear:4
 #$ -terse
