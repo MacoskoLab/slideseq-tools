@@ -150,10 +150,9 @@ def plot_spatial_distribution(
             bead_xy[:, 0],
             bead_xy[:, 1],
             c=dist,
-            s=1,
+            s=0.5,
             cmap="viridis_r",
             norm=matplotlib.colors.Normalize(0, np.percentile(dist, 95), clip=True),
-            alpha=0.5,
         )
         c.set_rasterized(True)
         ax.set_xlabel("X")

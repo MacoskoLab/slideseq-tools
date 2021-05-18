@@ -10,8 +10,12 @@ This is the new alignment pipeline for Slide-seq data. For more information abou
 
 ```shell
 ish -l h_vmem=4G  # create an interactive session with extra memory
+git clone https://github.com/MacoskoLab/slideseq-tools.git  # clone this repository
+cd slideseq-tools
 conda env create -f environment.yml  # creates an environment named `slideseq`
 ```
+
+You can name the environment something else by adding `-n [env_name]`. There's no reason to do this, but I figured out how to make it work with an arbitary env name, so I wanted to mention it.
 
 ### Submitting a flowcell
 
@@ -19,7 +23,7 @@ Again, you should do this from an interactive session, as downloading the worksh
 
 ```shell
 use UGER  # for submitting jobs to the cluster
-use Google-Cloud-SDK  # for accessing Google worksheet
+use Google-Cloud-SDK  # for accessing the Google worksheet
 conda activate slideseq
 submit_flowcell FLOWCELL [FLOWCELL...]
 ```
@@ -66,7 +70,7 @@ Existing references:
  - Won't work in arbitary environments. This pipeline is built to run at the Broad on the local computing infrastructure. Hopefully it is clear what is happening and the pipeline can be translated, but it is not a priority for us.
  - Doesn't allow much flexibility in the workflow. This makes the entire process simpler to configure and design.
 
-### Currently unsupported
+### Currently unsupported or not yet implemented
 
 - Plot of read 1 base distribution
 - UP distance plots

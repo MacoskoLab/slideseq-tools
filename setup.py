@@ -39,7 +39,6 @@ setuptools.setup(
         "numpy",
         "openpyxl",
         "pandas",
-        "plotnine",
         "scikit-learn",
         "scipy",
     ],

@@ -14,10 +14,12 @@ dependencies:
   - numpy>=1.20
   - openpyxl>=3.0
   - pandas>=1.2
-  - plotnine>=0.8.0
+  - pip
   - pysam>=0.16
   - python=3.9
   - samtools>=1.12
   - scikit-learn>=0.24
   - scipy>=1.6
   - star>=2.7.8a,<2.8
+  - pip:
+      - -e .
