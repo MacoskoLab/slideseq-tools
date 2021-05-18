@@ -24,24 +24,67 @@ log = logging.getLogger(__name__)
 BeadXY = dict[str, tuple[float, float]]
 
 
-def plot_mapping_quality(
-    pdf_pages: PdfPages, quality_metrics: Path, title: str = "all"
+def plot_combined_mapping_quality(
+    pdf_pages: PdfPages, quality_metrics: Path, matched_quality_metrics: Path
 ):
-    # plot the overall mapping quality
+    keys = ["Total", "Mapped", "HQ", "HQ No Dupes"]
+    qm, _ = read_quality_metrics(quality_metrics)
+    mm, _ = read_quality_metrics(matched_quality_metrics)
+    ms = [qm, mm]
+
+    x = np.arange(len(keys))
+
+    with new_ax(pdf_pages) as ax:
+        ax.set_prop_cycle("color", ["lightskyblue", "goldenrod"])
+        for i, m in enumerate(ms):
+            ax.bar(
+                x + 0.1 + 0.4 * i,
+                [m[k] for k in keys],
+                width=0.4,
+                align="edge",
+                label=["All", "Matched"][i],
+                edgecolor="black",
+            )
+
+        ax.set_xticks(x + 0.5)
+        ax.set_xticklabels(keys)
+
+        ax.set_xticks(
+            [v + 0.3 + i for v in x for i in (0.0, 0.4)],
+            minor=True,
+        )
+        ax.set_xticklabels(
+            [f"{int(m[k]):,}\n({m[k] / m['Total']:.1%})" for k in keys for m in ms],
+            minor=True,
+            rotation=90,
+        )
+
+        ax.set_ylabel("# Reads")
+        ax.set_title("Alignment Quality")
+
+        ax.tick_params(axis="x", which="major", bottom=False, length=80)
+        ax.tick_params(axis="x", which="minor")
+
+        ax.legend()
+
+    return qm
+
+
+def plot_mapping_quality(pdf_pages: PdfPages, quality_metrics: Path):
+    keys = ["Total", "Mapped", "HQ", "HQ No Dupes"]
     qm, _ = read_quality_metrics(quality_metrics)
 
     with new_ax(pdf_pages) as ax:
-        keys = ["Total", "Mapped", "HQ", "HQ No Dupes"]
         ax.bar(
             [f"{k}\n{int(qm[k]):,}\n({qm[k] / qm['Total']:.1%})" for k in keys],
             [qm[k] for k in keys],
-            width=0.7,
+            width=0.8,
             color="lightskyblue",
             edgecolor="black",
         )
 
         ax.set_ylabel("# Reads")
-        ax.set_title(f"Alignment Quality for {title} reads")
+        ax.set_title("Alignment Quality for All Reads")
 
     return qm
 
@@ -176,11 +219,12 @@ def plot_dge_summary(pdf_pages: PdfPages, summary_file: Path, bead_xy: BeadXY):
             # can safely assume no zeros in this distribution
             # 10000 should be good enough for anyone
             ax.hist(
-                np.log10(dist),
-                bins=np.linspace(0, 4, 41),
+                dist,
+                bins=np.logspace(0, 4, 41),
                 facecolor="lightskyblue",
                 edgecolor="black",
             )
+            ax.set_xscale("log")
             ax.set_xlabel(f"Number of {title} (log10)")
             ax.set_title(f"Histogram of {title} per matched barcode")
 
@@ -216,71 +260,46 @@ def make_library_plots(library: Library, bead_xy: BeadXY = None):
     :param library: contains metadata about the library
     :param bead_xy: xy coordinates for matched beads, if matching was performed
     """
-    library_base = library.dir / library.base
 
-    log.info(f"Creating report file {library_base.with_suffix('.pdf')}")
-    pdf_pages = PdfPages(library_base.with_suffix(".pdf"))
+    log.info(f"Creating report file {library.pdf}")
+    pdf_pages = PdfPages(library.pdf)
 
-    qm = plot_mapping_quality(
-        pdf_pages, library_base.with_suffix(".ReadQualityMetrics.txt")
-    )
+    if library.matched.read_quality_metrics.exists():
+        qm = plot_combined_mapping_quality(
+            pdf_pages,
+            library.merged.read_quality_metrics,
+            library.matched.read_quality_metrics,
+        )
+    else:
+        qm = plot_mapping_quality(pdf_pages, library.merged.read_quality_metrics)
 
-    plot_frac_intronic_exonic(
-        pdf_pages, library_base.with_suffix(".fracIntronicExonic.txt")
-    )
+    plot_frac_intronic_exonic(pdf_pages, library.merged.frac_intronic_exonic)
 
-    plot_reads_per_barcode(
-        pdf_pages,
-        library_base.with_suffix(
-            f".numReads_perCell_XC_mq_{library.base_quality}.txt.gz"
-        ),
-    )
+    plot_reads_per_barcode(pdf_pages, library.merged.reads_per_cell("XC"))
 
     plot_poly_a_trimming(pdf_pages, qm, library.polya_filtering_summaries)
 
-    for file_suffix, title in (
-        (".barcode_distribution_XC.txt", "Cell"),
-        (".barcode_distribution_XM.txt", "Molecular"),
+    for file_path, title in (
+        (library.merged.xc_distribution, "Cell"),
+        (library.merged.xm_distribution, "Molecular"),
     ):
-        plot_base_distribution(
-            pdf_pages,
-            library_base.with_suffix(file_suffix),
-            f"{title} barcodes for all reads",
-        )
+        plot_base_distribution(pdf_pages, file_path, f"{title} barcodes for all reads")
 
     if bead_xy is not None:
-        assert library.matched_bam.exists(), f"{library.matched_bam} does not exist"
+        assert library.matched.bam.exists(), f"{library.matched.bam} does not exist"
 
-        plot_mapping_quality(
-            pdf_pages,
-            library.matched_bam.with_suffix(".ReadQualityMetrics.txt"),
-            "matched",
-        )
+        plot_frac_intronic_exonic(pdf_pages, library.matched.frac_intronic_exonic)
 
-        plot_frac_intronic_exonic(
-            pdf_pages, library.matched_bam.with_suffix(".fracIntronicExonic.txt")
-        )
+        plot_dge_summary(pdf_pages, library.matched.digital_expression_summary, bead_xy)
 
-        plot_dge_summary(
-            pdf_pages,
-            library.matched_bam.with_suffix(".digital_expression_summary.txt"),
-            bead_xy,
-        )
+        plot_scrna_metrics(pdf_pages, library.matched.frac_intronic_exonic, bead_xy)
 
-        plot_scrna_metrics(
-            pdf_pages,
-            library.matched_bam.with_suffix(".fracIntronicExonicPerCell.txt.gz"),
-            bead_xy,
-        )
-
-        for file_suffix, title in (
-            (".barcode_distribution_XC.txt", "Cell"),
-            (".barcode_distribution_XM.txt", "Molecular"),
+        for file_path, title in (
+            (library.matched.xc_distribution, "Cell"),
+            (library.matched.xm_distribution, "Molecular"),
         ):
             plot_base_distribution(
-                pdf_pages,
-                library.matched_bam.with_suffix(file_suffix),
-                f"{title} barcodes for matched reads",
+                pdf_pages, file_path, f"{title} barcodes for matched reads"
             )
 
     pdf_pages.close()

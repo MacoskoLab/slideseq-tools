@@ -1,6 +1,6 @@
 import logging
 import pickle
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import matplotlib.figure
@@ -72,24 +72,25 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
         )
 
 
-def plot_hist(suffix: str, dist: Counter, xlabel: str, pdf_pages: PdfPages):
+def plot_hist(kind: str, metric: str, dist: Counter, pdf_pages: PdfPages):
     """
     Bar plot of a given alignment stat distribution and adds the plot to
     a PDF
 
-    :param suffix: File suffix contains the type of data we're plotting
+    :param kind: Either "unique" or "multi"
+    :param metric: Either "ratio", "score", or "mismatch"
     :param dist: The distribution of counts
-    :param xlabel: Label for the x axis
     :param pdf_pages: PDF to add the figure to
     """
-
-    _, kind, metric = suffix.split(".")  # suffix is ".[kind].[metric]"
 
     x, y = zip(*sorted(dist.items()))
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
     ax.bar(x, y, width=0.7, color="lightskyblue", edgecolor="black")
-    ax.set_xlabel(xlabel)
+    if metric == "ratio":
+        ax.set_xlabel(f"alignment {metric} %")
+    else:
+        ax.set_xlabel(f"alignment {metric}")
     ax.set_title(f"Histogram of {kind} alignment {metric}")
 
     pdf_pages.savefig(fig)
@@ -117,14 +118,7 @@ def combine_alignment_stats(library: Library):
 
     :param library: object that contains metadata about this library
     """
-    unique_score = Counter()
-    unique_mismatch = Counter()
-    unique_ratio = Counter()
-    multi_score = Counter()
-    multi_mismatch = Counter()
-    multi_ratio = Counter()
-
-    out_base = library.dir / library.base
+    dists = defaultdict(Counter)
 
     log.debug(
         "Combining"
@@ -134,29 +128,20 @@ def combine_alignment_stats(library: Library):
     for stat_file in library.alignment_pickles:
         with stat_file.open("rb") as fh:
             us, um, ur, ms, mm, mr = pickle.load(fh)
-            unique_score += us
-            unique_mismatch += um
-            unique_ratio += ur
-            multi_score += ms
-            multi_mismatch += mm
-            multi_ratio += mr
+            dists["unique", "ratio"] += ur
+            dists["multi", "ratio"] += mr
+            dists["unique", "score"] += us
+            dists["multi", "score"] += ms
+            dists["unique", "mismatch"] += um
+            dists["multi", "mismatch"] += mm
 
-    log.debug(f"Plotting alignment stats for {out_base}")
-    alignment_quality_pdf = PdfPages(out_base.with_suffix(".alignment_quality.pdf"))
+    log.debug(f"Plotting alignment stats for {library.merged.bam}")
+    alignment_quality_pdf = PdfPages(library.merged.alignment_pdf)
 
-    # write out the combined statistics and make PDF
-    for suffix, dist, xlabel in (
-        (".unique.ratio", unique_ratio, "alignment ratio %"),
-        (".multi.ratio", multi_ratio, "alignment ratio %"),
-        (".unique.score", unique_score, "alignment score"),
-        (".multi.score", multi_score, "alignment score"),
-        (".unique.mismatch", unique_mismatch, "alignment mismatch"),
-        (".multi.mismatch", multi_mismatch, "alignment mismatch"),
-    ):
-        plot_hist(suffix, dist, xlabel, alignment_quality_pdf)
-        with out_base.with_suffix(suffix).open("w") as out:
-            for k, v in sorted(dist.items()):
-                print(f"{k}\t{v}", file=out)
+    # make PDF with combined stats
+    for metric in ("ratio", "score", "mismatch"):
+        for kind in ("unique", "multi"):
+            plot_hist(kind, metric, dists[kind, metric], alignment_quality_pdf)
 
     alignment_quality_pdf.close()
 
@@ -173,11 +158,9 @@ def combine_alignment_stats(library: Library):
         multi_reads += int(log_data["Number of reads mapped to multiple loci"])
         too_many_reads += int(log_data["Number of reads mapped to too many loci"])
 
-    mismatch1 = unique_mismatch[1] + multi_mismatch[1]
-    mismatch2 = unique_mismatch[2] + multi_mismatch[2]
-    mismatch3 = unique_mismatch[3] + multi_mismatch[3]
+    mismatch = dists["unique", "mismatch"] + dists["multi", "mismatch"]
 
-    with out_base.with_suffix(".mapping_rate.txt").open("w") as out:
+    with library.merged.mapping_rate.open("w") as out:
         print(f"total_reads\t{total_reads}", file=out)
         print(f"unique_aligned_reads\t{unique_reads}", file=out)
         print(f"unique_aligned_ratio\t{unique_reads / total_reads:.3%}", file=out)
@@ -188,6 +171,6 @@ def combine_alignment_stats(library: Library):
             f"too_many_aligned_ratio\t{too_many_reads / total_reads:.3%}",
             file=out,
         )
-        print(f"mismatch1_rate\t{mismatch1 / total_reads:.3%}", file=out)
-        print(f"mismatch2_rate\t{mismatch2 / total_reads:.3%}", file=out)
-        print(f"mismatch3_rate\t{mismatch3 / total_reads:.3%}", file=out)
+        print(f"mismatch1_rate\t{mismatch[1] / total_reads:.3%}", file=out)
+        print(f"mismatch2_rate\t{mismatch[2] / total_reads:.3%}", file=out)
+        print(f"mismatch3_rate\t{mismatch[3] / total_reads:.3%}", file=out)

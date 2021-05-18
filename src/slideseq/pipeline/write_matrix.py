@@ -15,19 +15,9 @@ log = logging.getLogger(__name__)
 
 
 def write_sparse_matrix(library: Library):
-    annotations_file = library.reference.annotations
-
-    # input dge file as gzipped tsv
-    dge_gzfile = library.matched_bam.with_suffix(".digital_expression.txt.gz")
-
-    # output files in mtx format
-    mat_file = library.matched_bam.with_suffix(".digital_expression_matrix.mtx.gz")
-    barcodes_file = library.matched_bam.with_suffix(".digital_expression_barcodes.tsv")
-    genes_file = library.matched_bam.with_suffix(".digital_expression_features.tsv")
-
     # read gene id and name mapping from gtf file
     gene_dict = dict()
-    with annotations_file.open("r") as fh:
+    with library.reference.annotations.open("r") as fh:
         rdr = csv.reader(fh, delimiter="\t")
         for row in rdr:
             if not row or row[0][0] == "#":
@@ -42,23 +32,23 @@ def write_sparse_matrix(library: Library):
                 gene_dict[md["gene_name"]] = md["gene_id"]
 
     # get cols and rows from dge file
-    with gzip.open(dge_gzfile, "rt") as fh:
+    with gzip.open(library.matched.digital_expression, "rt") as fh:
         rdr = csv.reader(fh, delimiter="\t")
         cols = next(rdr)[1:]
         rows = [r[0] for r in rdr]
 
-    with barcodes_file.open("w") as out:
+    with library.matched.barcodes.open("w") as out:
         for bc in cols:
             print(bc, file=out)
 
     # write features (genes) file
-    with genes_file.open("w") as out:
+    with library.matched.genes.open("w") as out:
         for gene in rows:
             print(f"{gene_dict.get(gene, gene)}\t{gene}", file=out)
 
     # read in DGE as sparse matrix
     data = scipy.sparse.dok_matrix((len(rows), len(cols)), dtype=int)
-    with gzip.open(dge_gzfile, "rt") as fh:
+    with gzip.open(library.matched.digital_expression, "rt") as fh:
         rdr = csv.reader(fh, delimiter="\t")
         _ = next(rdr)
         for i, row in enumerate(rdr):
@@ -66,5 +56,5 @@ def write_sparse_matrix(library: Library):
                 data[i, j] = int(val)
 
     # write mtx file
-    with gzip.open(mat_file, "wb") as out:
+    with gzip.open(library.matched.mtx, "wb") as out:
         scipy.io.mmwrite(out, data.tocsr())

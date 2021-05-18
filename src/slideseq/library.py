@@ -21,28 +21,113 @@ def validate_library_df(library: str, library_df: pd.DataFrame):
 
 class Reference(Path):
     @property
-    def base(self):
+    def base(self) -> Path:
         return self.parent
 
     @property
-    def genome_dir(self):
+    def genome_dir(self) -> Path:
         return self.base / "STAR"
 
     @property
-    def annotations(self):
+    def annotations(self) -> Path:
         return self.with_suffix(".gtf")
 
     @property
-    def intervals(self):
+    def intervals(self) -> Path:
         return self.with_suffix(".gene.intervals")
 
     @property
-    def ribosomal_intervals(self):
+    def ribosomal_intervals(self) -> Path:
         return self.with_suffix(".rRNA.intervals")
 
     @property
-    def ref_flat(self):
+    def ref_flat(self) -> Path:
         return self.with_suffix(".refFlat")
+
+
+class Base(Path):
+    def __init__(self, *args, **kwargs):
+        self.base_quality = kwargs.pop("base_quality")
+        self.min_transcripts_per_cell = kwargs.pop("min_transcripts_per_cell")
+        super().__init__(*args, **kwargs)
+
+    def reads_per_cell(self, tag) -> Path:
+        return self.with_suffix(
+            f".numReads_perCell_{tag}_mq_{self.base_quality}.txt.gz"
+        )
+
+    def downsampled_bam(self, ratio) -> Path:
+        return self.with_suffix(f".downsample_{ratio:.1f}.bam")
+
+    @property
+    def bam(self) -> Path:
+        return self.with_suffix(".bam")
+
+    @property
+    def pdf(self) -> Path:
+        return self.with_suffix(".pdf")
+
+    @property
+    def downsampling(self) -> Path:
+        return self.with_suffix(".downsampling.pdf")
+
+    @property
+    def alignment_pdf(self) -> Path:
+        return self.with_suffix(".alignment_quality.pdf")
+
+    @property
+    def mapping_rate(self) -> Path:
+        return self.with_suffix(".mapping_rate.txt")
+
+    @property
+    def read_quality_metrics(self) -> Path:
+        return self.with_suffix(".ReadQualityMetrics.txt")
+
+    @property
+    def digital_expression(self) -> Path:
+        return self.with_suffix(".digital_expression.txt.gz")
+
+    @property
+    def digital_expression_summary(self) -> Path:
+        return self.with_suffix(".digital_expression_summary.txt")
+
+    @property
+    def mtx(self) -> Path:
+        return self.with_suffix(".digital_expression_matrix.mtx.gz")
+
+    @property
+    def barcodes(self) -> Path:
+        return self.with_suffix(".digital_expression_barcodes.mtx.gz")
+
+    @property
+    def genes(self) -> Path:
+        return self.with_suffix(".digital_expression_features.mtx.gz")
+
+    @property
+    def frac_intronic_exonic(self) -> Path:
+        return self.with_suffix(".fracIntronicExonic.txt")
+
+    @property
+    def frac_intronic_exonic_per_cell(self) -> Path:
+        return self.with_suffix(".fracIntronicExonicPerCell.txt.gz")
+
+    @property
+    def xc_distribution(self) -> Path:
+        return self.with_suffix(".barcode_distribution_XC.txt")
+
+    @property
+    def xm_distribution(self) -> Path:
+        return self.with_suffix(".barcode_distribution_XM.txt")
+
+    @property
+    def reads_per_umi(self) -> Path:
+        return self.with_suffix(f".numReads_perUMI_XM_mq_{self.base_quality}.txt.gz")
+
+    @property
+    def selected_cells(self) -> Path:
+        return self.with_suffix(
+            f".{self.min_transcripts_per_cell}_transcripts_mq_{self.base_quality}_selected_cells.txt.gz"
+        )
 
 
 @dataclass
@@ -131,14 +216,27 @@ class Library:
         return f"{self.name}.$"
 
     @property
-    def merged_bam(self) -> Path:
-        """Processed BAMs merged across all lanes"""
-        return (self.dir / self.base).with_suffix(".all_illumina.bam")
+    def pdf(self) -> Path:
+        """PDF output"""
+        return (self.dir / self.base).with_suffix(".pdf")
 
     @property
-    def matched_bam(self) -> Path:
-        """Processed BAMs merged across all lanes, filtered to matched barcodes"""
-        return (self.dir / self.base).with_suffix(".matched.bam")
+    def merged(self) -> Base:
+        """Base for processed BAM merged across all lanes"""
+        return Base(
+            (self.dir / self.base).with_suffix(".all_illumina.$"),
+            base_quality=self.base_quality,
+            min_transcripts_per_cell=self.min_transcripts_per_cell,
+        )
+
+    @property
+    def matched(self) -> Base:
+        """Base for processed BAM filtered and retagged to matched barcodes"""
+        return Base(
+            (self.dir / self.base).with_suffix(".matched.$"),
+            base_quality=self.base_quality,
+            min_transcripts_per_cell=self.min_transcripts_per_cell,
+        )
 
     def per_lane(self, *args, suffix) -> list[Path]:
         return [
