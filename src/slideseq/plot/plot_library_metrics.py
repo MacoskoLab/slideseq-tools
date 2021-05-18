@@ -8,11 +8,9 @@ from pathlib import Path
 
 import matplotlib.colors
 import numpy as np
-import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-import slideseq.util.constants as constants
-from slideseq.metadata import Manifest
+from slideseq.library import Library
 from slideseq.plot import (
     new_ax,
     read_dge_summary,
@@ -212,24 +210,17 @@ def plot_scrna_metrics(pdf_pages: PdfPages, metrics_file: Path, bead_xy: BeadXY)
 
 
 def make_library_plots(
-    row: pd.Series,
-    lanes: list[int],
-    manifest: Manifest,
-    matched_bam: Path = None,
-    bead_xy: BeadXY = None,
+    library: Library, matched_bam: Path = None, bead_xy: BeadXY = None
 ):
     """
     Creates a PDF with various library QA plots. This version is for slideseq runs
     that don't perform barcode matching
 
-    :param row: contains metadata about the library
-    :param lanes: the lanes that the library was sequenced across
-    :param manifest: flowcell metadata
+    :param library: contains metadata about the library
     :param matched_bam: the matched_bam, if matching was performed
     :param bead_xy: xy coordinates for matched beads, if matching was performed
     """
-    library_dir = constants.LIBRARY_DIR / f"{row.date}_{row.library}"
-    library_base = library_dir / f"{row.library}.$"
+    library_base = library.dir / library.base
 
     log.info(f"Creating report file {library_base.with_suffix('.pdf')}")
     pdf_pages = PdfPages(library_base.with_suffix(".pdf"))
@@ -244,18 +235,12 @@ def make_library_plots(
 
     plot_reads_per_barcode(
         pdf_pages,
-        library_base.with_suffix(f".numReads_perCell_XC_mq_{row.base_quality}.txt.gz"),
+        library_base.with_suffix(
+            f".numReads_perCell_XC_mq_{library.base_quality}.txt.gz"
+        ),
     )
 
-    poly_a_summaries = [
-        library_dir
-        / f"L{lane:03d}"
-        / "alignment"
-        / f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.polyA_filtering.summary.txt"
-        for lane in lanes
-    ]
-
-    plot_poly_a_trimming(pdf_pages, qm, poly_a_summaries)
+    plot_poly_a_trimming(pdf_pages, qm, library.polya_filtering_summaries)
 
     for file_suffix, title in (
         (".barcode_distribution_XC.txt", "Cell"),

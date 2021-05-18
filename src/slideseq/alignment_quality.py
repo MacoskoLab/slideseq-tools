@@ -7,6 +7,8 @@ import matplotlib.figure
 import pysam
 from matplotlib.backends.backend_pdf import PdfPages
 
+from slideseq.library import Library
+
 log = logging.getLogger(__name__)
 
 
@@ -107,17 +109,13 @@ def parse_star_log(log_file: Path) -> dict[str, str]:
     return log_data
 
 
-def combine_alignment_stats(
-    stats_files: list[Path], star_logs: list[Path], out_base: Path
-):
+def combine_alignment_stats(library: Library):
     """
     Combines the alignment statistics files from multiple lanes into one aggregate,
     and outputs aggregated versions into text files. Also aggregates the STAR log
     reports into one combined file.
 
-    :param stats_files: List of pickles output by check_alignment_quality
-    :param star_logs: List of STAR log output files
-    :param out_base: Base path for the summary files to write
+    :param library: object that contains metadata about this library
     """
     unique_score = Counter()
     unique_mismatch = Counter()
@@ -126,9 +124,14 @@ def combine_alignment_stats(
     multi_mismatch = Counter()
     multi_ratio = Counter()
 
-    log.debug(f"Combining {', '.join(stat_file.name for stat_file in stats_files)}")
+    out_base = library.dir / library.base
 
-    for stat_file in stats_files:
+    log.debug(
+        "Combining"
+        f" {', '.join(stat_file.name for stat_file in library.alignment_pickles)}"
+    )
+
+    for stat_file in library.alignment_pickles:
         with stat_file.open("rb") as fh:
             us, um, ur, ms, mm, mr = pickle.load(fh)
             unique_score += us
@@ -163,7 +166,7 @@ def combine_alignment_stats(
     too_many_reads = 0
 
     # collect some stats from star log files
-    for star_log in star_logs:
+    for star_log in library.star_logs:
         log_data = parse_star_log(star_log)
         total_reads += int(log_data["Number of input reads"])
         unique_reads += int(log_data["Uniquely mapped reads number"])

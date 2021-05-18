@@ -97,7 +97,27 @@ def validate_demux(manifest: Manifest):
             output_dir / f"L{lane:03d}" / "library_params.txt",
         ):
             if not p.exists():
-                log.error(f"{p} does not exist")
+                log.error(f"{p} does not exist, demux looks incomplete")
                 return False
+    else:
+        return True
+
+
+def validate_alignment(manifest: Manifest, n_libraries: int):
+    """verify that alignment was run and output is present"""
+
+    for i in range(n_libraries):
+        library = manifest.get_library(i)
+
+        for p_list in (
+            library.polya_filtering_summaries,
+            library.star_logs,
+            library.alignment_pickles,
+            library.processed_bams,
+        ):
+            for p in p_list:
+                if not p.exists():
+                    log.error(f"{p} does not exist, alignment looks incomplete")
+                    return False
     else:
         return True

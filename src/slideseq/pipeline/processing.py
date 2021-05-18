@@ -12,6 +12,7 @@ import pandas as pd
 import slideseq.alignment_quality as alignment_quality
 import slideseq.util.constants as constants
 from slideseq.bead_matching import match_barcodes
+from slideseq.library import Library
 from slideseq.metadata import Manifest
 from slideseq.pipeline.downsampling import downsample_dge
 from slideseq.plot.plot_downsampling import plot_downsampling
@@ -37,22 +38,16 @@ def validate_library_df(library: str, library_df: pd.DataFrame):
 
 def calc_alignment_metrics(
     input_bam: Path,
-    reference: Path,
-    row: pd.Series,
-    manifest: Manifest,
+    library: Library,
+    tmp_dir: Path,
     matched_barcodes: Path = None,
     cell_tag: str = "XC",
 ):
-    # assumes that reference always ends in .fasta, not .fasta.gz
-    ref_flat = reference.with_suffix(".refFlat")
-    ribosomal_intervals = reference.with_suffix(".rRNA.intervals")
-    annotations_file = reference.with_suffix(".gtf")
-
     reads_per_cell = input_bam.with_suffix(
-        f".numReads_perCell_{cell_tag}_mq_{row.base_quality}.txt.gz"
+        f".numReads_perCell_{cell_tag}_mq_{library.base_quality}.txt.gz"
     )
     reads_per_umi = input_bam.with_suffix(
-        f".numReads_perUMI_XM_mq_{row.base_quality}.txt.gz"
+        f".numReads_perUMI_XM_mq_{library.base_quality}.txt.gz"
     )
     frac_intronic_exonic = input_bam.with_suffix(".fracIntronicExonic.txt")
     xc_barcode_distribution = input_bam.with_suffix(".barcode_distribution_XC.txt")
@@ -61,7 +56,7 @@ def calc_alignment_metrics(
     scnra_metrics = input_bam.with_suffix(".fracIntronicExonicPerCell.txt.gz")
 
     selected_cells = input_bam.with_suffix(
-        f".{row.min_transcripts_per_cell}_transcripts_mq_{row.base_quality}_selected_cells.txt.gz"
+        f".{library.min_transcripts_per_cell}_transcripts_mq_{library.base_quality}_selected_cells.txt.gz"
     )
     digital_expression = input_bam.with_suffix(".digital_expression.txt.gz")
     digital_expression_summary = input_bam.with_suffix(
@@ -74,12 +69,12 @@ def calc_alignment_metrics(
         [
             f"TAG={cell_tag}",
             "FILTER_PCR_DUPLICATES=false",
-            f"READ_MQ={row.base_quality}",
-            f"TMP_DIR={manifest.tmp_dir}",
+            f"READ_MQ={library.base_quality}",
+            f"TMP_DIR={tmp_dir}",
         ]
     )
 
-    run_command(cmd, "BamTagHistogram (cells)", row.library)
+    run_command(cmd, "BamTagHistogram (cells)", library)
 
     # Bam tag histogram (UMIs)
     cmd = dropseq_cmd("BamTagHistogram", input_bam, reads_per_umi)
@@ -87,49 +82,49 @@ def calc_alignment_metrics(
         [
             "TAG=XM",
             "FILTER_PCR_DUPLICATES=false",
-            f"READ_MQ={row.base_quality}",
-            f"TMP_DIR={manifest.tmp_dir}",
+            f"READ_MQ={library.base_quality}",
+            f"TMP_DIR={tmp_dir}",
         ]
     )
 
-    run_command(cmd, "BamTagHistogram (UMIs)", row.library)
+    run_command(cmd, "BamTagHistogram (UMIs)", library)
 
     # Collect RnaSeq metrics
-    cmd = picard_cmd("CollectRnaSeqMetrics", manifest.tmp_dir)
+    cmd = picard_cmd("CollectRnaSeqMetrics", tmp_dir)
     cmd.extend(
         [
             "--INPUT",
             input_bam,
             "--REF_FLAT",
-            ref_flat,
+            library.reference.ref_flat,
             "--OUTPUT",
             frac_intronic_exonic,
             "--STRAND_SPECIFICITY",
             "NONE",
             "--RIBOSOMAL_INTERVALS",
-            ribosomal_intervals,
+            library.reference.ribosomal_intervals,
         ]
     )
 
-    run_command(cmd, "CollectRnaSeqMetrics", row.library)
+    run_command(cmd, "CollectRnaSeqMetrics", library)
 
     # Base distribution at read position for raw cellular barcode
     cmd = dropseq_cmd(
         "BaseDistributionAtReadPosition", input_bam, xc_barcode_distribution
     )
     cmd.extend(["TAG=XC"])
-    run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", row.library)
+    run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", library)
 
     # Base distribution at read position for molecular barcode
     cmd = dropseq_cmd(
         "BaseDistributionAtReadPosition", input_bam, xm_barcode_distribution
     )
     cmd.extend(["TAG=XM"])
-    run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", row.library)
+    run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", library)
 
     # Gather read quality metrics
     cmd = dropseq_cmd("GatherReadQualityMetrics", input_bam, read_quality_metrics)
-    run_command(cmd, "GatherReadQualityMetrics", row.library)
+    run_command(cmd, "GatherReadQualityMetrics", library)
 
     if matched_barcodes is not None:
         cmd = dropseq_cmd(
@@ -138,13 +133,13 @@ def calc_alignment_metrics(
         cmd.extend(
             [
                 f"CELL_BARCODE_TAG={cell_tag}",
-                f"READ_MQ={row.base_quality}",
+                f"READ_MQ={library.base_quality}",
                 f"CELL_BC_FILE={matched_barcodes}",
-                f"RIBOSOMAL_INTERVALS={ribosomal_intervals}",
-                f"ANNOTATIONS_FILE={annotations_file}",
+                f"RIBOSOMAL_INTERVALS={library.reference.ribosomal_intervals}",
+                f"ANNOTATIONS_FILE={library.reference.annotations}",
             ]
         )
-        run_command(cmd, "SingleCellRnaSeqMetricsCollector", row.library)
+        run_command(cmd, "SingleCellRnaSeqMetricsCollector", library)
 
     # Select cells by num transcripts
     cmd = dropseq_cmd(
@@ -153,15 +148,15 @@ def calc_alignment_metrics(
     cmd.extend(
         [
             f"CELL_BARCODE_TAG={cell_tag}",
-            f"MIN_TRANSCRIPTS_PER_CELL={row.min_transcripts_per_cell}",
-            f"READ_MQ={row.base_quality}",
+            f"MIN_TRANSCRIPTS_PER_CELL={library.min_transcripts_per_cell}",
+            f"READ_MQ={library.base_quality}",
         ]
     )
-    if row.locus_function_list == "intronic":
+    if library.locus_function_list == "intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=null", "LOCUS_FUNCTION_LIST=INTRONIC"])
-    elif row.locus_function_list == "exonic+intronic":
+    elif library.locus_function_list == "exonic+intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
-    run_command(cmd, "SelectCellsByNumTranscripts", row.library)
+    run_command(cmd, "SelectCellsByNumTranscripts", library)
 
     # Generate digital expression files for all Illumina barcodes
     cmd = dropseq_cmd("DigitalExpression", input_bam, digital_expression, compression=6)
@@ -170,16 +165,16 @@ def calc_alignment_metrics(
             f"CELL_BARCODE_TAG={cell_tag}",
             f"CELL_BC_FILE={selected_cells}",
             f"SUMMARY={digital_expression_summary}",
-            f"READ_MQ={row.base_quality}",
+            f"READ_MQ={library.base_quality}",
             "OUTPUT_HEADER=false",
-            f"UEI={row.library}",
+            f"UEI={library}",
         ]
     )
-    if row.locus_function_list == "intronic":
+    if library.locus_function_list == "intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=null", "LOCUS_FUNCTION_LIST=INTRONIC"])
-    elif row.locus_function_list == "exonic+intronic":
+    elif library.locus_function_list == "exonic+intronic":
         cmd.extend(["LOCUS_FUNCTION_LIST=INTRONIC"])
-    run_command(cmd, "DigitalExpression", row.library)
+    run_command(cmd, "DigitalExpression", library)
 
     return selected_cells
 
@@ -206,60 +201,26 @@ def main(
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(Path(manifest_file))
-    metadata_df = pd.read_csv(manifest.metadata_file)
 
     # task array is 1-indexed
-    library = sorted(set(metadata_df.library))[library_index - 1]
-    library_df = metadata_df.loc[metadata_df.library == library]
-    log.debug(f"Processing alignments for library {library}")
+    library = manifest.get_library(library_index - 1)
 
-    validate_library_df(library, library_df)
-    row = library_df.iloc[0]
-
-    lanes = sorted(set(library_df.lane))
-
-    library_dir = constants.LIBRARY_DIR / f"{row.date}_{library}"
-    reference = Path(row.reference)
-
-    library_bases = [
-        f"{manifest.flowcell}.L{lane:03d}.{library}.{row.sample_barcode}.$"
-        for lane in lanes
-    ]
-    alignment_bases = [
-        library_dir / f"L{lane:03d}" / "alignment" / base
-        for lane, base in zip(lanes, library_bases)
-    ]
-
-    # final output from alignment jobs, per lane
-    bam_files = [
-        (library_dir / f"L{lane:03d}" / base).with_suffix(".final.bam")
-        for lane, base in zip(lanes, library_bases)
-    ]
-    alignment_stats = [
-        base.with_suffix(".alignment_statistics.pickle") for base in alignment_bases
-    ]
-    star_logs = [base.with_suffix(".star.Log.final.out") for base in alignment_bases]
+    log.debug(f"Processing alignments for library {library.name}")
 
     # define barcode matching files, if needed
-    puckcaller_dir = Path(row.puckcaller_path)
-    barcode_matching_folder = library_dir / "barcode_matching"
+    puckcaller_dir = Path(library.puckcaller_path)
     barcode_matching_file = (
-        barcode_matching_folder / f"{row.library}_barcode_matching.txt.gz"
+        library.barcode_matching_dir / f"{library}_barcode_matching.txt.gz"
     )
     matched_barcodes_file = (
-        barcode_matching_folder / f"{row.library}_matched_barcodes.txt.gz"
+        library.barcode_matching_dir / f"{library}_matched_barcodes.txt.gz"
     )
-
-    # directory for downsampling, if needed
-    downsample_dir = library_dir / "downsample"
 
     # Combine check_alignments_quality files, and plot histograms
-    alignment_quality.combine_alignment_stats(
-        alignment_stats, star_logs, library_dir / f"{library}.$"
-    )
+    alignment_quality.combine_alignment_stats(library)
 
     # paths for merged full BAM and BAM filtererd to matched barcodes
-    combined_bam = library_dir / f"{library}.bam"
+    combined_bam = library.dir / f"{library}.bam"
     matched_bam = combined_bam.with_suffix(".matched.bam")
 
     # Merge bam files
@@ -279,16 +240,16 @@ def main(
         ]
     )
 
-    for bam_file in bam_files:
+    for bam_file in library.processed_bams:
         cmd.extend(["--INPUT", bam_file])
 
     run_command(cmd, "MergeBamFiles", library)
 
     # generate various metrics files, including digital expression matrix
-    selected_cells = calc_alignment_metrics(combined_bam, reference, row, manifest)
+    selected_cells = calc_alignment_metrics(combined_bam, library, manifest.tmp_dir)
 
-    if row.run_barcodematching:
-        barcode_matching_folder.mkdir(exist_ok=True, parents=True)
+    if library.run_barcodematching:
+        library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
             selected_cells,
@@ -310,44 +271,51 @@ def main(
 
         # do it all again, but should be faster on the smaller file
         calc_alignment_metrics(
-            matched_bam, reference, row, manifest, matched_barcodes_file, "XB"
+            matched_bam, library, manifest.tmp_dir, matched_barcodes_file, "XB"
         )
 
-        make_library_plots(row, lanes, manifest, matched_bam, bead_xy)
+        make_library_plots(library, matched_bam, bead_xy)
     else:
-        make_library_plots(row, lanes, manifest)
+        make_library_plots(library)
 
-    if row.gen_downsampling:
-        downsample_dir.mkdir(exist_ok=True, parents=True)
-        downsample_output = []
+    if library.gen_downsampling:
+        library.downsample_dir.mkdir(exist_ok=True, parents=True)
 
-        # this might take a long time, we'll see...
-        for ratio in np.linspace(0.1, 0.9, 9):
+        # start with the full DGE summary
+        downsample_output = [
+            (1.0, combined_bam.with_suffix(".digital_expression_summary.txt"))
+        ]
+
+        # Progressively downsample the BAM from largest to smallest
+        input_bam = combined_bam
+        for ratio in np.linspace(0.1, 0.9, 9)[::-1]:
+            downsampled_bam = combined_bam.with_suffix(f".downsample_{ratio:.1f}.bam")
             downsample_output.append(
                 downsample_dge(
-                    bam_file=combined_bam,
-                    downsample_dir=downsample_dir,
-                    row=row,
+                    bam_file=input_bam,
+                    downsampled_bam=downsampled_bam,
+                    library=library,
                     ratio=ratio,
                     tmp_dir=manifest.tmp_dir,
                 )
             )
+            if input_bam != combined_bam:
+                os.remove(input_bam)
+            input_bam = downsampled_bam
 
-        # add the full DGE summary to the end
-        downsample_output.append(
-            (1.0, combined_bam.with_suffix(".digital_expression_summary.txt"))
-        )
+        # remove final downsampled_bam
+        os.remove(downsampled_bam)
 
         plot_downsampling(
             downsample_output, combined_bam.with_suffix(".downsampling.pdf")
         )
 
     # remove unneeded files now that we're done
-    for bam_file in bam_files:
+    for bam_file in library.processed_bams:
         log.debug(f"Removing {bam_file}")
         os.remove(bam_file)
 
-    for stats_file in alignment_stats:
+    for stats_file in library.alignment_pickles:
         log.debug(f"Removing {stats_file}")
         os.remove(stats_file)
 

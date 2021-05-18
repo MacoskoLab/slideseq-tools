@@ -13,7 +13,11 @@ import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.gutil as gutil
 from slideseq.metadata import Manifest, split_sample_lanes, validate_flowcell_df
-from slideseq.pipeline.preparation import prepare_demux, validate_demux
+from slideseq.pipeline.preparation import (
+    prepare_demux,
+    validate_alignment,
+    validate_demux,
+)
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
 from slideseq.util.constants import MAX_QSUB
 from slideseq.util.logger import create_logger
@@ -60,7 +64,7 @@ def main(
     spreadsheet: str,
     worksheet: str,
     demux: bool = True,
-    align: bool = True,  # TODO validate this
+    align: bool = True,
     dryrun: bool = False,
     debug: bool = False,
     log_file: str = None,
@@ -166,6 +170,10 @@ def main(
             flowcell_df.to_csv(metadata_file, header=True, index=False)
         elif not validate_demux(manifest):
             # appears that demux was not run previously
+            flowcell_errors.add(flowcell)
+            continue
+        elif not (align or validate_alignment(manifest, n_libraries)):
+            # appears that alignment wasn't run and wasn't requested
             flowcell_errors.add(flowcell)
             continue
 

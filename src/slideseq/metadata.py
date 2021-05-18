@@ -2,10 +2,12 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import yaml
 
+from slideseq.library import Library, LibraryLane, Reference, validate_library_df
 from slideseq.util import constants as constants
 
 log = logging.getLogger(__name__)
@@ -47,6 +49,32 @@ class Manifest:
             yaml.safe_dump(data, stream=out)
 
         log.debug(f"Wrote manifest file {output_file} for flowcell {data['flowcell']}")
+
+    def _get_library(self, library_index: int):
+        metadata_df = pd.read_csv(self.metadata_file)
+
+        library_name = sorted(set(metadata_df.library))[library_index]
+        library_df = metadata_df.loc[metadata_df.library == library_name]
+
+        # verify that all columns are consistent, except for lane
+        validate_library_df(library_name, library_df)
+        row = library_df.iloc[0]
+
+        lanes = sorted(set(library_df.lane))
+
+        return library_name, row, lanes, Reference(row.reference)
+
+    def get_library(self, library_index: int) -> Library:
+        return Library(*self._get_library(library_index))
+
+    def get_library_lane(self, library_index: int, lane: int) -> Optional[LibraryLane]:
+        library_name, row, lanes, reference = self._get_library(library_index)
+
+        if lane not in lanes:
+            log.warning("Library not present in this lane, nothing to do here")
+            return None
+
+        return LibraryLane(library_name, row, lanes, reference, lane)
 
     @property
     def tmp_dir(self):
