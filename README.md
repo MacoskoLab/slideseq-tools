@@ -9,6 +9,7 @@ This is the new alignment pipeline for Slide-seq data. For more information abou
 `conda install` uses a fair amount of RAM, so you should do this from an interactive session and not on the login node.
 
 ```shell
+use UGER  # to make the ish command available
 ish -l h_vmem=4G  # create an interactive session with extra memory
 git clone https://github.com/MacoskoLab/slideseq-tools.git  # clone this repository
 cd slideseq-tools
@@ -102,6 +103,7 @@ TODO: currently the locations of these tools are hard-coded. They should be in a
 You might need to authenticate the first time you run the pipeline. This just sets up your Google credentials on UGER so that it knows you have access to the worksheet.
 
 ```shell
+use Google-Cloud-SDK
 gcloud auth login
 
 # ... follow instructions
@@ -116,4 +118,4 @@ use UGER
 use Google-Cloud-SDK
 ```
 
-This will make login a little slower but saves typing and errors from forgetting.
+This might make login a tiny bit slower, but saves typing and errors from forgetting.
