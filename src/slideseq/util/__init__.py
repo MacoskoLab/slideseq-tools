@@ -1,7 +1,8 @@
 import logging
-import pathlib
+import os
 import sys
 import xml.etree.ElementTree as et
+from pathlib import Path
 from subprocess import PIPE, Popen, run
 from typing import Any, Union
 
@@ -16,11 +17,19 @@ def get_env_name() -> str:
     return sys.executable.split("/")[-3]
 
 
-def qsub_args(
-    log_file: pathlib.Path = None,
-    debug: bool = False,
-    **kwargs: Any,
-) -> list[str]:
+def give_group_access(path: Path):
+    """Walks a directory and grants groups permissions.
+
+    Sets rwx on drs and rw on dirs"""
+    for dirpath, dirnames, filenames in os.walk(path):
+        # set ug+rwx, o+r on directories
+        os.chmod(dirpath, 0o774)
+        for filename in filenames:
+            # set ug+rw, o+r on files
+            os.chmod(os.path.join(dirpath, filename), 0o664)
+
+
+def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list[str]:
     """
     Returns command list starting with "qsub", adding configured options
 
@@ -49,8 +58,8 @@ def qsub_args(
 
 def dropseq_cmd(
     command: str,
-    input_file: Union[pathlib.Path, str],
-    output_file: Union[pathlib.Path, str],
+    input_file: Union[Path, str],
+    output_file: Union[Path, str],
     mem: str = "8g",
     compression: int = 0,
 ):
@@ -76,7 +85,7 @@ def dropseq_cmd(
     ]
 
 
-def picard_cmd(command: str, tmp_dir: pathlib.Path, mem: str = "62g"):
+def picard_cmd(command: str, tmp_dir: Path, mem: str = "62g"):
     """Return the beginning of a Picard command, with standard options
 
     :param command: name of the picard tool being invoked
@@ -105,7 +114,7 @@ def picard_cmd(command: str, tmp_dir: pathlib.Path, mem: str = "62g"):
     ]
 
 
-def get_read_structure(run_info_file: pathlib.Path) -> str:
+def get_read_structure(run_info_file: Path) -> str:
     """
     Get read structure from RunInfo.xml. Assumes one index sequence only,
     will error otherwise
@@ -126,7 +135,7 @@ def get_read_structure(run_info_file: pathlib.Path) -> str:
     return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
 
 
-def get_lanes(run_info_file: pathlib.Path) -> range:
+def get_lanes(run_info_file: Path) -> range:
     # open the RunInfo.xml file and parse it with element tree
     with run_info_file.open() as f:
         run_info = et.parse(f)
