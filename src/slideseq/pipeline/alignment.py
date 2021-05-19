@@ -8,7 +8,13 @@ import click
 
 from slideseq.alignment_quality import write_alignment_stats
 from slideseq.metadata import Manifest
-from slideseq.util import dropseq_cmd, picard_cmd, run_command, start_popen
+from slideseq.util import (
+    dropseq_cmd,
+    give_group_access,
+    picard_cmd,
+    run_command,
+    start_popen,
+)
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -260,5 +266,8 @@ def main(
     os.remove(library.polya_filtered_ubam)
     os.remove(library.polya_filtered_fastq)
     os.remove(library.aligned_bam)
+
+    log.debug("Setting group permissions")
+    give_group_access(library.dir)
 
     log.info(f"Alignment for {library} completed")

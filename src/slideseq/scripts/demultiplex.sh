@@ -27,7 +27,6 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   --BASECALLS_DIR ${BASECALLS_DIR} \
   --READ_STRUCTURE ${READ_STRUCTURE}
 
-
 # extract barcodes to $BARCODE_FILE
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   -XX:GCTimeLimit=20 -XX:GCHeapFreeLimit=10 -Xms64g -Xmx124g \
@@ -41,7 +40,6 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   --METRICS_FILE ${OUTPUT_DIR}/L00${SGE_TASK_ID}/${RUN_BARCODE}.barcode_metrics.txt \
   --COMPRESS_OUTPUTS true \
   --NUM_PROCESSORS 8
-
 
 # create uBAM files
 java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
@@ -59,3 +57,6 @@ java -Djava.io.tmpdir=${TMP_DIR} -XX:+UseParallelGC \
   --ADAPTERS_TO_CHECK null \
   --IGNORE_UNEXPECTED_BARCODES true \
   --SEQUENCING_CENTER BI
+
+# give group access to all files and directories
+chmod -R --silent g+rwX ${OUTPUT_DIR}

@@ -19,7 +19,7 @@ from slideseq.pipeline.write_matrix import write_sparse_matrix
 from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
-from slideseq.util import dropseq_cmd, picard_cmd, run_command
+from slideseq.util import dropseq_cmd, give_group_access, picard_cmd, run_command
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -307,5 +307,8 @@ def main(
     if matched_barcodes_file.exists():
         log.debug(f"Removing {matched_barcodes_file}")
         os.remove(matched_barcodes_file)
+
+    log.debug("Setting group permissions")
+    give_group_access(library.dir)
 
     log.info(f"Processing for {library} complete")
