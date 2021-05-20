@@ -37,14 +37,14 @@ def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int)
 
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # output the uBAM directly to library directory
-            library_dir = (
+            lane_dir = (
                 constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
             )
-            library_dir.mkdir(exist_ok=True, parents=True)
-            output_bam = f"{manifest.flowcell}.L{lane:03d}.{row.library}.{row.sample_barcode}.unmapped.bam"
+            lane_dir.mkdir(exist_ok=True, parents=True)
+            output_bam = f"{row.library}.unmapped.bam"
 
             print(
-                f"{library_dir / output_bam}\t{row.library}\t{row.library}\t{row.sample_barcode}",
+                f"{lane_dir / output_bam}\t{row.library}\t{row.library}\t{row.sample_barcode}",
                 file=out,
             )
 
