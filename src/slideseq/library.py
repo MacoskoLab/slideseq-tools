@@ -39,7 +39,7 @@ class Reference:
 
     @property
     def intervals(self) -> Path:
-        return self.fasta.with_suffix(".gene.intervals")
+        return self.fasta.with_suffix(".genes.intervals")
 
     @property
     def ribosomal_intervals(self) -> Path:
