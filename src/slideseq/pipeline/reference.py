@@ -1,11 +1,12 @@
 # This script is to build genome reference
 
+import csv
 import importlib.resources
 import logging
 import os
-import pathlib
 import shutil
 import sys
+from pathlib import Path
 from subprocess import run
 
 import click
@@ -18,10 +19,55 @@ from slideseq.util.logger import create_logger
 log = logging.getLogger(__name__)
 
 
+def check_gtf(reference_gtf: Path, mt_sequence: str):
+    warnings = {"header": False, "mt_present": True}
+    fields = ["gene_name", "gene_id"]
+    for field in fields:
+        warnings[field] = False
+
+    with reference_gtf.open() as fh:
+        rdr = csv.reader(fh, delimiter="\t")
+        row = next(rdr)
+        if row[0][0] != "#":
+            warnings["header"] = True
+        for row in rdr:
+            if row[0][0] == "#":
+                continue
+            elif row[0].startswith(mt_sequence):
+                warnings["mt_present"] = True
+
+            for field in fields:
+                if row[8].find(field) == -1:
+                    warnings[field] = True
+
+    if not any(warnings.values()):
+        return True
+    else:
+        if warnings["header"]:
+            log.warning("No header detected in GTF file")
+        if warnings["mt_present"]:
+            log.warning(f"No entries were matched the MT prefix '{mt_sequence}'")
+        for field in fields:
+            if warnings[field]:
+                log.warning(f"Some rows are missing the field '{field}'")
+
+        return False
+
+
 @click.command(name="build_ref", no_args_is_help=True)
-@click.option("-n", "--genome-name", help="Name for the reference")
-@click.option("-f", "--reference-fasta", type=click.Path(dir_okay=False, exists=True))
-@click.option("-g", "--reference-gtf", type=click.Path(dir_okay=False, exists=True))
+@click.option("-n", "--genome-name", required=True, help="Name for the reference")
+@click.option(
+    "-f",
+    "--reference-fasta",
+    required=True,
+    type=click.Path(dir_okay=False, exists=True),
+)
+@click.option(
+    "-g", "--reference-gtf", required=True, type=click.Path(dir_okay=False, exists=True)
+)
+@click.option(
+    "-m", "--mt-sequence", required=True, help="Name in GTF for mitochrondrial sequence"
+)
 @click.option(
     "--reference-dir",
     type=click.Path(dir_okay=True, file_okay=False),
@@ -29,7 +75,6 @@ log = logging.getLogger(__name__)
     show_default=True,
     help="Location where genome references are stored",
 )
-@click.option("--mt-sequence", help="Name prefix used in GTF for mitochrondrial genes")
 @click.option(
     "-F",
     "--filter-biotypes",
@@ -58,9 +103,9 @@ def main(
     env_name = slideseq.util.get_env_name()
     log.debug(f"Running in Conda env {env_name}")
 
-    reference_fasta = pathlib.Path(reference_fasta)
-    reference_gtf = pathlib.Path(reference_gtf)
-    output_dir = pathlib.Path(reference_dir) / genome_name
+    reference_fasta = Path(reference_fasta)
+    reference_gtf = Path(reference_gtf)
+    output_dir = Path(reference_dir) / genome_name
     star_dir = output_dir / "STAR"
 
     log.info(f"Building reference for genome {genome_name}")
@@ -83,6 +128,12 @@ def main(
         log.info(f"Creating output directory {star_dir}")
         if not dryrun:
             star_dir.mkdir(parents=True)
+
+    if check_gtf(reference_gtf, mt_sequence):
+        log.info("GTF has all required fields")
+    else:
+        log.error("Need to fix GTF errors")
+        return
 
     log.info(f"Creating genome reference for {reference_fasta}")
 
