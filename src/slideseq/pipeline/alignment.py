@@ -217,7 +217,7 @@ def main(
     cmd.extend(
         [
             "-R",
-            library.reference,
+            library.reference.fasta,
             "--UNMAPPED",
             library.polya_filtered_ubam,
             "--ALIGNED",

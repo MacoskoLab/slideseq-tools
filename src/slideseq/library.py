@@ -19,10 +19,15 @@ def validate_library_df(library: str, library_df: pd.DataFrame):
             raise ValueError(f"Library {library} has multiple values in column {col}")
 
 
-class Reference(Path):
+class Reference:
+    """Represents a genome fasta and associated reference files"""
+
+    def __init__(self, path):
+        self.fasta = Path(path)
+
     @property
     def base(self) -> Path:
-        return self.parent
+        return self.fasta.parent
 
     @property
     def genome_dir(self) -> Path:
@@ -30,102 +35,106 @@ class Reference(Path):
 
     @property
     def annotations(self) -> Path:
-        return self.with_suffix(".gtf")
+        return self.fasta.with_suffix(".gtf")
 
     @property
     def intervals(self) -> Path:
-        return self.with_suffix(".gene.intervals")
+        return self.fasta.with_suffix(".gene.intervals")
 
     @property
     def ribosomal_intervals(self) -> Path:
-        return self.with_suffix(".rRNA.intervals")
+        return self.fasta.with_suffix(".rRNA.intervals")
 
     @property
     def ref_flat(self) -> Path:
-        return self.with_suffix(".refFlat")
+        return self.fasta.with_suffix(".refFlat")
 
 
-class Base(Path):
-    def __init__(self, *args, **kwargs):
-        self.base_quality = kwargs.pop("base_quality")
-        self.min_transcripts_per_cell = kwargs.pop("min_transcripts_per_cell")
-        super().__init__(*args, **kwargs)
+class Base:
+    """Represents a BAM file and the associated metrics files"""
+
+    def __init__(self, path: Path, base_quality: int, min_transcripts_per_cell: int):
+        self.path = path
+        self.base_quality = base_quality
+        self.min_transcripts_per_cell = min_transcripts_per_cell
 
     def reads_per_cell(self, tag) -> Path:
-        return self.with_suffix(
+        return self.path.with_suffix(
             f".numReads_perCell_{tag}_mq_{self.base_quality}.txt.gz"
         )
 
     def downsampled_bam(self, ratio) -> Path:
-        return self.with_suffix(f".downsample_{ratio:.1f}.bam")
+        return self.path.with_suffix(f".downsample_{ratio:.1f}.bam")
 
     @property
     def bam(self) -> Path:
-        return self.with_suffix(".bam")
+        return self.path.with_suffix(".bam")
 
     @property
     def pdf(self) -> Path:
-        return self.with_suffix(".pdf")
+        return self.path.with_suffix(".pdf")
 
     @property
     def downsampling(self) -> Path:
-        return self.with_suffix(".downsampling.pdf")
+        return self.path.with_suffix(".downsampling.pdf")
 
     @property
     def alignment_pdf(self) -> Path:
-        return self.with_suffix(".alignment_quality.pdf")
+        return self.path.with_suffix(".alignment_quality.pdf")
 
     @property
     def mapping_rate(self) -> Path:
-        return self.with_suffix(".mapping_rate.txt")
+        return self.path.with_suffix(".mapping_rate.txt")
 
     @property
     def read_quality_metrics(self) -> Path:
-        return self.with_suffix(".ReadQualityMetrics.txt")
+        return self.path.with_suffix(".ReadQualityMetrics.txt")
 
     @property
     def digital_expression(self) -> Path:
-        return self.with_suffix(".digital_expression.txt.gz")
+        return self.path.with_suffix(".digital_expression.txt.gz")
 
     @property
     def digital_expression_summary(self) -> Path:
-        return self.with_suffix(".digital_expression_summary.txt")
+        return self.path.with_suffix(".digital_expression_summary.txt")
 
     @property
     def mtx(self) -> Path:
-        return self.with_suffix(".digital_expression_matrix.mtx.gz")
+        return self.path.with_suffix(".digital_expression_matrix.mtx.gz")
 
     @property
     def barcodes(self) -> Path:
-        return self.with_suffix(".digital_expression_barcodes.mtx.gz")
+        return self.path.with_suffix(".digital_expression_barcodes.mtx.gz")
 
     @property
     def genes(self) -> Path:
-        return self.with_suffix(".digital_expression_features.mtx.gz")
+        return self.path.with_suffix(".digital_expression_features.mtx.gz")
 
     @property
     def frac_intronic_exonic(self) -> Path:
-        return self.with_suffix(".fracIntronicExonic.txt")
+        return self.path.with_suffix(".fracIntronicExonic.txt")
 
     @property
     def frac_intronic_exonic_per_cell(self) -> Path:
-        return self.with_suffix(".fracIntronicExonicPerCell.txt.gz")
+        return self.path.with_suffix(".fracIntronicExonicPerCell.txt.gz")
 
     @property
     def xc_distribution(self) -> Path:
-        return self.with_suffix(".barcode_distribution_XC.txt")
+        return self.path.with_suffix(".barcode_distribution_XC.txt")
 
     @property
     def xm_distribution(self) -> Path:
-        return self.with_suffix(".barcode_distribution_XM.txt")
+        return self.path.with_suffix(".barcode_distribution_XM.txt")
 
     @property
     def reads_per_umi(self) -> Path:
-        return self.with_suffix(f".numReads_perUMI_XM_mq_{self.base_quality}.txt.gz")
+        return self.path.with_suffix(
+            f".numReads_perUMI_XM_mq_{self.base_quality}.txt.gz"
+        )
 
     @property
     def selected_cells(self) -> Path:
-        return self.with_suffix(
+        return self.path.with_suffix(
             f".{self.min_transcripts_per_cell}_transcripts_mq_{self.base_quality}_selected_cells.txt.gz"
         )
 
