@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import sys
@@ -6,8 +8,8 @@ from pathlib import Path
 from subprocess import PIPE, Popen, run
 from typing import Any, Union
 
+import slideseq.library as lib
 import slideseq.util.constants as constants
-from slideseq.library import Library
 
 log = logging.getLogger(__name__)
 
@@ -144,7 +146,7 @@ def get_lanes(run_info_file: Path) -> range:
     return range(1, lane_count + 1)
 
 
-def run_command(cmd: list[Any], name: str, library: Library, lane: int = None):
+def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):
     if lane is None:
         log.info(f"{name} for {library}")
     else:
@@ -165,7 +167,7 @@ def run_command(cmd: list[Any], name: str, library: Library, lane: int = None):
 def start_popen(
     cmd: list[Any],
     name: str,
-    library: Library,
+    library: lib.Library,
     lane: int = None,
     input_proc: Popen = None,
 ):
