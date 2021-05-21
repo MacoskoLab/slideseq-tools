@@ -100,10 +100,11 @@ TODO: currently the locations of these tools are hard-coded. They should be in a
 
 ### Setting up Google-Cloud-SDK
 
-You might need to authenticate the first time you run the pipeline. This just sets up your Google credentials on UGER so that it knows you have access to the worksheet.
+You might need to authenticate the first time you run the pipeline. This just sets up your Google credentials on UGER so that it knows you have access to the worksheet. You shouldn't have to do this again.
 
 ```shell
 use Google-Cloud-SDK
+gcloud init
 gcloud auth login
 
 # ... follow instructions
