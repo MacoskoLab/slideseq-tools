@@ -235,7 +235,7 @@ def main(
     run_command(cmd, "MergeBamFiles", library)
 
     # generate various metrics files, including digital expression matrix
-    calc_alignment_metrics(library.merged.bam, library, manifest.tmp_dir)
+    calc_alignment_metrics(library.merged, library, manifest.tmp_dir)
 
     if library.run_barcodematching:
         library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
@@ -258,7 +258,7 @@ def main(
 
         # do it all again, but should be faster on the smaller file
         calc_alignment_metrics(
-            library.matched.bam, library, manifest.tmp_dir, matched_barcodes_file, "XB"
+            library.matched, library, manifest.tmp_dir, matched_barcodes_file, "XB"
         )
 
         make_library_plots(library, bead_xy)
