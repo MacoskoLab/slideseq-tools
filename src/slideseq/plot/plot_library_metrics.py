@@ -292,7 +292,9 @@ def make_library_plots(library: Library, bead_xy: BeadXY = None):
 
         plot_dge_summary(pdf_pages, library.matched.digital_expression_summary, bead_xy)
 
-        plot_scrna_metrics(pdf_pages, library.matched.frac_intronic_exonic, bead_xy)
+        plot_scrna_metrics(
+            pdf_pages, library.matched.frac_intronic_exonic_per_cell, bead_xy
+        )
 
         for file_path, title in (
             (library.matched.xc_distribution, "Cell"),

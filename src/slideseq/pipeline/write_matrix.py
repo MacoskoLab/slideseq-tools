@@ -52,7 +52,7 @@ def write_sparse_matrix(library: Library):
         rdr = csv.reader(fh, delimiter="\t")
         _ = next(rdr)
         for i, row in enumerate(rdr):
-            for j, val in enumerate(row[:1]):
+            for j, val in enumerate(row[1:]):
                 data[i, j] = int(val)
 
     # write mtx file
