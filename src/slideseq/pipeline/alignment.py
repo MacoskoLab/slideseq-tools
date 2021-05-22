@@ -66,7 +66,12 @@ def main(
 
     procs = []
 
-    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", library.raw_ubam, "/dev/stdout")
+    cmd = dropseq_cmd(
+        "TagBamWithReadSequenceExtended",
+        library.raw_ubam,
+        "/dev/stdout",
+        manifest.tmp_dir,
+    )
     cmd.extend(
         [
             f"SUMMARY={library.cellular_tagged_summary}",
@@ -89,7 +94,9 @@ def main(
     )
 
     # Tag bam with read sequence extended molecular
-    cmd = dropseq_cmd("TagBamWithReadSequenceExtended", "/dev/stdin", "/dev/stdout")
+    cmd = dropseq_cmd(
+        "TagBamWithReadSequenceExtended", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
+    )
     cmd.extend(
         [
             f"SUMMARY={library.molecular_tagged_summary}",
@@ -112,13 +119,15 @@ def main(
     )
 
     # Filter low-quality reads
-    cmd = dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout")
+    cmd = dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout", manifest.tmp_dir)
     cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
     procs.append(start_popen(cmd, "FilterBam", library, lane, procs[-1]))
 
     # Trim reads with starting sequence
-    cmd = dropseq_cmd("TrimStartingSequence", "/dev/stdin", "/dev/stdout")
+    cmd = dropseq_cmd(
+        "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
+    )
     cmd.extend(
         [
             f"OUTPUT_SUMMARY={library.trimming_summary}",
@@ -131,7 +140,9 @@ def main(
     procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
 
     # Adapter-aware poly A trimming
-    cmd = dropseq_cmd("PolyATrimmer", "/dev/stdin", library.polya_filtered_ubam)
+    cmd = dropseq_cmd(
+        "PolyATrimmer", "/dev/stdin", library.polya_filtered_ubam, manifest.tmp_dir
+    )
     cmd.extend(
         [
             f"OUTPUT_SUMMARY={library.polya_filtering_summary}",
@@ -236,7 +247,9 @@ def main(
     procs.append(start_popen(cmd, "MergeBamAlignment", library, lane, procs[-1]))
 
     # Tag read with interval
-    cmd = dropseq_cmd("TagReadWithInterval", "/dev/stdin", "/dev/stdout")
+    cmd = dropseq_cmd(
+        "TagReadWithInterval", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
+    )
     cmd.extend([f"INTERVALS={library.reference.intervals}", "TAG=XG"])
 
     procs.append(start_popen(cmd, "TagReadWithInterval", library, lane, procs[-1]))
@@ -246,6 +259,7 @@ def main(
         "TagReadWithGeneFunction",
         "/dev/stdin",
         library.processed_bam,
+        manifest.tmp_dir,
         compression=5,
     )
     cmd.extend(

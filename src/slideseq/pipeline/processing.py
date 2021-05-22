@@ -46,27 +46,27 @@ def calc_alignment_metrics(
 ):
     # Bam tag histogram (cells)
     cmd = dropseq_cmd(
-        "BamTagHistogram", input_base.bam, input_base.reads_per_cell(cell_tag)
+        "BamTagHistogram", input_base.bam, input_base.reads_per_cell(cell_tag), tmp_dir
     )
     cmd.extend(
         [
             f"TAG={cell_tag}",
             "FILTER_PCR_DUPLICATES=false",
             f"READ_MQ={library.base_quality}",
-            f"TMP_DIR={tmp_dir}",
         ]
     )
 
     run_command(cmd, "BamTagHistogram (cells)", library)
 
     # Bam tag histogram (UMIs)
-    cmd = dropseq_cmd("BamTagHistogram", input_base.bam, input_base.reads_per_umi)
+    cmd = dropseq_cmd(
+        "BamTagHistogram", input_base.bam, input_base.reads_per_umi, tmp_dir
+    )
     cmd.extend(
         [
             "TAG=XM",
             "FILTER_PCR_DUPLICATES=false",
             f"READ_MQ={library.base_quality}",
-            f"TMP_DIR={tmp_dir}",
         ]
     )
 
@@ -93,21 +93,30 @@ def calc_alignment_metrics(
 
     # Base distribution at read position for raw cellular barcode
     cmd = dropseq_cmd(
-        "BaseDistributionAtReadPosition", input_base.bam, input_base.xc_distribution
+        "BaseDistributionAtReadPosition",
+        input_base.bam,
+        input_base.xc_distribution,
+        tmp_dir,
     )
     cmd.extend(["TAG=XC"])
     run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", library)
 
     # Base distribution at read position for molecular barcode
     cmd = dropseq_cmd(
-        "BaseDistributionAtReadPosition", input_base.bam, input_base.xm_distribution
+        "BaseDistributionAtReadPosition",
+        input_base.bam,
+        input_base.xm_distribution,
+        tmp_dir,
     )
     cmd.extend(["TAG=XM"])
     run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", library)
 
     # Gather read quality metrics
     cmd = dropseq_cmd(
-        "GatherReadQualityMetrics", input_base.bam, input_base.read_quality_metrics
+        "GatherReadQualityMetrics",
+        input_base.bam,
+        input_base.read_quality_metrics,
+        tmp_dir,
     )
     run_command(cmd, "GatherReadQualityMetrics", library)
 
@@ -116,6 +125,7 @@ def calc_alignment_metrics(
             "SingleCellRnaSeqMetricsCollector",
             input_base.bam,
             input_base.frac_intronic_exonic_per_cell,
+            tmp_dir,
             compression=6,
         )
         cmd.extend(
@@ -134,6 +144,7 @@ def calc_alignment_metrics(
         "SelectCellsByNumTranscripts",
         input_base.bam,
         input_base.selected_cells,
+        tmp_dir,
         compression=6,
     )
     cmd.extend(
@@ -154,6 +165,7 @@ def calc_alignment_metrics(
         "DigitalExpression",
         input_base.bam,
         input_base.digital_expression,
+        tmp_dir,
         compression=6,
     )
     cmd.extend(

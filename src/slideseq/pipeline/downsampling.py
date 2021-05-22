@@ -30,7 +30,7 @@ def downsample_dge(
     run_command(cmd, "DownsampleSam", library)
 
     # output to /dev/null because we don't want to keep the DGE matrix
-    cmd = dropseq_cmd("DigitalExpression", downsampled_bam, "/dev/null")
+    cmd = dropseq_cmd("DigitalExpression", downsampled_bam, "/dev/null", tmp_dir)
     cmd.extend(
         [
             "CELL_BARCODE_TAG=XC",
