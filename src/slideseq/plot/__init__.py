@@ -11,13 +11,13 @@ from slideseq.util import constants as constants
 
 
 @contextmanager
-def new_ax(pdf_pages: PdfPages, include_fig=False):
+def new_ax(pdf_pages: PdfPages, include_fig=False, ax_bounds=(0.1, 0.1, 0.8, 0.8)):
     """
     Simple helper to make a new figure and provide the axes for plotting,
     then save to an open PDF when finished.
     """
     fig = matplotlib.figure.Figure(figsize=(8, 8))
-    ax: Axes = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+    ax: Axes = fig.add_axes(ax_bounds)
 
     if include_fig:
         yield fig, ax

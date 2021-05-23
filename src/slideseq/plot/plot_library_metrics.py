@@ -34,7 +34,7 @@ def plot_combined_mapping_quality(
 
     x = np.arange(len(keys))
 
-    with new_ax(pdf_pages) as ax:
+    with new_ax(pdf_pages, ax_bounds=(0.1, 0.2, 0.8, 0.7)) as ax:
         ax.set_prop_cycle("color", ["lightskyblue", "goldenrod"])
         for i, m in enumerate(ms):
             ax.bar(
@@ -89,7 +89,7 @@ def plot_mapping_quality(pdf_pages: PdfPages, quality_metrics: Path):
     return qm
 
 
-def plot_frac_intronic_exonic(pdf_pages: PdfPages, frac_intron_exon: Path):
+def plot_frac_intronic_exonic(pdf_pages: PdfPages, frac_intron_exon: Path, title: str):
     # plot the fraction of reads mapping to different regions
     frac_ie, _ = read_frac_intronic_exonic(frac_intron_exon)
 
@@ -109,7 +109,7 @@ def plot_frac_intronic_exonic(pdf_pages: PdfPages, frac_intron_exon: Path):
         ax.set_ylim(0, 100)
 
         ax.set_ylabel("Percentage")
-        ax.set_title("All reads")
+        ax.set_title(title)
 
 
 def plot_reads_per_barcode(pdf_pages: PdfPages, barcode_count):
@@ -177,7 +177,7 @@ def plot_base_distribution(pdf_pages: PdfPages, base_dist_file: Path, title: str
             label=["A", "C", "G", "T"],
         )
         ax.legend(loc="lower right")
-        ax.set_xlim(0, base_distribution.shape[0] + 2)
+        ax.set_xlim(0, base_distribution.shape[0] + 1)
         ax.set_ylim(0, np.max(base_distribution) + 0.02)
 
         ax.set_xlabel("base position")
@@ -273,7 +273,9 @@ def make_library_plots(library: Library, bead_xy: BeadXY = None):
     else:
         qm = plot_mapping_quality(pdf_pages, library.merged.read_quality_metrics)
 
-    plot_frac_intronic_exonic(pdf_pages, library.merged.frac_intronic_exonic)
+    plot_frac_intronic_exonic(
+        pdf_pages, library.merged.frac_intronic_exonic, "Statistics for all reads"
+    )
 
     plot_reads_per_barcode(pdf_pages, library.merged.reads_per_cell("XC"))
 
@@ -288,7 +290,11 @@ def make_library_plots(library: Library, bead_xy: BeadXY = None):
     if bead_xy is not None:
         assert library.matched.bam.exists(), f"{library.matched.bam} does not exist"
 
-        plot_frac_intronic_exonic(pdf_pages, library.matched.frac_intronic_exonic)
+        plot_frac_intronic_exonic(
+            pdf_pages,
+            library.matched.frac_intronic_exonic,
+            "Statistics for matched reads",
+        )
 
         plot_dge_summary(pdf_pages, library.matched.digital_expression_summary, bead_xy)
 
