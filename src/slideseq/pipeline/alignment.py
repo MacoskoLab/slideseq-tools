@@ -174,7 +174,7 @@ def main(
     )
     run_command(cmd, "SamToFastq", library, lane)
 
-    # Map reads to genome sequence using STARsolo
+    # Map reads to genome sequence using STAR
     cmd = [
         "STAR",
         "--genomeDir",

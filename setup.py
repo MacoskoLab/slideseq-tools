@@ -39,6 +39,7 @@ setuptools.setup(
         "numpy",
         "openpyxl",
         "pandas",
+        "pysam",
         "scikit-learn",
         "scipy",
     ],
