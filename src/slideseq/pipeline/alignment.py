@@ -2,7 +2,7 @@
 
 import logging
 import os
-import pathlib
+from pathlib import Path
 
 import click
 
@@ -48,7 +48,7 @@ def main(
     create_logger(debug=debug, log_file=log_file)
 
     log.debug(f"Reading manifest from {manifest_file}")
-    manifest = Manifest.from_file(pathlib.Path(manifest_file))
+    manifest = Manifest.from_file(Path(manifest_file))
 
     # task array is 1-indexed
     library = manifest.get_library_lane(library_index - 1, lane)
