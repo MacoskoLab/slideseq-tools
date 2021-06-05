@@ -149,6 +149,15 @@ def get_lanes(run_info_file: Path) -> range:
     return range(1, lane_count + 1)
 
 
+def get_flowcell(run_info_file: Path) -> str:
+    # open the RunInfo.xml file and parse it with element tree
+    with run_info_file.open() as f:
+        run_info = et.parse(f)
+
+    flowcell = run_info.find("./Run/Flowcell").text
+    return flowcell
+
+
 def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):
     if lane is None:
         log.info(f"{name} for {library}")
