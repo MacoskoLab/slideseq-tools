@@ -7,8 +7,8 @@ from typing import Optional
 import pandas as pd
 import yaml
 
-from slideseq.library import Library, LibraryLane, Reference, validate_library_df
-from slideseq.util import constants as constants
+import slideseq.util.constants as constants
+from slideseq.library import Library, LibraryLane, Reference
 
 log = logging.getLogger(__name__)
 
@@ -16,8 +16,9 @@ log = logging.getLogger(__name__)
 @dataclass
 class Manifest:
     flowcell: str
-    flowcell_directory: Path
-    output_directory: Path
+    flowcell_dir: Path
+    workflow_dir: Path
+    library_dir: Path
     metadata_file: Path
     email_addresses: list[str]
 
@@ -30,8 +31,9 @@ class Manifest:
 
         return Manifest(
             flowcell=data["flowcell"],
-            flowcell_directory=Path(data["flowcell_directory"]),
-            output_directory=Path(data["output_directory"]),
+            flowcell_dir=Path(data["flowcell_dir"]),
+            workflow_dir=Path(data["workflow_dir"]),
+            library_dir=Path(data["library_dir"]),
             metadata_file=Path(data["metadata_file"]),
             email_addresses=data["email_addresses"],
         )
@@ -39,8 +41,9 @@ class Manifest:
     def to_file(self, output_file: Path):
         data = {
             "flowcell": self.flowcell,
-            "flowcell_directory": str(self.flowcell_directory),
-            "output_directory": str(self.output_directory),
+            "flowcell_dir": str(self.flowcell_dir),
+            "workflow_dir": str(self.workflow_dir),
+            "library_dir": str(self.library_dir),
             "metadata_file": str(self.metadata_file),
             "email_addresses": self.email_addresses,
         }
@@ -65,7 +68,7 @@ class Manifest:
         return library_name, row, lanes, Reference(row.reference)
 
     def get_library(self, library_index: int) -> Library:
-        return Library(*self._get_library(library_index))
+        return Library(*self._get_library(library_index), library_dir=self.library_dir)
 
     def get_library_lane(self, library_index: int, lane: int) -> Optional[LibraryLane]:
         library_name, row, lanes, reference = self._get_library(library_index)
@@ -74,15 +77,15 @@ class Manifest:
             log.warning("Library not present in this lane, nothing to do here")
             return None
 
-        return LibraryLane(library_name, row, lanes, reference, lane)
+        return LibraryLane(library_name, row, lanes, reference, self.library_dir, lane)
 
     @property
     def tmp_dir(self):
-        return self.output_directory / "tmp"
+        return self.workflow_dir / "tmp"
 
     @property
     def log_dir(self):
-        return self.output_directory / "logs"
+        return self.workflow_dir / "logs"
 
 
 def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
@@ -124,20 +127,6 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
     if not run_info_file.exists():
         warning_logs.append(f"{run_info_file} for flowcell {flowcell} does not exist")
 
-    illumina_platform_set = set(flowcell_df.illuminaplatform)
-    if len(illumina_platform_set) > 1:
-        warning_logs.append(
-            f"Flowcell {flowcell} has multiple Illumina platforms associated with it;"
-            " please correct to single platform before running."
-        )
-
-    # check if platform supported
-    if not illumina_platform_set & constants.PLATFORMS:
-        warning_logs.append(
-            f"Flowcell {flowcell} has unsupported platform; please correct to one of"
-            f" {' '.join(constants.PLATFORMS)} before running."
-        )
-
     # check if references exist
     if not all(os.path.isfile(build) for build in flowcell_df.reference):
         warning_logs.append(
@@ -177,3 +166,17 @@ def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
             new_rows.append(row.copy())
 
     return pd.DataFrame(new_rows, index=range(len(new_rows)))
+
+
+def validate_library_df(library_name: str, library_df: pd.DataFrame):
+    """Verify that all of the columns in the dataframe are constant, except
+    for the lane which was expanded out earlier"""
+
+    for col in constants.METADATA_COLS:
+        if col.lower() == "lane":
+            continue
+
+        if len(set(library_df[col.lower()])) != 1:
+            raise ValueError(
+                f"Library {library_name} has multiple values in column {col}"
+            )

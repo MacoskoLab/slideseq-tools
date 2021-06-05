@@ -13,6 +13,7 @@ import click
 
 import slideseq.scripts
 import slideseq.util.constants as constants
+from slideseq.config import get_config
 from slideseq.util import qsub_args
 from slideseq.util.logger import create_logger
 
@@ -69,13 +70,6 @@ def check_gtf(reference_gtf: Path, mt_sequence: str):
     "-m", "--mt-sequence", required=True, help="Name in GTF for mitochrondrial sequence"
 )
 @click.option(
-    "--reference-dir",
-    type=click.Path(dir_okay=True, file_okay=False),
-    default=constants.REFERENCE_DIR,
-    show_default=True,
-    help="Location where genome references are stored",
-)
-@click.option(
     "-F",
     "--filter-biotypes",
     multiple=True,
@@ -91,7 +85,6 @@ def main(
     genome_name: str,
     reference_fasta: str,
     reference_gtf: str,
-    reference_dir: str,
     mt_sequence: str,
     filter_biotypes: list[str],
     overwrite: bool = False,
@@ -102,10 +95,11 @@ def main(
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = slideseq.util.get_env_name()
     log.debug(f"Running in Conda env {env_name}")
+    config = get_config()
 
     reference_fasta = Path(reference_fasta)
     reference_gtf = Path(reference_gtf)
-    output_dir = Path(reference_dir) / genome_name
+    output_dir = config.reference_dir / genome_name
     star_dir = output_dir / "STAR"
 
     log.info(f"Building reference for genome {genome_name}")
@@ -144,8 +138,8 @@ def main(
         mkref_args = qsub_args(
             log_file=output_dir / "build_reference.log",
             CONDA_ENV=env_name,
-            PICARD_JAR=constants.PICARD,
-            DROPSEQ_DIR=constants.DROPSEQ_DIR,
+            PICARD_JAR=config.picard,
+            DROPSEQ_DIR=config.dropseq_dir,
             GENOME_NAME=genome_name,
             REFERENCE_FASTA=reference_fasta,
             REFERENCE_GTF=reference_gtf,

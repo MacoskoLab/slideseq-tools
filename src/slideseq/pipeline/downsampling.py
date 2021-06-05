@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from slideseq.config import Config
 from slideseq.library import Library
 from slideseq.util import dropseq_cmd, picard_cmd, run_command
 
@@ -8,14 +9,19 @@ log = logging.getLogger(__name__)
 
 
 def downsample_dge(
-    bam_file: Path, downsampled_bam: Path, library: Library, ratio: float, tmp_dir: Path
+    config: Config,
+    bam_file: Path,
+    downsampled_bam: Path,
+    library: Library,
+    ratio: float,
+    tmp_dir: Path,
 ):
     digital_expression_summary = (
         library.downsample_dir / f"{library}_{ratio:.1f}.digital_expression_summary.txt"
     )
 
     # Downsample reads
-    cmd = picard_cmd("DownsampleSam", tmp_dir)
+    cmd = picard_cmd(config.picard, "DownsampleSam", tmp_dir)
     # true ratio is r / (r + 0.1) because we are using the previous output
     cmd.extend(
         [
@@ -30,7 +36,9 @@ def downsample_dge(
     run_command(cmd, "DownsampleSam", library)
 
     # output to /dev/null because we don't want to keep the DGE matrix
-    cmd = dropseq_cmd("DigitalExpression", downsampled_bam, "/dev/null", tmp_dir)
+    cmd = dropseq_cmd(
+        config.dropseq_dir, "DigitalExpression", downsampled_bam, "/dev/null", tmp_dir
+    )
     cmd.extend(
         [
             "CELL_BARCODE_TAG=XC",

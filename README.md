@@ -13,7 +13,7 @@ use UGER  # to make the ish command available
 ish -l h_vmem=4G  # create an interactive session with extra memory
 git clone https://github.com/MacoskoLab/slideseq-tools.git  # clone this repository
 cd slideseq-tools
-conda env create -f environment.yml  # creates an environment named `slideseq`
+conda env create -f environment.yaml  # creates an environment named `slideseq`
 ```
 
 You can name the environment something else by adding `-n [env_name]`. There's no reason to do this, but I figured out how to make it work with an arbitary env name, so I wanted to mention it.
@@ -94,7 +94,7 @@ The following tools are also needed:
 
 If you are running the pipeline on UGER, you do not need to install any of these tools.
 
-TODO: currently the locations of these tools are hard-coded. They should be in a config file instead.
+The locations of these tools are in the `config.yaml` file in the slideseq package, along with other configurable paths.
 
 ## Config tips
 

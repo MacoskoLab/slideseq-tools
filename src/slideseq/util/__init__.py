@@ -9,7 +9,6 @@ from subprocess import PIPE, Popen, run
 from typing import Any, Union
 
 import slideseq.library as lib
-import slideseq.util.constants as constants
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +58,7 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
 
 
 def dropseq_cmd(
+    dropseq_dir: Path,
     command: str,
     input_file: Union[Path, str],
     output_file: Union[Path, str],
@@ -68,6 +68,7 @@ def dropseq_cmd(
 ):
     """Return the beginning of a DropSeq command, with standard options
 
+    :param dropseq_dir: path to the DropSeq installation
     :param command: name of the dropseq tool being invoked
     :param input_file: path to the input file
     :param output_file: path to the output file
@@ -77,7 +78,7 @@ def dropseq_cmd(
     """
 
     return [
-        constants.DROPSEQ_DIR / command,
+        dropseq_dir / command,
         "-m",
         mem,
         f"I={input_file}",
@@ -90,9 +91,10 @@ def dropseq_cmd(
     ]
 
 
-def picard_cmd(command: str, tmp_dir: Path, mem: str = "62g"):
+def picard_cmd(picard: Path, command: str, tmp_dir: Path, mem: str = "62g"):
     """Return the beginning of a Picard command, with standard options
 
+    :param picard: path to the Picard jar file
     :param command: name of the picard tool being invoked
     :param tmp_dir: Location of the tmp directory to use
     :param mem: Memory for the heap. Lower this for piped commands
@@ -106,7 +108,7 @@ def picard_cmd(command: str, tmp_dir: Path, mem: str = "62g"):
         "-XX:GCTimeLimit=20",
         "-XX:GCHeapFreeLimit=10",
         "-jar",
-        constants.PICARD,
+        picard,
         command,
         "--TMP_DIR",
         tmp_dir,

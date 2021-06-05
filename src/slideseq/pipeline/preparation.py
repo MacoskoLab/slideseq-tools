@@ -8,7 +8,6 @@ import logging
 
 import pandas as pd
 
-import slideseq.util.constants as constants
 from slideseq.metadata import Manifest
 from slideseq.util import get_lanes
 
@@ -16,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 def gen_barcode_file(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"L{lane:03d}" / "barcode_params.txt"
+    output_file = manifest.workflow_dir / f"L{lane:03d}" / "barcode_params.txt"
 
     with output_file.open("w") as out:
         print("barcode_sequence_1\tlibrary_name\tbarcode_name", file=out)
@@ -30,7 +29,7 @@ def gen_barcode_file(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
 
 
 def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"L{lane:03d}" / "library_params.txt"
+    output_file = manifest.workflow_dir / f"L{lane:03d}" / "library_params.txt"
 
     with output_file.open("w") as out:
         print("OUTPUT\tSAMPLE_ALIAS\tLIBRARY_NAME\tBARCODE_1", file=out)
@@ -38,7 +37,7 @@ def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int)
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # output the uBAM directly to library directory
             lane_dir = (
-                constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
+                manifest.library_dir / f"{row.date}_{row.library}" / f"L{lane:03d}"
             )
             lane_dir.mkdir(exist_ok=True, parents=True)
             output_bam = f"{row.library}.unmapped.bam"
@@ -51,16 +50,14 @@ def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int)
 
 def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
     """create a bunch of directories, and write some input files for picard"""
-    output_dir = manifest.output_directory
-
-    runinfo_file = manifest.flowcell_directory / "RunInfo.xml"
+    runinfo_file = manifest.flowcell_dir / "RunInfo.xml"
 
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"Creating directories in {output_dir}")
+    log.info(f"Creating directories in {manifest.workflow_dir}")
     for lane in lanes:
-        output_lane_dir = output_dir / f"L{lane:03d}"
+        output_lane_dir = manifest.workflow_dir / f"L{lane:03d}"
         output_lane_dir.mkdir(exist_ok=True)
         (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
@@ -73,28 +70,26 @@ def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
 
 def validate_demux(manifest: Manifest):
     """verify that `prepare_demux` was run previously"""
-    output_dir = manifest.output_directory
-
-    if not output_dir.exists():
-        log.error(f"{output_dir} does not exist")
+    if not manifest.workflow_dir.exists():
+        log.error(f"{manifest.workflow_dir} does not exist")
         return False
 
     if not manifest.metadata_file.exists():
         log.error(f"{manifest.metadata_file} does not exist")
         return False
 
-    runinfo_file = manifest.flowcell_directory / "RunInfo.xml"
+    runinfo_file = manifest.flowcell_dir / "RunInfo.xml"
 
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"Checking directories in {output_dir}")
+    log.info(f"Checking directories in {manifest.workflow_dir}")
     for lane in lanes:
         for p in (
-            output_dir / f"L{lane:03d}",
-            output_dir / f"L{lane:03d}" / "barcodes",
-            output_dir / f"L{lane:03d}" / "barcode_params.txt",
-            output_dir / f"L{lane:03d}" / "library_params.txt",
+            manifest.workflow_dir / f"L{lane:03d}",
+            manifest.workflow_dir / f"L{lane:03d}" / "barcodes",
+            manifest.workflow_dir / f"L{lane:03d}" / "barcode_params.txt",
+            manifest.workflow_dir / f"L{lane:03d}" / "library_params.txt",
         ):
             if not p.exists():
                 log.error(f"{p} does not exist, demux looks incomplete")

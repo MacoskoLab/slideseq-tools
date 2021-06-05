@@ -12,6 +12,7 @@ import click
 import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.gutil as gutil
+from slideseq.config import get_config
 from slideseq.metadata import Manifest, split_sample_lanes, validate_flowcell_df
 from slideseq.pipeline.preparation import (
     prepare_demux,
@@ -19,7 +20,6 @@ from slideseq.pipeline.preparation import (
     validate_demux,
 )
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
-from slideseq.util.constants import MAX_QSUB
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
         return "DRYRUN"
 
     # qsub may sporadically fail due to network issues
-    for _ in range(MAX_QSUB):
+    for _ in range(constants.MAX_QSUB):
         proc = run(qsub_arg_list, capture_output=True, text=True)
         if int(proc.returncode) == 0:
             # using -terse, proc.stdout is [job id].1-N:1' for array jobs
@@ -78,6 +78,7 @@ def main(
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = get_env_name()
     log.debug(f"Running in conda env {env_name}")
+    config = get_config()
 
     # you shouldn't demux without aligning, that's weird
     if demux and not align:
@@ -125,7 +126,7 @@ def main(
         flowcell_df = flowcell_df.astype(constants.METADATA_TYPES)
 
         # data locations
-        output_dir = constants.WORKFLOW_DIR / flowcell
+        output_dir = config.workflow_dir / flowcell
         flowcell_dir = pathlib.Path(flowcell_df.bclpath.values[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
@@ -136,8 +137,9 @@ def main(
         metadata_file = output_dir / "metadata.csv"
 
         manifest = Manifest(
-            flowcell_directory=flowcell_dir,
-            output_directory=output_dir,
+            flowcell_dir=flowcell_dir,
+            workflow_dir=output_dir,
+            library_dir=config.library_dir,
             metadata_file=metadata_file,
             flowcell=flowcell,
             email_addresses=sorted(
@@ -190,7 +192,7 @@ def main(
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
                 log_file=manifest.log_dir / "demultiplex.L00$TASK_ID.log",
-                PICARD_JAR=constants.PICARD,
+                PICARD_JAR=config.picard,
                 TMP_DIR=manifest.tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
                 READ_STRUCTURE=read_structure,

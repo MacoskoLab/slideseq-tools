@@ -7,7 +7,7 @@ import matplotlib.figure
 from matplotlib.axes import Axes
 from matplotlib.backends.backend_pdf import PdfPages
 
-from slideseq.util import constants as constants
+import slideseq.util.constants as constants
 
 
 @contextmanager
