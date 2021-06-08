@@ -3,7 +3,7 @@
 # This script is to generate PDF for downsampling
 
 import logging
-import pathlib
+from pathlib import Path
 
 import matplotlib.figure
 import numpy as np
@@ -15,8 +15,8 @@ log = logging.getLogger(__name__)
 
 
 def plot_downsampling(
-    downsampling_output: list[tuple[float, pathlib.Path]],
-    figure_path: pathlib.Path,
+    downsampling_output: list[tuple[float, Path]],
+    figure_path: Path,
 ):
     xy = []
 

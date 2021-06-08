@@ -5,6 +5,7 @@
 # converting barcodes to bam files
 
 import logging
+from pathlib import Path
 
 import pandas as pd
 
@@ -15,9 +16,7 @@ from slideseq.util import get_lanes
 log = logging.getLogger(__name__)
 
 
-def gen_barcode_file(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"L{lane:03d}" / "barcode_params.txt"
-
+def gen_barcode_file(flowcell_df: pd.DataFrame, lane: int, output_file: Path):
     with output_file.open("w") as out:
         print("barcode_sequence_1\tlibrary_name\tbarcode_name", file=out)
 
@@ -29,9 +28,7 @@ def gen_barcode_file(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
             )
 
 
-def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int):
-    output_file = manifest.output_directory / f"L{lane:03d}" / "library_params.txt"
-
+def gen_library_params(flowcell_df: pd.DataFrame, lane: int, output_file: Path):
     with output_file.open("w") as out:
         print("OUTPUT\tSAMPLE_ALIAS\tLIBRARY_NAME\tBARCODE_1", file=out)
 
@@ -49,15 +46,9 @@ def gen_library_params(flowcell_df: pd.DataFrame, manifest: Manifest, lane: int)
             )
 
 
-def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
+def prepare_demux(flowcell_df: pd.DataFrame, lanes: range, output_dir: Path):
     """create a bunch of directories, and write some input files for picard"""
-    output_dir = manifest.output_directory
 
-    runinfo_file = manifest.flowcell_directory / "RunInfo.xml"
-
-    lanes = get_lanes(runinfo_file)
-
-    # Create directories
     log.info(f"Creating directories in {output_dir}")
     for lane in lanes:
         output_lane_dir = output_dir / f"L{lane:03d}"
@@ -65,10 +56,10 @@ def prepare_demux(flowcell_df: pd.DataFrame, manifest: Manifest):
         (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
         # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
-        gen_barcode_file(flowcell_df, manifest, lane)
+        gen_barcode_file(flowcell_df, lane, output_lane_dir / "barcode_params.txt")
 
         # Generate library_params that is needed by IlluminaBasecallsToSam
-        gen_library_params(flowcell_df, manifest, lane)
+        gen_library_params(flowcell_df, lane, output_lane_dir / "library_params.txt")
 
 
 def validate_demux(manifest: Manifest):
@@ -90,11 +81,13 @@ def validate_demux(manifest: Manifest):
     # Create directories
     log.info(f"Checking directories in {output_dir}")
     for lane in lanes:
+        output_lane_dir = output_dir / f"L{lane:03d}"
+
         for p in (
-            output_dir / f"L{lane:03d}",
-            output_dir / f"L{lane:03d}" / "barcodes",
-            output_dir / f"L{lane:03d}" / "barcode_params.txt",
-            output_dir / f"L{lane:03d}" / "library_params.txt",
+            output_lane_dir,
+            output_lane_dir / "barcodes",
+            output_lane_dir / "barcode_params.txt",
+            output_lane_dir / "library_params.txt",
         ):
             if not p.exists():
                 log.error(f"{p} does not exist, demux looks incomplete")

@@ -315,6 +315,7 @@ def main(
 
     log.debug(f"Removing {library.merged.bam}")
     os.remove(library.merged.bam)
+    os.remove(library.merged.bam.with_suffix(".bai"))
 
     if matched_barcodes_file.exists():
         log.debug(f"Removing {matched_barcodes_file}")
