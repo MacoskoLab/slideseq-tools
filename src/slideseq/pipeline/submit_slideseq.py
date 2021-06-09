@@ -46,14 +46,6 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 
 @click.command(name="submit_flowcell", no_args_is_help=True)
 @click.argument("flowcells", nargs=-1, metavar="FLOWCELL [FLOWCELL ...]")
-@click.option(
-    "--spreadsheet",
-    default="1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic",
-    help="ID of the Google Sheet (default is Macosko Slide-seq Flowcell Alignment)",
-)
-@click.option(
-    "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
-)
 @click.option("--demux/--no-demux", default=True, help="Whether to run demultiplexing")
 @click.option("--align/--no-align", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
@@ -61,8 +53,6 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 @click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
 def main(
     flowcells: list[str],
-    spreadsheet: str,
-    worksheet: str,
     demux: bool = True,
     align: bool = True,
     dryrun: bool = False,
@@ -92,11 +82,13 @@ def main(
     drive_service = gutil.get_service(google_creds)
 
     # get a pandas DataFrame of the worksheet
-    log.debug(f"Downloading Google worksheet id={spreadsheet} worksheet={worksheet}")
-    worksheet_df = gutil.GoogleSheet(drive_service, spreadsheet)[worksheet]
+    log.debug(
+        f"Downloading Google Sheet, id={config.gsheet_id} worksheet={config.worksheet}"
+    )
+    worksheet_df = gutil.GoogleSheet(drive_service, config.gsheet_id)[config.worksheet]
     worksheet_df = worksheet_df.dropna(axis=0, how="all")
 
-    log.debug(f"Retreived worksheet {worksheet} with {len(worksheet_df)} rows")
+    log.debug(f"Retreived worksheet {config.worksheet} with {len(worksheet_df)} rows")
 
     log.info(f"Beginning submission for {len(flowcells)} flowcells")
     submitted = set()

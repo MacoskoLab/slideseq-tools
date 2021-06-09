@@ -3,3 +3,5 @@ dropseq_dir: /broad/macosko/bin/dropseq-tools-2.4.0
 reference_dir: /broad/macosko/reference
 workflow_dir: /broad/macosko/data/workflows/flowcell
 library_dir: /broad/macosko/data/libraries
+gsheet_id: 1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic
+worksheet: 'Experiment Log'
