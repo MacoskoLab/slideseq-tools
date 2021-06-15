@@ -2,7 +2,7 @@
 
 import logging
 import os
-import pathlib
+from pathlib import Path
 
 import click
 
@@ -50,7 +50,7 @@ def main(
     config = get_config()
 
     log.debug(f"Reading manifest from {manifest_file}")
-    manifest = Manifest.from_file(pathlib.Path(manifest_file))
+    manifest = Manifest.from_file(Path(manifest_file))
 
     # task array is 1-indexed
     library = manifest.get_library_lane(library_index - 1, lane)
@@ -191,7 +191,7 @@ def main(
     )
     run_command(cmd, "SamToFastq", library, lane)
 
-    # Map reads to genome sequence using STARsolo
+    # Map reads to genome sequence using STAR
     cmd = [
         "STAR",
         "--genomeDir",

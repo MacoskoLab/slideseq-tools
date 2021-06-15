@@ -4,7 +4,7 @@
 
 import importlib.resources
 import logging
-import pathlib
+from pathlib import Path
 from subprocess import run
 
 import click
@@ -119,7 +119,7 @@ def main(
 
         # data locations
         output_dir = config.workflow_dir / flowcell
-        flowcell_dir = pathlib.Path(flowcell_df.bclpath.values[0])
+        flowcell_dir = Path(flowcell_df.bclpath.values[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
         lanes = get_lanes(run_info_file=run_info_file)
@@ -149,6 +149,7 @@ def main(
                     "Log files already exist for this job, new output will be appended"
                 )
 
+            manifest.library_dir.mkdir(exist_ok=True)
             manifest.tmp_dir.mkdir(exist_ok=True)
 
             log.debug(f"Writing manifest to {manifest_file}")
@@ -165,7 +166,9 @@ def main(
             log.info(flowcell_df)
         elif demux:
             # make various directories
-            prepare_demux(flowcell_df, manifest)
+            prepare_demux(
+                flowcell_df, lanes, manifest.workflow_dir, manifest.library_dir
+            )
             flowcell_df.to_csv(metadata_file, header=True, index=False)
         elif not validate_demux(manifest):
             # appears that demux was not run previously
