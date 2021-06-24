@@ -37,12 +37,12 @@ def write_sparse_matrix(library: Library):
         cols = next(rdr)[1:]
         rows = [r[0] for r in rdr]
 
-    with library.matched.barcodes.open("w") as out:
+    with gzip.open(library.matched.barcodes, "wt") as out:
         for bc in cols:
             print(bc, file=out)
 
     # write features (genes) file
-    with library.matched.genes.open("w") as out:
+    with gzip.open(library.matched.genes, "wt") as out:
         for gene in rows:
             print(f"{gene_dict.get(gene, gene)}\t{gene}", file=out)
 

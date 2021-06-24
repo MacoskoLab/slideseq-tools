@@ -3,6 +3,7 @@
 import gzip
 import logging
 import os
+import shutil
 from pathlib import Path
 
 import click
@@ -251,6 +252,8 @@ def main(
 
     if library.run_barcodematching:
         library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
+        shutil.copy(library.bead_barcodes, library.barcode_matching_dir)
+        shutil.copy(library.bead_locations, library.barcode_matching_dir)
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
             library.merged.selected_cells, library.bead_barcodes, library.bead_locations
