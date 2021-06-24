@@ -31,6 +31,8 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
     for a in aligned_bam:
         mp[a.query_name] += 1
 
+    mp = {qn for qn, count in mp.items() if count > 1}
+
     aligned_bam.reset()
 
     unique_score = Counter()
@@ -41,20 +43,20 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
     multi_ratio = Counter()
 
     for a in aligned_bam:
-        if mp[a.query_name] == 1:
-            if a.has_tag("AS"):
-                unique_score[a.get_tag("AS")] += 1
-            if a.has_tag("nM"):
-                unique_mismatch[a.get_tag("nM")] += 1
-            r = round(100 * a.get_cigar_stats()[0][0] / a.qlen)
-            unique_ratio[r] += 1
-        else:
+        if a.query_name in mp:
             if a.has_tag("AS"):
                 multi_score[a.get_tag("AS")] += 1
             if a.has_tag("nM"):
                 multi_mismatch[a.get_tag("nM")] += 1
-            r = round(100 * a.get_cigar_stats()[0][0] / a.qlen)
+            r = round(100 * a.get_cigar_stats()[0][0] / a.query_length)
             multi_ratio[r] += 1
+        else:
+            if a.has_tag("AS"):
+                unique_score[a.get_tag("AS")] += 1
+            if a.has_tag("nM"):
+                unique_mismatch[a.get_tag("nM")] += 1
+            r = round(100 * a.get_cigar_stats()[0][0] / a.query_length)
+            unique_ratio[r] += 1
 
     log.debug(f"Writing alignment stats for {bam_file} to {out_file}")
 
