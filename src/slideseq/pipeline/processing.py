@@ -276,13 +276,14 @@ def main(
             library.matched, library, manifest.tmp_dir, matched_barcodes_file, "XB"
         )
 
-        make_library_plots(library, bead_xy)
-
         write_sparse_matrix(library)
+
+        make_library_plots(library, bead_xy)
     else:
         make_library_plots(library)
 
     if library.gen_downsampling:
+        log.info("Starting downsampling")
         library.downsample_dir.mkdir(exist_ok=True, parents=True)
 
         # start with the full DGE summary
