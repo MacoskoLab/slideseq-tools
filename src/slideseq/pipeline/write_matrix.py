@@ -56,7 +56,8 @@ def write_sparse_matrix(library: Library):
         _ = next(rdr)
         for i, row in enumerate(rdr):
             for j, val in enumerate(row[1:]):
-                data[i, j] = int(val)
+                if val != "0":
+                    data[i, j] = int(val)
 
     # write mtx file
     with gzip.open(library.matched.mtx, "wb") as out:
