@@ -18,6 +18,8 @@ conda env create -f environment.yml  # creates an environment named `slideseq`
 
 You can name the environment something else by adding `-n [env_name]`. There's no reason to do this, but I figured out how to make it work with an arbitary env name, so I wanted to mention it.
 
+See the bottom of this README for instructions on setting up `gcloud` credentials.
+
 ### Submitting a flowcell
 
 Again, you should do this from an interactive session, as downloading the worksheet is a little too strenuous for the login node.
@@ -100,12 +102,13 @@ TODO: currently the locations of these tools are hard-coded. They should be in a
 
 ### Setting up Google-Cloud-SDK
 
-You might need to authenticate the first time you run the pipeline. This just sets up your Google credentials on UGER so that it knows you have access to the worksheet. You shouldn't have to do this again.
+You will need to authenticate the first time you run the pipeline. This just sets up your Google credentials on UGER so that it knows you have access to the worksheet. You shouldn't have to do this again after the first time. If you have any permissions issues you might not have the correct permissions in our account, let us know and we can fix it.
 
 ```shell
 use Google-Cloud-SDK
 gcloud init
 gcloud auth login
+gcloud auth application-default login
 
 # ... follow instructions
 ```
