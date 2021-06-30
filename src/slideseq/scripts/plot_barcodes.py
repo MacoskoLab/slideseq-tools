@@ -2,6 +2,7 @@ import gzip
 import itertools
 import logging
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import click
 import matplotlib
@@ -25,7 +26,7 @@ def plot_log_hist(dist, title, pdf_pages):
         ax.set_title(title)
 
 
-def spatial_plot(bead_xy_a, dist, title, pdf_pages, pct=99):
+def spatial_plot(bead_xy_a, dist, title, pdf_pages, pct: float = 95.0):
     with new_ax(pdf_pages, include_fig=True) as (fig, ax):
         # version of 'Blues' colormap that is pure white at the bottom
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
@@ -73,6 +74,9 @@ def spatial_plot(bead_xy_a, dist, title, pdf_pages, pct=99):
     "--extra_pdf", type=click.Path(), help="Optional path for a bunch of other plots"
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
+@click.option(
+    "--percentile", type=float, default=95.0, help="Percentile for scaling plots"
+)
 def main(
     fastq_r1,
     fastq_r2,
@@ -82,6 +86,7 @@ def main(
     output_pdf,
     extra_pdf=None,
     debug=False,
+    percentile=95.0,
 ):
     """
     This script generates some plots for mapping barcoded reads.
@@ -91,6 +96,8 @@ def main(
     The second read is assumed to have TAG_SEQUENCE in bases 20-40.
     """
     create_logger(debug, dryrun=False)
+
+    output_pdf = Path(output_pdf)
 
     log.debug(f"Reading from {fastq_r1}")
     with gzip.open(fastq_r1, "rt") as fh:
@@ -175,8 +182,6 @@ def main(
         ).mean(0)
         bead_xy[degen_bc] = (mean_x, mean_y)
 
-    bead_xy_a = np.vstack([bead_xy[dbc] for dbc in degen_bead_barcodes])
-
     barcode_matching = bipartite_matching(
         bead_barcodes, degen_bead_barcodes, bead_groups, seq_barcodes
     )
@@ -214,9 +219,17 @@ def main(
         umis_per_bead[bead_bc].add(umi)
         reads_per_bead[bead_bc] += 1
 
+    filtered_barcodes = [bc for bc in degen_bead_barcodes if umis_per_bead[bc]]
+    bead_xy_a = np.vstack([bead_xy[dbc] for dbc in filtered_barcodes])
+
+    with output_pdf.with_suffix(".txt").open("w") as out:
+        print("bead_barcode\tumis\treads", file=out)
+        for bc in filtered_barcodes:
+            print(f"{bc}\t{len(umis_per_bead[bc])}\t{reads_per_bead[bc]}", file=out)
+
     if extra_pdf is not None:
         plot_log_hist(
-            [len(umis_per_bead[bc]) for bc in degen_bead_barcodes],
+            [len(umis_per_bead[bc]) for bc in filtered_barcodes],
             "UMIs per bead",
             extra_pdf_pages,
         )
@@ -228,30 +241,34 @@ def main(
     log.info("Making plots")
     spatial_plot(
         bead_xy_a,
-        [len(umis_per_bead[bc]) for bc in degen_bead_barcodes],
+        [len(umis_per_bead[bc]) for bc in filtered_barcodes],
         "UMIs per bead",
         pdf_pages,
+        pct=percentile,
     )
 
     spatial_plot(
         bead_xy_a,
-        [np.log10(1 + len(umis_per_bead[bc])) for bc in degen_bead_barcodes],
+        [np.log10(len(umis_per_bead[bc])) for bc in filtered_barcodes],
         "log10 UMIs per bead",
         pdf_pages,
+        pct=percentile,
     )
 
     spatial_plot(
         bead_xy_a,
-        [reads_per_bead[bc] for bc in degen_bead_barcodes],
+        [reads_per_bead[bc] for bc in filtered_barcodes],
         "Reads per bead",
         pdf_pages,
+        pct=percentile,
     )
 
     spatial_plot(
         bead_xy_a,
-        [np.log10(1 + reads_per_bead[bc]) for bc in degen_bead_barcodes],
+        [np.log10(1 + reads_per_bead[bc]) for bc in filtered_barcodes],
         "log10 reads per bead",
         pdf_pages,
+        pct=percentile,
     )
 
     pdf_pages.close()
