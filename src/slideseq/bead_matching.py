@@ -18,7 +18,7 @@ def degen_barcode(barcode_set: set[str]):
 
     :param barcode_set: A degenerate barcode set, e.g. a group of barcodes that
                         are considered equivalent and should be merged
-    :return: a single barcode with the consensus nuceotide when possible or N if not
+    :return: a single barcode with the consensus nucleotide when possible or N if not
     """
     return "".join(s.pop() if len(s) == 1 else "N" for s in map(set, zip(*barcode_set)))
 
@@ -106,7 +106,7 @@ def bipartite_matching(
     assert seq_nset.issubset("ACGTN")
 
     # if N does not appear in the sequence data we can save a little time
-    # when we make our graph, because none of the queries will have them
+    # when we make our graph, because none of the queries will have it
     include_N = "N" in seq_nset
 
     # construct bipartite graph: barcode to hamming set
@@ -123,7 +123,7 @@ def bipartite_matching(
 
     barcode_mapping = dict()
 
-    # find unambiguous matches from sequencing: within distance one of a single group
+    # find unambiguous matches from sequencing: <= hamming distance 1 of exactly one group
     for seq_bc in seq_barcodes:
         if seq_bc in matching_graph:
             sample_set = set(matching_graph[seq_bc])
