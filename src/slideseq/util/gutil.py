@@ -3,7 +3,6 @@
 import io
 import json
 import logging
-from datetime import datetime
 
 import pandas as pd
 from google.cloud import secretmanager
@@ -57,46 +56,3 @@ class GoogleSheet:
     def __getitem__(self, item):
         """Returns a dataframe from a sheet in the file from its sheet name"""
         return pd.read_excel(self.sheet_io, sheet_name=item)
-
-
-def update_gsheet_from_df(
-    service: Resource, sheet_id: str, tab_name: str, df: pd.DataFrame
-) -> None:
-    """
-    Given the sheet_id and tab_name, update the contents of the Google Sheet with the
-    contents of the df DataFrame.
-    """
-    df = df.fillna("")
-    rows = df.values.tolist()
-
-    # Serialize incompatible types as string
-    for row in rows:
-        for i in range(len(row)):
-            if type(row[i]) in [datetime, pd.Timestamp]:
-                row[i] = str(row[i])
-
-    # Replace the header for consistency
-    header = [df.columns.to_list()]
-    rows = header + rows
-
-    sheet_range = f"{tab_name}!A1"
-    value_input_option = INPUT_MODE
-    value_range_body = {
-        "range": sheet_range,
-        "majorDimension": DIMENSION,
-        "values": rows,
-    }
-    sheets = service.spreadsheets().values()
-
-    log.info(f"Clearing sheet ({sheet_id})...")
-    sheets.clear(spreadsheetId=sheet_id, range=sheet_range).execute()
-
-    log.info(f"Updating sheet ({sheet_id})...")
-    request = sheets.update(
-        spreadsheetId=sheet_id,
-        range=sheet_range,
-        valueInputOption=value_input_option,
-        body=value_range_body,
-    )
-    request.execute()
-    log.info("Sheet updated!")
