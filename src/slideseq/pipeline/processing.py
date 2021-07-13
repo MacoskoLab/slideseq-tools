@@ -3,6 +3,7 @@
 import gzip
 import logging
 import os
+import shutil
 from pathlib import Path
 
 import click
@@ -254,6 +255,8 @@ def main(
 
     if library.run_barcodematching:
         library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
+        shutil.copy(library.bead_barcodes, library.barcode_matching_dir)
+        shutil.copy(library.bead_locations, library.barcode_matching_dir)
 
         barcode_mapping, bead_xy, bead_graph = match_barcodes(
             library.merged.selected_cells, library.bead_barcodes, library.bead_locations
@@ -281,13 +284,14 @@ def main(
             "XB",
         )
 
-        make_library_plots(library, bead_xy)
-
         write_sparse_matrix(library)
+
+        make_library_plots(library, bead_xy)
     else:
         make_library_plots(library)
 
     if library.gen_downsampling:
+        log.info("Starting downsampling")
         library.downsample_dir.mkdir(exist_ok=True, parents=True)
 
         # start with the full DGE summary

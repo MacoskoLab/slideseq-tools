@@ -90,11 +90,11 @@ class Base:
 
     @property
     def barcodes(self) -> Path:
-        return self.path.with_suffix(".digital_expression_barcodes.mtx.gz")
+        return self.path.with_suffix(".digital_expression_barcodes.tsv.gz")
 
     @property
     def genes(self) -> Path:
-        return self.path.with_suffix(".digital_expression_features.mtx.gz")
+        return self.path.with_suffix(".digital_expression_features.tsv.gz")
 
     @property
     def frac_intronic_exonic(self) -> Path:
