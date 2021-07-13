@@ -19,7 +19,7 @@ from slideseq.pipeline.write_matrix import write_sparse_matrix
 from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
-from slideseq.util import dropseq_cmd, give_group_access, picard_cmd, run_command
+from slideseq.util import give_group_access, run_command
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -34,12 +34,8 @@ def calc_alignment_metrics(
     cell_tag: str = "XC",
 ):
     # Bam tag histogram (cells)
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
-        "BamTagHistogram",
-        input_base.bam,
-        input_base.reads_per_cell(cell_tag),
-        tmp_dir,
+    cmd = config.dropseq_cmd(
+        "BamTagHistogram", input_base.bam, input_base.reads_per_cell(cell_tag), tmp_dir
     )
     cmd.extend(
         [
@@ -52,12 +48,8 @@ def calc_alignment_metrics(
     run_command(cmd, "BamTagHistogram (cells)", library)
 
     # Bam tag histogram (UMIs)
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
-        "BamTagHistogram",
-        input_base.bam,
-        input_base.reads_per_umi,
-        tmp_dir,
+    cmd = config.dropseq_cmd(
+        "BamTagHistogram", input_base.bam, input_base.reads_per_umi, tmp_dir
     )
     cmd.extend(
         [
@@ -70,7 +62,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BamTagHistogram (UMIs)", library)
 
     # Collect RnaSeq metrics
-    cmd = picard_cmd(config.picard, "CollectRnaSeqMetrics", tmp_dir)
+    cmd = config.picard_cmd("CollectRnaSeqMetrics", tmp_dir)
     cmd.extend(
         [
             "--INPUT",
@@ -89,8 +81,7 @@ def calc_alignment_metrics(
     run_command(cmd, "CollectRnaSeqMetrics", library)
 
     # Base distribution at read position for raw cellular barcode
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
+    cmd = config.dropseq_cmd(
         "BaseDistributionAtReadPosition",
         input_base.bam,
         input_base.xc_distribution,
@@ -100,8 +91,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", library)
 
     # Base distribution at read position for molecular barcode
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
+    cmd = config.dropseq_cmd(
         "BaseDistributionAtReadPosition",
         input_base.bam,
         input_base.xm_distribution,
@@ -111,8 +101,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", library)
 
     # Gather read quality metrics
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
+    cmd = config.dropseq_cmd(
         "GatherReadQualityMetrics",
         input_base.bam,
         input_base.read_quality_metrics,
@@ -121,8 +110,7 @@ def calc_alignment_metrics(
     run_command(cmd, "GatherReadQualityMetrics", library)
 
     if matched_barcodes is not None:
-        cmd = dropseq_cmd(
-            config.dropseq_dir,
+        cmd = config.dropseq_cmd(
             "SingleCellRnaSeqMetricsCollector",
             input_base.bam,
             input_base.frac_intronic_exonic_per_cell,
@@ -141,8 +129,7 @@ def calc_alignment_metrics(
         run_command(cmd, "SingleCellRnaSeqMetricsCollector", library)
 
     # Select cells by num transcripts
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
+    cmd = config.dropseq_cmd(
         "SelectCellsByNumTranscripts",
         input_base.bam,
         input_base.selected_cells,
@@ -163,8 +150,7 @@ def calc_alignment_metrics(
     run_command(cmd, "SelectCellsByNumTranscripts", library)
 
     # Generate digital expression files for all Illumina barcodes
-    cmd = dropseq_cmd(
-        config.dropseq_dir,
+    cmd = config.dropseq_cmd(
         "DigitalExpression",
         input_base.bam,
         input_base.digital_expression,
@@ -229,7 +215,7 @@ def main(
     alignment_quality.combine_alignment_stats(library)
 
     # Merge bam files
-    cmd = picard_cmd(config.picard, "MergeSamFiles", manifest.tmp_dir)
+    cmd = config.picard_cmd("MergeSamFiles", manifest.tmp_dir)
     cmd.extend(
         [
             "--CREATE_INDEX",

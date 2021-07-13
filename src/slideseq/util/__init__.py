@@ -6,7 +6,7 @@ import sys
 import xml.etree.ElementTree as et
 from pathlib import Path
 from subprocess import PIPE, Popen, run
-from typing import Any, Union
+from typing import Any
 
 import slideseq.library as lib
 
@@ -55,70 +55,6 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
         arg_list.extend(["-v", f"{name}={value}"])
 
     return arg_list
-
-
-def dropseq_cmd(
-    dropseq_dir: Path,
-    command: str,
-    input_file: Union[Path, str],
-    output_file: Union[Path, str],
-    tmp_dir: Path,
-    mem: str = "8g",
-    compression: int = 0,
-):
-    """Return the beginning of a DropSeq command, with standard options
-
-    :param dropseq_dir: path to the DropSeq installation
-    :param command: name of the dropseq tool being invoked
-    :param input_file: path to the input file
-    :param output_file: path to the output file
-    :param tmp_dir: Location of the tmp directory to use
-    :param mem: memory for the heap. default is to share with other jobs
-    :param compression: compression level for output. Use 0 for speed, 5 for storage
-    """
-
-    return [
-        dropseq_dir / command,
-        "-m",
-        mem,
-        f"I={input_file}",
-        f"O={output_file}",
-        f"TMP_DIR={tmp_dir}",
-        "VALIDATION_STRINGENCY=SILENT",
-        f"COMPRESSION_LEVEL={compression}",
-        "VERBOSITY=WARNING",
-        "QUIET=true",
-    ]
-
-
-def picard_cmd(picard: Path, command: str, tmp_dir: Path, mem: str = "62g"):
-    """Return the beginning of a Picard command, with standard options
-
-    :param picard: path to the Picard jar file
-    :param command: name of the picard tool being invoked
-    :param tmp_dir: Location of the tmp directory to use
-    :param mem: Memory for the heap. Lower this for piped commands
-    """
-    return [
-        "java",
-        f"-Djava.io.tmp_dir={tmp_dir}",
-        f"-Xms{mem}",
-        f"-Xmx{mem}",
-        "-XX:+UseParallelGC",
-        "-XX:GCTimeLimit=20",
-        "-XX:GCHeapFreeLimit=10",
-        "-jar",
-        picard,
-        command,
-        "--TMP_DIR",
-        tmp_dir,
-        "--VALIDATION_STRINGENCY",
-        "SILENT",
-        "--VERBOSITY",
-        "WARNING",
-        "--QUIET",
-        "true",
-    ]
 
 
 def get_read_structure(run_info_file: Path) -> str:
