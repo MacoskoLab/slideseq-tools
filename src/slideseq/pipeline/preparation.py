@@ -32,7 +32,7 @@ def gen_library_params(
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # output the uBAM directly to library directory
             lane_dir = library_dir / f"{row.date}_{row.library}" / f"L{lane:03d}"
-            lane_dir.mkdir(exist_ok=True)
+            lane_dir.mkdir(exist_ok=True, parents=True)
             output_bam = f"{row.library}.unmapped.bam"
 
             wtr.writerow(
