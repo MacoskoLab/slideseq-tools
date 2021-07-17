@@ -19,7 +19,7 @@ from slideseq.pipeline.write_matrix import write_sparse_matrix
 from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
-from slideseq.util import give_group_access, run_command
+from slideseq.util import give_group_access, rsync_to_google, run_command
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -322,5 +322,7 @@ def main(
 
     log.debug("Setting group permissions")
     give_group_access(library.dir)
+    log.debug("Copying data to google storage")
+    rsync_to_google(library.dir, config.gs_path)
 
     log.info(f"Processing for {library} complete")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import logging
 import os
 import sys
@@ -28,6 +29,34 @@ def give_group_access(path: Path):
         for filename in filenames:
             # set ug+rw, o+r on files
             os.chmod(os.path.join(dirpath, filename), 0o664)
+
+
+def rsync_to_google(path: Path, gs_path: str):
+    # -m for multithreading
+    # -q to quiet output
+    # -C to continue on errors
+    # -e to ignore symlinks
+    # -r to recurse into directories
+    cmd = ["gsutil", "-m", "-q", "rsync", "-C", "-e", "-r", f"{path}", gs_path]
+
+    proc = run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        log.error(f"Error running gsutil rsync:\n\t{proc.stderr}")
+        sys.exit(1)
+    else:
+        log.info("gsutil rsync completed")
+
+    date = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+    cmd = ["gsutil", "-m-qsetmeta", "-h", f"Custom-Time:{date}", f"{gs_path}/**bam"]
+    proc = run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        log.error(f"Error running gsutil setmeta:\n\t{proc.stderr}")
+        sys.exit(1)
+    else:
+        log.info("gsutil setmeta completed")
 
 
 def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list[str]:
