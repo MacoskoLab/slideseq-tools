@@ -4,20 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from slideseq.util import constants as constants
-
-
-def validate_library_df(library: str, library_df: pd.DataFrame):
-    """Verify that all of the columns in the dataframe are constant, except
-    for the lane which was expanded out earlier"""
-
-    for col in constants.METADATA_COLS:
-        if col.lower() == "lane":
-            continue
-
-        if len(set(library_df[col.lower()])) != 1:
-            raise ValueError(f"Library {library} has multiple values in column {col}")
-
 
 class Reference:
     """Represents a genome fasta and associated reference files"""
@@ -147,6 +133,7 @@ class Library:
     row: pd.Series
     lanes: list[int]
     reference: Reference
+    library_dir: Path
 
     def get_bead_structure(self) -> list[tuple[str, int, int]]:
         """
@@ -209,7 +196,7 @@ class Library:
     @property
     def dir(self) -> Path:
         """Base directory for the library data"""
-        return constants.LIBRARY_DIR / f"{self.row.date}_{self.name}"
+        return self.library_dir / f"{self.row.date}_{self.name}"
 
     @property
     def barcode_matching_dir(self) -> Path:

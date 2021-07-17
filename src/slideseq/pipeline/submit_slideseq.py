@@ -12,6 +12,7 @@ import click
 import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.gutil as gutil
+from slideseq.config import get_config
 from slideseq.metadata import Manifest, split_sample_lanes, validate_flowcell_df
 from slideseq.pipeline.preparation import (
     prepare_demux,
@@ -19,7 +20,6 @@ from slideseq.pipeline.preparation import (
     validate_demux,
 )
 from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
-from slideseq.util.constants import MAX_QSUB
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
         return "DRYRUN"
 
     # qsub may sporadically fail due to network issues
-    for _ in range(MAX_QSUB):
+    for _ in range(constants.MAX_QSUB):
         proc = run(qsub_arg_list, capture_output=True, text=True)
         if int(proc.returncode) == 0:
             # using -terse, proc.stdout is [job id].1-N:1' for array jobs
@@ -46,14 +46,6 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 
 @click.command(name="submit_flowcell", no_args_is_help=True)
 @click.argument("flowcells", nargs=-1, metavar="FLOWCELL [FLOWCELL ...]")
-@click.option(
-    "--spreadsheet",
-    default="1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic",
-    help="ID of the Google Sheet (default is Macosko Slide-seq Flowcell Alignment)",
-)
-@click.option(
-    "--worksheet", default="Experiment Log", help="Worksheet to open", show_default=True
-)
 @click.option("--demux/--no-demux", default=True, help="Whether to run demultiplexing")
 @click.option("--align/--no-align", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
@@ -61,8 +53,6 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
 @click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
 def main(
     flowcells: list[str],
-    spreadsheet: str,
-    worksheet: str,
     demux: bool = True,
     align: bool = True,
     dryrun: bool = False,
@@ -78,6 +68,7 @@ def main(
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = get_env_name()
     log.debug(f"Running in conda env {env_name}")
+    config = get_config()
 
     # you shouldn't demux without aligning, that's weird
     if demux and not align:
@@ -91,11 +82,13 @@ def main(
     drive_service = gutil.get_service(google_creds)
 
     # get a pandas DataFrame of the worksheet
-    log.debug(f"Downloading Google worksheet id={spreadsheet} worksheet={worksheet}")
-    worksheet_df = gutil.GoogleSheet(drive_service, spreadsheet)[worksheet]
+    log.debug(
+        f"Downloading Google Sheet, id={config.gsheet_id} worksheet={config.worksheet}"
+    )
+    worksheet_df = gutil.GoogleSheet(drive_service, config.gsheet_id)[config.worksheet]
     worksheet_df = worksheet_df.dropna(axis=0, how="all")
 
-    log.debug(f"Retreived worksheet {worksheet} with {len(worksheet_df)} rows")
+    log.debug(f"Retreived worksheet {config.worksheet} with {len(worksheet_df)} rows")
 
     log.info(f"Beginning submission for {len(flowcells)} flowcells")
     submitted = set()
@@ -125,7 +118,7 @@ def main(
         flowcell_df = flowcell_df.astype(constants.METADATA_TYPES)
 
         # data locations
-        output_dir = constants.WORKFLOW_DIR / flowcell
+        output_dir = config.workflow_dir / flowcell
         flowcell_dir = Path(flowcell_df.bclpath.values[0])
 
         run_info_file = flowcell_dir / "RunInfo.xml"
@@ -136,8 +129,9 @@ def main(
         metadata_file = output_dir / "metadata.csv"
 
         manifest = Manifest(
-            flowcell_directory=flowcell_dir,
-            output_directory=output_dir,
+            flowcell_dir=flowcell_dir,
+            workflow_dir=output_dir,
+            library_dir=config.library_dir,
             metadata_file=metadata_file,
             flowcell=flowcell,
             email_addresses=sorted(
@@ -155,6 +149,7 @@ def main(
                     "Log files already exist for this job, new output will be appended"
                 )
 
+            manifest.library_dir.mkdir(exist_ok=True)
             manifest.tmp_dir.mkdir(exist_ok=True)
 
             log.debug(f"Writing manifest to {manifest_file}")
@@ -171,7 +166,9 @@ def main(
             log.info(flowcell_df)
         elif demux:
             # make various directories
-            prepare_demux(flowcell_df, lanes, manifest.output_directory)
+            prepare_demux(
+                flowcell_df, lanes, manifest.workflow_dir, manifest.library_dir
+            )
             flowcell_df.to_csv(metadata_file, header=True, index=False)
         elif not validate_demux(manifest):
             # appears that demux was not run previously
@@ -190,7 +187,7 @@ def main(
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
                 log_file=manifest.log_dir / "demultiplex.L00$TASK_ID.log",
-                PICARD_JAR=constants.PICARD,
+                PICARD_JAR=config.picard,
                 TMP_DIR=manifest.tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
                 READ_STRUCTURE=read_structure,

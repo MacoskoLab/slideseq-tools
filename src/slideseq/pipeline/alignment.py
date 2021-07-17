@@ -7,14 +7,9 @@ from pathlib import Path
 import click
 
 from slideseq.alignment_quality import write_alignment_stats
+from slideseq.config import get_config
 from slideseq.metadata import Manifest
-from slideseq.util import (
-    dropseq_cmd,
-    give_group_access,
-    picard_cmd,
-    run_command,
-    start_popen,
-)
+from slideseq.util import give_group_access, run_command, start_popen
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -46,6 +41,7 @@ def main(
     log_file: str = None,
 ):
     create_logger(debug=debug, log_file=log_file)
+    config = get_config()
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(Path(manifest_file))
@@ -66,7 +62,7 @@ def main(
 
     procs = []
 
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "TagBamWithReadSequenceExtended",
         library.raw_ubam,
         "/dev/stdout",
@@ -94,7 +90,7 @@ def main(
     )
 
     # Tag bam with read sequence extended molecular
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "TagBamWithReadSequenceExtended", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
     )
     cmd.extend(
@@ -119,13 +115,13 @@ def main(
     )
 
     # Filter low-quality reads
-    cmd = dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout", manifest.tmp_dir)
+    cmd = config.dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout", manifest.tmp_dir)
     cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
     procs.append(start_popen(cmd, "FilterBam", library, lane, procs[-1]))
 
     # Trim reads with starting sequence
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
     )
     cmd.extend(
@@ -140,7 +136,7 @@ def main(
     procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
 
     # Adapter-aware poly A trimming
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "PolyATrimmer", "/dev/stdin", library.polya_filtered_ubam, manifest.tmp_dir
     )
     cmd.extend(
@@ -163,7 +159,7 @@ def main(
     log.debug("Finished with pre-alignment processing")
 
     # convert to fastq like a loser
-    cmd = picard_cmd("SamToFastq", manifest.tmp_dir)
+    cmd = config.picard_cmd("SamToFastq", manifest.tmp_dir)
     cmd.extend(
         [
             "-I",
@@ -210,7 +206,7 @@ def main(
     procs = []
 
     # Sort aligned bam
-    cmd = picard_cmd("SortSam", manifest.tmp_dir, mem="24g")
+    cmd = config.picard_cmd("SortSam", manifest.tmp_dir, mem="24g")
     cmd.extend(
         [
             "-I",
@@ -224,7 +220,7 @@ def main(
     procs.append(start_popen(cmd, "SortSam", library, lane))
 
     # Merge unmapped bam and aligned bam
-    cmd = picard_cmd("MergeBamAlignment", manifest.tmp_dir, mem="24g")
+    cmd = config.picard_cmd("MergeBamAlignment", manifest.tmp_dir, mem="24g")
     cmd.extend(
         [
             "-R",
@@ -247,7 +243,7 @@ def main(
     procs.append(start_popen(cmd, "MergeBamAlignment", library, lane, procs[-1]))
 
     # Tag read with interval
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "TagReadWithInterval", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
     )
     cmd.extend([f"INTERVALS={library.reference.intervals}", "TAG=XG"])
@@ -255,7 +251,7 @@ def main(
     procs.append(start_popen(cmd, "TagReadWithInterval", library, lane, procs[-1]))
 
     # Tag read with gene function
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "TagReadWithGeneFunction",
         "/dev/stdin",
         library.processed_bam,

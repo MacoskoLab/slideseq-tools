@@ -1,12 +1,7 @@
-from pathlib import Path
-
 # number of times to try qsub before giving up
 MAX_QSUB = 3
 
-DROPSEQ_DIR = Path("/broad/macosko/bin/dropseq-tools-2.4.0")
-PICARD = Path("/seq/software/picard-public/2.24.2/picard.jar")
 
-REFERENCE_DIR = Path("/broad/macosko/reference")
 # these biotypes are _removed_ from the reference GTF
 FILTERED_BIOTYPES = [
     "processed_pseudogene",
@@ -25,10 +20,6 @@ FILTERED_BIOTYPES = [
     "IG_C_pseudogene",
 ]
 
-WORKFLOW_DIR = Path("/broad/macosko/data/workflows/flowcell")
-LIBRARY_DIR = Path("/broad/macosko/data/libraries")
-
-PLATFORMS = {"MiniSeq", "NextSeq", "NovaSeq", "NovaSeqS4"}
 
 # columns we need from the sequencing spreadsheet
 METADATA_COLS = [
@@ -56,6 +47,7 @@ METADATA_COLS = [
     "gen_read1_plot",
     "gen_downsampling",
 ]
+
 
 # for columns that pandas might not recognize automatically
 METADATA_TYPES = {

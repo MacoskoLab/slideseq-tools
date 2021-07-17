@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-# This script is to check the Illumina directory, parse input data,
-# and call the steps of extracting Illumina barcodes and
-# converting barcodes to bam files
-
+import csv
 import logging
 from pathlib import Path
 
 import pandas as pd
 
-import slideseq.util.constants as constants
 from slideseq.metadata import Manifest
 from slideseq.util import get_lanes
 
@@ -18,38 +14,38 @@ log = logging.getLogger(__name__)
 
 def gen_barcode_file(flowcell_df: pd.DataFrame, lane: int, output_file: Path):
     with output_file.open("w") as out:
-        print("barcode_sequence_1\tlibrary_name\tbarcode_name", file=out)
+        wtr = csv.writer(out, delimiter="\t")
+        wtr.writerow(("barcode_sequence_1", "library_name", "barcode_name"))
 
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # we don't write out barcode_name but the column is required
-            print(
-                f"{row.sample_barcode}\t{row.library}\t",
-                file=out,
-            )
+            wtr.writerow((row.sample_barcode, row.library, ""))
 
 
-def gen_library_params(flowcell_df: pd.DataFrame, lane: int, output_file: Path):
+def gen_library_params(
+    flowcell_df: pd.DataFrame, lane: int, output_file: Path, library_dir: Path
+):
     with output_file.open("w") as out:
-        print("OUTPUT\tSAMPLE_ALIAS\tLIBRARY_NAME\tBARCODE_1", file=out)
+        wtr = csv.writer(out, delimiter="\t")
+        wtr.writerow(("OUTPUT", "SAMPLE_ALIAS", "LIBRARY_NAME", "BARCODE_1"))
 
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # output the uBAM directly to library directory
-            lane_dir = (
-                constants.LIBRARY_DIR / f"{row.date}_{row.library}" / f"L{lane:03d}"
-            )
+            lane_dir = library_dir / f"{row.date}_{row.library}" / f"L{lane:03d}"
             lane_dir.mkdir(exist_ok=True, parents=True)
             output_bam = f"{row.library}.unmapped.bam"
 
-            print(
-                f"{lane_dir / output_bam}\t{row.library}\t{row.library}\t{row.sample_barcode}",
-                file=out,
+            wtr.writerow(
+                (lane_dir / output_bam, row.library, row.library, row.sample_barcode)
             )
 
 
-def prepare_demux(flowcell_df: pd.DataFrame, lanes: range, output_dir: Path):
+def prepare_demux(
+    flowcell_df: pd.DataFrame, lanes: range, output_dir: Path, library_dir: Path
+):
     """create a bunch of directories, and write some input files for picard"""
-
-    log.info(f"Creating directories in {output_dir}")
+    # Create directories
+    log.info(f"Creating directories in {output_dir} and {library_dir}")
     for lane in lanes:
         output_lane_dir = output_dir / f"L{lane:03d}"
         output_lane_dir.mkdir(exist_ok=True)
@@ -59,29 +55,29 @@ def prepare_demux(flowcell_df: pd.DataFrame, lanes: range, output_dir: Path):
         gen_barcode_file(flowcell_df, lane, output_lane_dir / "barcode_params.txt")
 
         # Generate library_params that is needed by IlluminaBasecallsToSam
-        gen_library_params(flowcell_df, lane, output_lane_dir / "library_params.txt")
+        gen_library_params(
+            flowcell_df, lane, output_lane_dir / "library_params.txt", library_dir
+        )
 
 
 def validate_demux(manifest: Manifest):
     """verify that `prepare_demux` was run previously"""
-    output_dir = manifest.output_directory
-
-    if not output_dir.exists():
-        log.error(f"{output_dir} does not exist")
+    if not manifest.workflow_dir.exists():
+        log.error(f"{manifest.workflow_dir} does not exist")
         return False
 
     if not manifest.metadata_file.exists():
         log.error(f"{manifest.metadata_file} does not exist")
         return False
 
-    runinfo_file = manifest.flowcell_directory / "RunInfo.xml"
+    runinfo_file = manifest.flowcell_dir / "RunInfo.xml"
 
     lanes = get_lanes(runinfo_file)
 
     # Create directories
-    log.info(f"Checking directories in {output_dir}")
+    log.info(f"Checking directories in {manifest.workflow_dir}")
     for lane in lanes:
-        output_lane_dir = output_dir / f"L{lane:03d}"
+        output_lane_dir = manifest.workflow_dir / f"L{lane:03d}"
 
         for p in (
             output_lane_dir,

@@ -8,11 +8,10 @@ from pathlib import Path
 
 import click
 import numpy as np
-import pandas as pd
 
 import slideseq.alignment_quality as alignment_quality
-import slideseq.util.constants as constants
 from slideseq.bead_matching import match_barcodes
+from slideseq.config import Config, get_config
 from slideseq.library import Base, Library
 from slideseq.metadata import Manifest
 from slideseq.pipeline.downsampling import downsample_dge
@@ -20,25 +19,14 @@ from slideseq.pipeline.write_matrix import write_sparse_matrix
 from slideseq.plot.plot_downsampling import plot_downsampling
 from slideseq.plot.plot_library_metrics import make_library_plots
 from slideseq.retag_bam import write_retagged_bam
-from slideseq.util import dropseq_cmd, give_group_access, picard_cmd, run_command
+from slideseq.util import give_group_access, run_command
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
 
 
-def validate_library_df(library: str, library_df: pd.DataFrame):
-    """Verify that all of the columns in the dataframe are constant, except
-    for the lane which was expanded out earlier"""
-
-    for col in constants.METADATA_COLS:
-        if col.lower() == "lane":
-            continue
-
-        if len(set(library_df[col.lower()])) != 1:
-            raise ValueError(f"Library {library} has multiple values in column {col}")
-
-
 def calc_alignment_metrics(
+    config: Config,
     input_base: Base,
     library: Library,
     tmp_dir: Path,
@@ -46,7 +34,7 @@ def calc_alignment_metrics(
     cell_tag: str = "XC",
 ):
     # Bam tag histogram (cells)
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "BamTagHistogram", input_base.bam, input_base.reads_per_cell(cell_tag), tmp_dir
     )
     cmd.extend(
@@ -60,7 +48,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BamTagHistogram (cells)", library)
 
     # Bam tag histogram (UMIs)
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "BamTagHistogram", input_base.bam, input_base.reads_per_umi, tmp_dir
     )
     cmd.extend(
@@ -74,7 +62,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BamTagHistogram (UMIs)", library)
 
     # Collect RnaSeq metrics
-    cmd = picard_cmd("CollectRnaSeqMetrics", tmp_dir)
+    cmd = config.picard_cmd("CollectRnaSeqMetrics", tmp_dir)
     cmd.extend(
         [
             "--INPUT",
@@ -93,7 +81,7 @@ def calc_alignment_metrics(
     run_command(cmd, "CollectRnaSeqMetrics", library)
 
     # Base distribution at read position for raw cellular barcode
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "BaseDistributionAtReadPosition",
         input_base.bam,
         input_base.xc_distribution,
@@ -103,7 +91,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BaseDistributionAtReadPosition (Cellular)", library)
 
     # Base distribution at read position for molecular barcode
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "BaseDistributionAtReadPosition",
         input_base.bam,
         input_base.xm_distribution,
@@ -113,7 +101,7 @@ def calc_alignment_metrics(
     run_command(cmd, "BaseDistributionAtReadPosition (Molecular)", library)
 
     # Gather read quality metrics
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "GatherReadQualityMetrics",
         input_base.bam,
         input_base.read_quality_metrics,
@@ -122,7 +110,7 @@ def calc_alignment_metrics(
     run_command(cmd, "GatherReadQualityMetrics", library)
 
     if matched_barcodes is not None:
-        cmd = dropseq_cmd(
+        cmd = config.dropseq_cmd(
             "SingleCellRnaSeqMetricsCollector",
             input_base.bam,
             input_base.frac_intronic_exonic_per_cell,
@@ -141,7 +129,7 @@ def calc_alignment_metrics(
         run_command(cmd, "SingleCellRnaSeqMetricsCollector", library)
 
     # Select cells by num transcripts
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "SelectCellsByNumTranscripts",
         input_base.bam,
         input_base.selected_cells,
@@ -162,7 +150,7 @@ def calc_alignment_metrics(
     run_command(cmd, "SelectCellsByNumTranscripts", library)
 
     # Generate digital expression files for all Illumina barcodes
-    cmd = dropseq_cmd(
+    cmd = config.dropseq_cmd(
         "DigitalExpression",
         input_base.bam,
         input_base.digital_expression,
@@ -205,6 +193,7 @@ def main(
     library_index: int, manifest_file: str, debug: bool = False, log_file: str = None
 ):
     create_logger(debug=debug, log_file=log_file)
+    config = get_config()
 
     log.debug(f"Reading manifest from {manifest_file}")
     manifest = Manifest.from_file(Path(manifest_file))
@@ -226,7 +215,7 @@ def main(
     alignment_quality.combine_alignment_stats(library)
 
     # Merge bam files
-    cmd = picard_cmd("MergeSamFiles", manifest.tmp_dir)
+    cmd = config.picard_cmd("MergeSamFiles", manifest.tmp_dir)
     cmd.extend(
         [
             "--CREATE_INDEX",
@@ -248,7 +237,7 @@ def main(
     run_command(cmd, "MergeBamFiles", library)
 
     # generate various metrics files, including digital expression matrix
-    calc_alignment_metrics(library.merged, library, manifest.tmp_dir)
+    calc_alignment_metrics(config, library.merged, library, manifest.tmp_dir)
 
     if library.run_barcodematching:
         library.barcode_matching_dir.mkdir(exist_ok=True, parents=True)
@@ -273,7 +262,12 @@ def main(
 
         # do it all again, but should be faster on the smaller file
         calc_alignment_metrics(
-            library.matched, library, manifest.tmp_dir, matched_barcodes_file, "XB"
+            config,
+            library.matched,
+            library,
+            manifest.tmp_dir,
+            matched_barcodes_file,
+            "XB",
         )
 
         write_sparse_matrix(library)
@@ -295,6 +289,7 @@ def main(
             downsampled_bam = library.merged.downsampled_bam(ratio)
             downsample_output.append(
                 downsample_dge(
+                    config=config,
                     bam_file=input_bam,
                     downsampled_bam=downsampled_bam,
                     library=library,

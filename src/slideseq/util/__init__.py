@@ -6,10 +6,9 @@ import sys
 import xml.etree.ElementTree as et
 from pathlib import Path
 from subprocess import PIPE, Popen, run
-from typing import Any, Union
+from typing import Any
 
 import slideseq.library as lib
-import slideseq.util.constants as constants
 
 log = logging.getLogger(__name__)
 
@@ -58,67 +57,6 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
     return arg_list
 
 
-def dropseq_cmd(
-    command: str,
-    input_file: Union[Path, str],
-    output_file: Union[Path, str],
-    tmp_dir: Path,
-    mem: str = "8g",
-    compression: int = 0,
-):
-    """Return the beginning of a DropSeq command, with standard options
-
-    :param command: name of the dropseq tool being invoked
-    :param input_file: path to the input file
-    :param output_file: path to the output file
-    :param tmp_dir: Location of the tmp directory to use
-    :param mem: memory for the heap. default is to share with other jobs
-    :param compression: compression level for output. Use 0 for speed, 5 for storage
-    """
-
-    return [
-        constants.DROPSEQ_DIR / command,
-        "-m",
-        mem,
-        f"I={input_file}",
-        f"O={output_file}",
-        f"TMP_DIR={tmp_dir}",
-        "VALIDATION_STRINGENCY=SILENT",
-        f"COMPRESSION_LEVEL={compression}",
-        "VERBOSITY=WARNING",
-        "QUIET=true",
-    ]
-
-
-def picard_cmd(command: str, tmp_dir: Path, mem: str = "62g"):
-    """Return the beginning of a Picard command, with standard options
-
-    :param command: name of the picard tool being invoked
-    :param tmp_dir: Location of the tmp directory to use
-    :param mem: Memory for the heap. Lower this for piped commands
-    """
-    return [
-        "java",
-        f"-Djava.io.tmp_dir={tmp_dir}",
-        f"-Xms{mem}",
-        f"-Xmx{mem}",
-        "-XX:+UseParallelGC",
-        "-XX:GCTimeLimit=20",
-        "-XX:GCHeapFreeLimit=10",
-        "-jar",
-        constants.PICARD,
-        command,
-        "--TMP_DIR",
-        tmp_dir,
-        "--VALIDATION_STRINGENCY",
-        "SILENT",
-        "--VERBOSITY",
-        "WARNING",
-        "--QUIET",
-        "true",
-    ]
-
-
 def get_read_structure(run_info_file: Path) -> str:
     """
     Get read structure from RunInfo.xml. Assumes one index sequence only,
@@ -147,6 +85,15 @@ def get_lanes(run_info_file: Path) -> range:
 
     lane_count = int(run_info.find("./Run/FlowcellLayout[@LaneCount]").get("LaneCount"))
     return range(1, lane_count + 1)
+
+
+def get_flowcell(run_info_file: Path) -> str:
+    # open the RunInfo.xml file and parse it with element tree
+    with run_info_file.open() as f:
+        run_info = et.parse(f)
+
+    flowcell = run_info.find("./Run/Flowcell").text
+    return flowcell
 
 
 def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):

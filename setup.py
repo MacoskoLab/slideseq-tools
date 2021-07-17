@@ -16,7 +16,7 @@ def read(*names, **kwargs):
 
 setuptools.setup(
     name="slideseq-tools",
-    version="0.2.1",
+    version="0.2.2",
     license="MIT License",
     description="Scripts processing slideseq data",
     long_description=read("README.md"),
