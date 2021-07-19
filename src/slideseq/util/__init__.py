@@ -50,7 +50,15 @@ def rsync_to_google(path: Path, gs_path: str):
         "%Y-%m-%dT%H:%M:%SZ"
     )
 
-    cmd = ["gsutil", "-m-qsetmeta", "-h", f"Custom-Time:{date}", f"{gs_path}/**bam"]
+    cmd = [
+        "gsutil",
+        "-m",
+        "-q",
+        "setmeta",
+        "-h",
+        f"Custom-Time:{date}",
+        f"{gs_path}/**bam",
+    ]
     proc = run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         log.error(f"Error running gsutil setmeta:\n\t{proc.stderr}")
