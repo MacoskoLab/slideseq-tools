@@ -9,7 +9,7 @@ import click
 from slideseq.alignment_quality import write_alignment_stats
 from slideseq.config import get_config
 from slideseq.metadata import Manifest
-from slideseq.util import give_group_access, run_command, start_popen
+from slideseq.util import give_group_access, rsync_to_google, run_command, start_popen
 from slideseq.util.logger import create_logger
 
 log = logging.getLogger(__name__)
@@ -279,5 +279,7 @@ def main(
 
     log.debug("Setting group permissions")
     give_group_access(library.dir)
+    log.debug("Copying data to google storage")
+    rsync_to_google(library.dir, config.gs_path)
 
     log.info(f"Alignment for {library} completed")

@@ -15,6 +15,7 @@
 source /broad/software/scripts/useuse
 reuse Anaconda3
 reuse Java-1.8
+reuse Google-Cloud-SDK
 
 set -e
 
