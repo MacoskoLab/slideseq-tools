@@ -27,13 +27,9 @@ METADATA_COLS = [
     "date",
     "flowcell",
     "BCLPath",
-    "IlluminaPlatform",
-    "resubmit",
     "lane",
     "sample_barcode",
     "bead_structure",
-    "estimated_num_cells",
-    "estimated_num_beads",
     "reference",
     "run_barcodematching",
     "locus_function_list",
@@ -43,7 +39,6 @@ METADATA_COLS = [
     "email",
     "puckcaller_path",
     "bead_type",
-    "fdr_threshold",
     "gen_read1_plot",
     "gen_downsampling",
 ]
@@ -52,12 +47,9 @@ METADATA_COLS = [
 # for columns that pandas might not recognize automatically
 METADATA_TYPES = {
     "date": str,
-    "estimated_num_cells": int,
-    "estimated_num_beads": int,
     "run_barcodematching": bool,
     "base_quality": int,
     "min_transcripts_per_cell": int,
-    "fdr_threshold": float,
     "gen_read1_plot": bool,
     "gen_downsampling": bool,
 }
