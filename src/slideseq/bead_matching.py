@@ -76,6 +76,8 @@ def hamming1_adjacency(barcodes: list[str]):
                      of the resulting matrix
     :return: Adjacency matrix in sparse CSR format
     """
+    assert len(barcodes) == len(set(barcodes)), "barcodes should be unique"
+
     bc_to_i = {bc: i for i, bc in enumerate(barcodes)}
     adjacency = scipy.sparse.dok_matrix((len(barcodes), len(barcodes)), dtype=int)
 
