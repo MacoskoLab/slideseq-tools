@@ -21,9 +21,9 @@ def write_retagged_bam(
 
     log.debug(f"Reading {bam_file}")
     log.debug(f"Writing to {retagged_bam_file}")
-    with pysam.AlignmentFile(bam_file, mode="rb") as mapped_bam:
+    with pysam.AlignmentFile(bam_file, mode="rb", threads=8) as mapped_bam:
         with pysam.AlignmentFile(
-            retagged_bam_file, mode="wb", template=mapped_bam
+            retagged_bam_file, mode="wb", template=mapped_bam, threads=8
         ) as tagged_bam:
             for a in mapped_bam:
                 if a.get_tag("XC") in barcode_matching:

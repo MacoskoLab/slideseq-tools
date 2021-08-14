@@ -10,7 +10,7 @@ import click
 import numpy as np
 
 import slideseq.alignment_quality as alignment_quality
-from slideseq.bead_matching import match_barcodes
+import slideseq.bead_matching as bead_matching
 from slideseq.config import Config, get_config
 from slideseq.library import Base, Library
 from slideseq.metadata import Manifest
@@ -207,6 +207,9 @@ def main(
     barcode_matching_file = (
         library.barcode_matching_dir / f"{library}_barcode_matching.txt.gz"
     )
+    barcode_coordinate_file = (
+        library.barcode_matching_dir / f"{library}_barcode_xy.txt.gz"
+    )
     matched_barcodes_file = (
         library.barcode_matching_dir / f"{library}_matched_barcodes.txt.gz"
     )
@@ -244,14 +247,14 @@ def main(
         shutil.copy(library.bead_barcodes, library.barcode_matching_dir)
         shutil.copy(library.bead_locations, library.barcode_matching_dir)
 
-        barcode_mapping, bead_xy, bead_graph = match_barcodes(
+        barcode_list, barcode_mapping, bead_xy, _ = bead_matching.match_barcodes(
             library.merged.selected_cells, library.bead_barcodes, library.bead_locations
         )
 
-        with gzip.open(barcode_matching_file, "wt") as out:
-            for seq_bc, bead_bc in barcode_mapping.items():
-                x, y = bead_xy[bead_bc]
-                print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
+        bead_matching.write_barcode_mapping(
+            barcode_mapping, bead_xy, barcode_matching_file
+        )
+        bead_matching.write_barcode_xy(barcode_list, bead_xy, barcode_coordinate_file)
 
         with gzip.open(matched_barcodes_file, "wt") as out:
             for bead_bc in sorted(set(barcode_mapping.values())):
