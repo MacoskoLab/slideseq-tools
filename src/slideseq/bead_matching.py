@@ -231,7 +231,24 @@ def match_barcodes(
         bead_barcodes, degen_bead_barcodes, bead_groups, seq_barcodes
     )
 
-    return barcode_matching, bead_xy, combined_graph
+    return degen_bead_barcodes, barcode_matching, bead_xy, combined_graph
+
+
+def write_barcode_mapping(barcode_mapping, bead_xy, output_file: Path):
+    """Write the mapping of sequenced barcodes to collapsed bead barcodes,
+    along with xy coordinates"""
+    with gzip.open(output_file, "wt") as out:
+        for seq_bc, bead_bc in barcode_mapping.items():
+            x, y = bead_xy[bead_bc]
+            print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
+
+
+def write_barcode_xy(bead_list, bead_xy, output_file: Path):
+    """Write the collapsed bead barcodes with their coordinates, in the specified order"""
+    with gzip.open(output_file, "wt") as out:
+        for bead_bc in bead_list:
+            x, y = bead_xy[bead_bc]
+            print(f"{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
 
 
 @click.command(name="bead_matching")
@@ -283,16 +300,13 @@ def main(
     bead_locations = Path(bead_locations)
     output_file = Path(output_file)
 
-    barcode_mapping, bead_xy, bead_graph = match_barcodes(
+    barcode_list, barcode_mapping, bead_xy, bead_graph = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius
     )
 
     log.info(msg=f"Found {len(set(barcode_mapping.values()))} matches")
 
-    with output_file.open("w") as out:
-        for seq_bc, bead_bc in barcode_mapping.items():
-            x, y = bead_xy[bead_bc]
-            print(f"{seq_bc}\t{bead_bc}\t{x:.1f}\t{y:.1f}", file=out)
+    write_barcode_mapping(barcode_mapping, bead_xy, output_file)
 
     nx.write_gpickle(bead_graph, output_file.with_suffix(".bead_graph.pickle.gz"))
 

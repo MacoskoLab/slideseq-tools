@@ -25,7 +25,7 @@ def write_alignment_stats(bam_file: Path, out_file: Path):
     :param bam_file: aligned BAM file to check (output from STAR)
     :param out_file: file to output distributions (as a pickle)
     """
-    aligned_bam = pysam.AlignmentFile(bam_file, mode="rb")
+    aligned_bam = pysam.AlignmentFile(bam_file, mode="rb", threads=8)
 
     mp = Counter()
     for a in aligned_bam:

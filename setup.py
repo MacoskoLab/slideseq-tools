@@ -51,6 +51,7 @@ setuptools.setup(
             "process_library = slideseq.pipeline.processing:main",
             "build_ref = slideseq.pipeline.reference:main",
             "plot_barcodes = slideseq.scripts.plot_barcodes:main",
+            "barcode_matrix = slideseq.scripts.barcode_matrix:main",
         ]
     },
 )
