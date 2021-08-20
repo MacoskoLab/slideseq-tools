@@ -109,9 +109,15 @@ def get_read_structure(run_info_file: Path) -> str:
     read_elems = run_info.findall("./Run/Reads/Read[@NumCycles][@Number]")
     read_elems.sort(key=lambda el: int(el.get("Number")))
 
-    assert len(read_elems) == 3, f"Expected three reads, got {len(read_elems)}"
+    if len(read_elems) == 4:
+        # two index reads. We will just ignore the second index
+        log.warning(
+            "This sequencing run has two index reads, we are ignoring the second one"
+        )
+        return "{}T{}B{}S{}T".format(*(el.get("NumCycles") for el in read_elems))
+    elif len(read_elems) != 3:
+        raise ValueError(f"Expected three reads, got {len(read_elems)}")
 
-    # I guess Picard wants this string format for some reason
     return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
 
 
