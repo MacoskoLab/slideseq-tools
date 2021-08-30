@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 def check_gtf(reference_gtf: Path, mt_sequence: str):
-    warnings = {"header": False, "mt_present": False}
+    warnings = {"header": False, "mt_missing": True}
     fields = ["gene_name", "gene_id"]
     for field in fields:
         warnings[field] = False
@@ -35,7 +35,7 @@ def check_gtf(reference_gtf: Path, mt_sequence: str):
             if row[0][0] == "#":
                 continue
             elif row[0].startswith(mt_sequence):
-                warnings["mt_present"] = True
+                warnings["mt_missing"] = False
 
             for field in fields:
                 if row[8].find(field) == -1:
@@ -46,7 +46,7 @@ def check_gtf(reference_gtf: Path, mt_sequence: str):
     else:
         if warnings["header"]:
             log.warning("No header detected in GTF file")
-        if not warnings["mt_present"]:
+        if warnings["mt_missing"]:
             log.warning(f"No entries matched the MT string '{mt_sequence}'")
         for field in fields:
             if warnings[field]:
