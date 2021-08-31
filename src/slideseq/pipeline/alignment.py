@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 @click.option(
     "--manifest-file",
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help="YAML file containing the flowcell manifest",
+    help="YAML file containing the manifest",
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False))
