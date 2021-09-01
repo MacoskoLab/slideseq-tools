@@ -104,18 +104,26 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
     return arg_list
 
 
-def get_read_structure(run_info_file: Path) -> str:
+def get_flowcell(run_info: et.ElementTree) -> str:
+    """
+    Get the flowcell name from RunInfo.xml. This should be more reliable than
+    trying to parse the run directory, which might have been renamed.
+
+    :param run_info: ElementTree representing RunInfo.xml
+    :return: The flowcell name for this run
+    """
+    flowcell = run_info.find("./Run/Flowcell").text
+    return flowcell
+
+
+def get_read_structure(run_info: et.ElementTree) -> str:
     """
     Get read structure from RunInfo.xml. Assumes one index sequence only,
-    will error otherwise
+    will warn if two are present and ignore the second.
 
-    :param run_info_file: path to RunInfo.xml in sequencing directory
+    :param run_info: ElementTree representing RunInfo.xml
     :return: Formatting string representing the read structure
     """
-    # open the RunInfo.xml file and parse it with element tree
-    with run_info_file.open() as f:
-        run_info = et.parse(f)
-
     read_elems = run_info.findall("./Run/Reads/Read[@NumCycles][@Number]")
     read_elems.sort(key=lambda el: int(el.get("Number")))
 
@@ -131,22 +139,22 @@ def get_read_structure(run_info_file: Path) -> str:
     return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
 
 
-def get_lanes(run_info_file: Path) -> range:
-    # open the RunInfo.xml file and parse it with element tree
-    with run_info_file.open() as f:
-        run_info = et.parse(f)
-
+def get_lanes(run_info: et.ElementTree) -> range:
+    """
+    Return the lanes for this run, as a range
+    :param run_info: ElementTree representing RunInfo.xml
+    :return: range object for the lanes of the run
+    """
     lane_count = int(run_info.find("./Run/FlowcellLayout[@LaneCount]").get("LaneCount"))
     return range(1, lane_count + 1)
 
 
-def get_flowcell(run_info_file: Path) -> str:
+def get_run_info(run_info_file: Path) -> (str, range, str):
     # open the RunInfo.xml file and parse it with element tree
     with run_info_file.open() as f:
         run_info = et.parse(f)
 
-    flowcell = run_info.find("./Run/Flowcell").text
-    return flowcell
+    return get_flowcell(run_info), get_lanes(run_info), get_read_structure(run_info)
 
 
 def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):

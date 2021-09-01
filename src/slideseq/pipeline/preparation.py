@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from slideseq.metadata import Manifest
-from slideseq.util import get_lanes
+from slideseq.metadata import Manifest, RunInfo
+from slideseq.util import get_run_info
 
 log = logging.getLogger(__name__)
 
@@ -41,23 +41,26 @@ def gen_library_params(
 
 
 def prepare_demux(
-    flowcell_df: pd.DataFrame, lanes: range, output_dir: Path, library_dir: Path
+    run_df: pd.DataFrame, run_info: RunInfo, output_dir: Path, library_dir: Path
 ):
     """create a bunch of directories, and write some input files for picard"""
     # Create directories
     log.info(f"Creating directories in {output_dir} and {library_dir}")
-    for lane in lanes:
-        output_lane_dir = output_dir / f"L{lane:03d}"
-        output_lane_dir.mkdir(exist_ok=True)
-        (output_lane_dir / "barcodes").mkdir(exist_ok=True)
+    for flowcell_dir, (flowcell, lanes, _) in run_info.items():
+        flowcell_df = run_df.loc[run_df.bclpath == str(flowcell_dir)]
 
-        # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
-        gen_barcode_file(flowcell_df, lane, output_lane_dir / "barcode_params.txt")
+        for lane in lanes:
+            output_lane_dir = output_dir / flowcell / f"L{lane:03d}"
+            output_lane_dir.mkdir(exist_ok=True)
+            (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
-        # Generate library_params that is needed by IlluminaBasecallsToSam
-        gen_library_params(
-            flowcell_df, lane, output_lane_dir / "library_params.txt", library_dir
-        )
+            # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
+            gen_barcode_file(flowcell_df, lane, output_lane_dir / "barcode_params.txt")
+
+            # Generate library_params that is needed by IlluminaBasecallsToSam
+            gen_library_params(
+                flowcell_df, lane, output_lane_dir / "library_params.txt", library_dir
+            )
 
 
 def validate_demux(manifest: Manifest):
@@ -70,26 +73,27 @@ def validate_demux(manifest: Manifest):
         log.error(f"{manifest.metadata_file} does not exist")
         return False
 
-    runinfo_file = manifest.flowcell_dir / "RunInfo.xml"
+    for flowcell_dir in manifest.flowcell_dirs:
+        run_info_file = flowcell_dir / "RunInfo.xml"
 
-    lanes = get_lanes(runinfo_file)
+        flowcell, lanes, _ = get_run_info(run_info_file)
 
-    # Create directories
-    log.info(f"Checking directories in {manifest.workflow_dir}")
-    for lane in lanes:
-        output_lane_dir = manifest.workflow_dir / f"L{lane:03d}"
+        # Create directories
+        log.info(f"Checking directories in {manifest.workflow_dir / flowcell}")
+        for lane in lanes:
+            output_lane_dir = manifest.workflow_dir / flowcell / f"L{lane:03d}"
 
-        for p in (
-            output_lane_dir,
-            output_lane_dir / "barcodes",
-            output_lane_dir / "barcode_params.txt",
-            output_lane_dir / "library_params.txt",
-        ):
-            if not p.exists():
-                log.error(f"{p} does not exist, demux looks incomplete")
-                return False
-    else:
-        return True
+            for p in (
+                output_lane_dir,
+                output_lane_dir / "barcodes",
+                output_lane_dir / "barcode_params.txt",
+                output_lane_dir / "library_params.txt",
+            ):
+                if not p.exists():
+                    log.error(f"{p} does not exist, demux looks incomplete")
+                    return False
+
+    return True
 
 
 def validate_alignment(manifest: Manifest, n_libraries: int):

@@ -1,6 +1,8 @@
 # number of times to try qsub before giving up
 MAX_QSUB = 3
 
+# string used to mean "demux all lanes for this sample"
+ALL_LANES = "{LANE}"
 
 # these biotypes are _removed_ from the reference GTF
 FILTERED_BIOTYPES = [

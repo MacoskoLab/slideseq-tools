@@ -13,6 +13,9 @@ from slideseq.library import Library, LibraryLane, Reference
 log = logging.getLogger(__name__)
 
 
+RunInfo = dict[Path, (str, range, str)]
+
+
 @dataclass
 class Manifest:
     run_name: str
@@ -146,12 +149,13 @@ def validate_run_df(run_name: str, run_df: pd.DataFrame) -> bool:
         return True
 
 
-def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
+def split_sample_lanes(run_df: pd.DataFrame, run_info: RunInfo):
     new_rows = []
 
-    for _, row in flowcell_df.iterrows():
-        if row.lane == "{LANE}":
-            row_lanes = lanes
+    for _, row in run_df.iterrows():
+        flowcell_dir = Path(run_df.bclpath)
+        if row.lane == constants.ALL_LANES:
+            row_lanes = run_info[flowcell_dir][1]
         else:
             row_lanes = str(row.lane).split(",")
 
