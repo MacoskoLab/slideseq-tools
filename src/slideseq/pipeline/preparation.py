@@ -59,7 +59,7 @@ def prepare_demux(
 
         for lane in run_info.lanes:
             output_lane_dir = workflow_dir / run_info.flowcell / f"L{lane:03d}"
-            output_lane_dir.mkdir(exist_ok=True)
+            output_lane_dir.mkdir(exist_ok=True, parents=True)
             (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
             # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes

@@ -104,7 +104,10 @@ class Manifest:
 def validate_run_df(run_name: str, run_df: pd.DataFrame) -> bool:
     warning_logs = []
 
-    if len(set(run_df.library)) != len(run_df.library):
+    library_tuples = list(
+        run_df[["library", *constants.VARIABLE_LIBRARY_COLS]].itertuples()
+    )
+    if len(set(library_tuples)) != len(library_tuples):
         warning_logs.append(
             f"{run_name} does not have unique library names;"
             " please fill out naming metadata correctly or add suffixes."
@@ -122,7 +125,7 @@ def validate_run_df(run_name: str, run_df: pd.DataFrame) -> bool:
             " and blue cols); please fill out before running."
         )
 
-    bcl_path_set = set(run_df.bclpath)
+    bcl_path_set = set(map(Path, run_df.bclpath))
     for bcl_path in bcl_path_set:
         if not bcl_path.is_dir():
             warning_logs.append(
@@ -164,7 +167,7 @@ def split_sample_lanes(run_df: pd.DataFrame, run_info_list: list[RunInfo]):
     run_info_d = {run_info.run_dir: run_info for run_info in run_info_list}
 
     for _, row in run_df.iterrows():
-        flowcell_dir = Path(run_df.bclpath)
+        flowcell_dir = Path(row.bclpath)
 
         # write the correct flowcell barcode as an entry in the row,
         # possibly replacing whatever string was there
