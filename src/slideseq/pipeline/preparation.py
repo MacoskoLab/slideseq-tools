@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from slideseq.metadata import Manifest, RunInfo
-from slideseq.util import get_run_info
+from slideseq.metadata import Manifest
+from slideseq.util.run_info import RunInfo, get_run_info
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,12 @@ def gen_library_params(
 
         for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
             # output the uBAM directly to library directory
-            lane_dir = library_dir / f"{row.date}_{row.library}" / f"L{lane:03d}"
+            lane_dir = (
+                library_dir
+                / f"{row.date}_{row.library}"
+                / row.flowcell
+                / f"L{lane:03d}"
+            )
             lane_dir.mkdir(exist_ok=True, parents=True)
             output_bam = f"{row.library}.unmapped.bam"
 
@@ -41,16 +46,19 @@ def gen_library_params(
 
 
 def prepare_demux(
-    run_df: pd.DataFrame, run_info: RunInfo, output_dir: Path, library_dir: Path
+    run_df: pd.DataFrame,
+    run_info_list: list[RunInfo],
+    workflow_dir: Path,
+    library_dir: Path,
 ):
     """create a bunch of directories, and write some input files for picard"""
     # Create directories
-    log.info(f"Creating directories in {output_dir} and {library_dir}")
-    for flowcell_dir, (flowcell, lanes, _) in run_info.items():
-        flowcell_df = run_df.loc[run_df.bclpath == str(flowcell_dir)]
+    log.info(f"Creating directories in {workflow_dir} and {library_dir}")
+    for run_info in run_info_list:
+        flowcell_df = run_df.loc[run_df.flowcell == run_info.flowcell]
 
-        for lane in lanes:
-            output_lane_dir = output_dir / flowcell / f"L{lane:03d}"
+        for lane in run_info.lanes:
+            output_lane_dir = workflow_dir / run_info.flowcell / f"L{lane:03d}"
             output_lane_dir.mkdir(exist_ok=True)
             (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
@@ -74,14 +82,12 @@ def validate_demux(manifest: Manifest):
         return False
 
     for flowcell_dir in manifest.flowcell_dirs:
-        run_info_file = flowcell_dir / "RunInfo.xml"
-
-        flowcell, lanes, _ = get_run_info(run_info_file)
+        run_info = get_run_info(flowcell_dir)
 
         # Create directories
-        log.info(f"Checking directories in {manifest.workflow_dir / flowcell}")
-        for lane in lanes:
-            output_lane_dir = manifest.workflow_dir / flowcell / f"L{lane:03d}"
+        log.info(f"Checking directories in {manifest.workflow_dir / run_info.flowcell}")
+        for lane in run_info.lanes:
+            output_lane_dir = manifest.workflow_dir / run_info.flowcell / f"L{lane:03d}"
 
             for p in (
                 output_lane_dir,

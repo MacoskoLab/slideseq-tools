@@ -131,7 +131,7 @@ class Library:
     # generated during processing
     name: str
     row: pd.Series
-    lanes: list[int]
+    flowcell_lanes: list[tuple[str, int]]
     reference: Reference
     library_dir: Path
 
@@ -236,10 +236,10 @@ class Library:
 
     def per_lane(self, *args, suffix) -> list[Path]:
         return [
-            ((self.dir / f"L{lane:03d}").joinpath(*args) / self.base).with_suffix(
-                suffix
-            )
-            for lane in self.lanes
+            (
+                (self.dir / flowcell / f"L{lane:03d}").joinpath(*args) / self.base
+            ).with_suffix(suffix)
+            for flowcell, lane in self.flowcell_lanes
         ]
 
     @property
@@ -268,11 +268,12 @@ class Library:
 
 @dataclass
 class LibraryLane(Library):
+    flowcell: str
     lane: int
 
     @property
     def lane_dir(self) -> Path:
-        return self.dir / f"L{self.lane:03d}"
+        return self.dir / self.flowcell / f"L{self.lane:03d}"
 
     @property
     def raw_ubam(self) -> Path:

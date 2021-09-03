@@ -13,19 +13,20 @@ import slideseq.scripts
 import slideseq.util.constants as constants
 import slideseq.util.gutil as gutil
 from slideseq.config import get_config
-from slideseq.metadata import Manifest, split_sample_lanes, validate_flowcell_df
+from slideseq.metadata import Manifest, split_sample_lanes, validate_run_df
 from slideseq.pipeline.preparation import (
     prepare_demux,
     validate_alignment,
     validate_demux,
 )
-from slideseq.util import get_env_name, get_lanes, get_read_structure, qsub_args
+from slideseq.util import get_env_name, qsub_args
 from slideseq.util.logger import create_logger
+from slideseq.util.run_info import get_run_info
 
 log = logging.getLogger(__name__)
 
 
-def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun: bool):
+def attempt_qsub(qsub_arg_list: list[str], run_name: str, job_name: str, dryrun: bool):
     log.debug(f"{job_name} command:\n\t{' '.join(qsub_arg_list)}")
     if dryrun:
         return "DRYRUN"
@@ -40,19 +41,19 @@ def attempt_qsub(qsub_arg_list: list[str], flowcell: str, job_name: str, dryrun:
             log.warning("qsub failed, retrying")
             log.debug(f"Error: {proc.stderr}")
     else:
-        log.error(f"Unable to launch {job_name} job for {flowcell}")
+        log.error(f"Unable to launch {job_name} job for {run_name}")
         return None
 
 
-@click.command(name="submit_flowcell", no_args_is_help=True)
-@click.argument("flowcells", nargs=-1, metavar="FLOWCELL [FLOWCELL ...]")
+@click.command(name="submit_slideseq", no_args_is_help=True)
+@click.argument("runs", nargs=-1, metavar="RUN [RUN ...]")
 @click.option("--demux/--no-demux", default=True, help="Whether to run demultiplexing")
 @click.option("--align/--no-align", default=True, help="Whether to run alignment")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
 def main(
-    flowcells: list[str],
+    runs: list[str],
     demux: bool = True,
     align: bool = True,
     dryrun: bool = False,
@@ -60,7 +61,7 @@ def main(
     log_file: str = None,
 ):
     """
-    Submit each FLOWCELL to the Slide-seq alignment pipeline.
+    Submit each RUN to the Slide-seq alignment pipeline.
 
     See README.md for instructions and requirements: github.com/MacoskoLab/slideseq-tools
     """
@@ -90,52 +91,46 @@ def main(
 
     log.debug(f"Retreived worksheet {config.worksheet} with {len(worksheet_df)} rows")
 
-    log.info(f"Beginning submission for {len(flowcells)} flowcells")
+    log.info(f"Beginning submission for {len(runs)} runs")
     submitted = set()
-    flowcell_errors = set()
+    run_errors = set()
 
-    for flowcell in flowcells:
-        flowcell_df = worksheet_df.loc[worksheet_df["flowcell"] == flowcell]
+    for run_name in runs:
+        run_df = worksheet_df.loc[worksheet_df["run_name"] == run_name]
 
-        if not len(flowcell_df):
-            log.warning(
-                f"Flowcell {flowcell} not found in worksheet; please add to sheet."
-            )
-            flowcell_errors.add(flowcell)
+        if not len(run_df):
+            log.warning(f"{run_name} not found in worksheet; please add to sheet.")
+            run_errors.add(run_name)
             continue
 
-        log.debug(f"Found {len(flowcell_df)} libraries in worksheet")
+        log.debug(f"Found {len(run_df)} libraries in worksheet")
 
         # subset to metadata columns
-        flowcell_df = flowcell_df[constants.METADATA_COLS]
-        flowcell_df.columns = [c.lower() for c in constants.METADATA_COLS]
+        run_df = run_df[constants.METADATA_COLS]
+        run_df.columns = [c.lower() for c in constants.METADATA_COLS]
 
-        if not validate_flowcell_df(flowcell, flowcell_df):
-            flowcell_errors.add(flowcell)
+        if not validate_run_df(run_name, run_df):
+            run_errors.add(run_name)
             continue
 
         # convert columns to desired types
-        flowcell_df = flowcell_df.astype(constants.METADATA_TYPES)
+        run_df = run_df.astype(constants.METADATA_TYPES)
 
         # data locations
-        output_dir = config.workflow_dir / flowcell
-        flowcell_dir = Path(flowcell_df.bclpath.values[0])
-
-        run_info_file = flowcell_dir / "RunInfo.xml"
-        lanes = get_lanes(run_info_file=run_info_file)
-        read_structure = get_read_structure(run_info_file=run_info_file)
+        output_dir = config.workflow_dir / run_name
+        flowcell_dirs = sorted(Path(fd) for fd in set(run_df.bclpath))
 
         manifest_file = output_dir / "manifest.yaml"
         metadata_file = output_dir / "metadata.csv"
 
         manifest = Manifest(
-            flowcell_dir=flowcell_dir,
+            run_name=run_name,
+            flowcell_dirs=flowcell_dirs,
             workflow_dir=output_dir,
             library_dir=config.library_dir,
             metadata_file=metadata_file,
-            flowcell=flowcell,
             email_addresses=sorted(
-                set(e.strip() for v in flowcell_df.email for e in v.split(","))
+                set(e.strip() for v in run_df.email for e in v.split(","))
             ),
         )
 
@@ -155,63 +150,72 @@ def main(
             log.debug(f"Writing manifest to {manifest_file}")
             manifest.to_file(manifest_file)
 
-        # break rows out per lane for processing
-        flowcell_df = split_sample_lanes(flowcell_df, lanes)
+        run_info_list = []
 
-        libraries = sorted(set(flowcell_df.library))
+        for flowcell_dir in flowcell_dirs:
+            run_info_list.append(get_run_info(flowcell_dir))
+
+        # break rows out per flowcell/lane for processing
+        run_df = split_sample_lanes(run_df, run_info_list)
+
+        libraries = sorted(set(run_df.library))
         n_libraries = len(libraries)
 
         if dryrun:
             log.info(f"Would write following in {metadata_file}")
-            log.info(flowcell_df)
+            log.info(run_df)
         elif demux:
             # make various directories
             prepare_demux(
-                flowcell_df, lanes, manifest.workflow_dir, manifest.library_dir
+                run_df, run_info_list, manifest.workflow_dir, manifest.library_dir
             )
-            flowcell_df.to_csv(metadata_file, header=True, index=False)
+            run_df.to_csv(metadata_file, header=True, index=False)
         elif not validate_demux(manifest):
             # appears that demux was not run previously
-            flowcell_errors.add(flowcell)
+            run_errors.add(run_name)
             continue
         elif not (align or validate_alignment(manifest, n_libraries)):
-            # appears that alignment wasn't run and wasn't requested
-            flowcell_errors.add(flowcell)
+            # appears that alignment was not run and wasn't requested
+            run_errors.add(run_name)
             continue
+
+        demux_jids = dict()
 
         # this script will check the sequencing directory, extract barcodes,
         # and demultiplex to BAM files
         with importlib.resources.path(
             slideseq.scripts, "demultiplex.sh"
         ) as qsub_script:
-            # request a high-cpu, high-mem machine for this step
-            demux_args = qsub_args(
-                log_file=manifest.log_dir / "demultiplex.L00$TASK_ID.log",
-                PICARD_JAR=config.picard,
-                TMP_DIR=manifest.tmp_dir,
-                BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
-                READ_STRUCTURE=read_structure,
-                OUTPUT_DIR=output_dir,
-                RUN_BARCODE=flowcell,
-            )
-            demux_args.extend(
-                [
-                    "-t",
-                    f"{min(lanes)}-{max(lanes)}",
-                    f"{qsub_script.absolute()}",
-                ]
-            )
+            for run_info in run_info_list:
+                demux_args = qsub_args(
+                    log_file=manifest.log_dir / run_info.demux_log,
+                    PICARD_JAR=config.picard,
+                    TMP_DIR=manifest.tmp_dir,
+                    BASECALLS_DIR=run_info.basecall_dir,
+                    READ_STRUCTURE=run_info.read_structure,
+                    OUTPUT_DIR=output_dir,
+                    RUN_BARCODE=run_name,
+                )
+                demux_args.extend(
+                    [
+                        "-t",
+                        f"{min(run_info.lanes)}-{max(run_info.lanes)}",
+                        f"{qsub_script.absolute()}",
+                    ]
+                )
 
-            if demux:
-                demux_jid = attempt_qsub(demux_args, flowcell, "demultiplex", dryrun)
-                if demux_jid is None:
-                    flowcell_errors.add(flowcell)
-                    continue
-            else:
-                demux_jid = None
-                log.debug("Skipping demux step")
+                if demux:
+                    demux_jids[run_info.flowcell] = attempt_qsub(
+                        demux_args, run_name, "demultiplex", dryrun
+                    )
+                    if demux_jids[run_info.flowcell] is None:
+                        run_errors.add(run_name)
+                        continue
+                else:
+                    demux_jids[run_info.flowcell] = None
+                    log.debug("Skipping demux step")
 
-        if flowcell in flowcell_errors:
+        if run_name in run_errors:
             continue
 
         alignment_jids = dict()
@@ -220,42 +224,46 @@ def main(
         # specified reference. this depends on previous jobs per lane, so we use
         # -hold_jid on the lane-specific demux job
         with importlib.resources.path(slideseq.scripts, "alignment.sh") as qsub_script:
-            for lane in lanes:
-                if demux and demux_jid is None:
-                    log.debug(f"Not aligning {lane} because demux was not submitted")
-                    continue
+            for run_info in run_info_list:
+                for lane in run_info.lanes:
+                    if demux and demux_jids[run_info.flowcell] is None:
+                        log.debug(
+                            f"Not aligning {lane} because demux was not submitted"
+                        )
+                        continue
 
-                # request a high-cpu, high-mem machine for this step
-                alignment_args = qsub_args(
-                    log_file=manifest.log_dir / f"alignment.L00{lane}.$TASK_ID.log",
-                    debug=debug,
-                    CONDA_ENV=env_name,
-                    LANE=lane,
-                    MANIFEST=manifest_file,
-                )
-
-                if demux:
-                    alignment_args.extend(["-hold_jid", f"{demux_jid}[{lane}]"])
-
-                alignment_args.extend(
-                    [
-                        "-t",
-                        f"1-{n_libraries}",
-                        f"{qsub_script.absolute()}",
-                    ]
-                )
-
-                if align:
-                    alignment_jids[lane] = attempt_qsub(
-                        alignment_args, flowcell, "alignment", dryrun
+                    alignment_args = qsub_args(
+                        log_file=manifest.log_dir / run_info.alignment_log(lane),
+                        debug=debug,
+                        CONDA_ENV=env_name,
+                        LANE=lane,
+                        MANIFEST=manifest_file,
                     )
-                    if alignment_jids[lane] is None:
-                        flowcell_errors.add(flowcell)
-                else:
-                    alignment_jids[lane] = None
-                    log.info("Skipping alignment step")
 
-        if flowcell in flowcell_errors:
+                    if demux:
+                        alignment_args.extend(
+                            ["-hold_jid", f"{demux_jids[run_info.flowcell]}[{lane}]"]
+                        )
+
+                    alignment_args.extend(
+                        [
+                            "-t",
+                            f"1-{n_libraries}",
+                            f"{qsub_script.absolute()}",
+                        ]
+                    )
+
+                    if align:
+                        alignment_jids[run_info.flowcell, lane] = attempt_qsub(
+                            alignment_args, run_name, "alignment", dryrun
+                        )
+                        if alignment_jids[run_info.flowcell, lane] is None:
+                            run_errors.add(run_name)
+                    else:
+                        alignment_jids[run_info.flowcell, lane] = None
+                        log.info("Skipping alignment step")
+
+        if run_name in run_errors:
             continue
 
         # this script analyzes the alignment output, generates plots, matches to puck, etc
@@ -263,11 +271,14 @@ def main(
         # for the relevant lane(s) that contain that library. We're going to wait on all the
         # lanes, but use hold_jid_ad to wait on only that library's alignments
         with importlib.resources.path(slideseq.scripts, "processing.sh") as qsub_script:
-            if align and any(alignment_jids[lane] is None for lane in lanes):
+            if align and any(
+                alignment_jids[run_info.flowcell, lane] is None
+                for run_info in run_info_list
+                for lane in run_info.lanes
+            ):
                 log.debug("Not processing because some alignments were not submitted")
                 continue
 
-            # this step requires considerably fewer resources
             processing_args = qsub_args(
                 log_file=manifest.log_dir / "processing.$TASK_ID.log",
                 debug=debug,
@@ -276,8 +287,14 @@ def main(
             )
 
             if align:
-                for lane in lanes:
-                    processing_args.extend(["-hold_jid_ad", f"{alignment_jids[lane]}"])
+                for run_info in run_info_list:
+                    for lane in run_info.lanes:
+                        processing_args.extend(
+                            [
+                                "-hold_jid_ad",
+                                f"{alignment_jids[run_info.flowcell, lane]}",
+                            ]
+                        )
 
             processing_args.extend(
                 [
@@ -288,19 +305,17 @@ def main(
             )
 
             processing_jid = attempt_qsub(
-                processing_args, flowcell, "processing", dryrun
+                processing_args, run_name, "processing", dryrun
             )
             if processing_jid is None:
-                flowcell_errors.add(flowcell)
+                run_errors.add(run_name)
             else:
-                submitted.add(flowcell)
+                submitted.add(run_name)
 
     if submitted and not dryrun:
         log.info(f"Flowcells {', '.join(submitted)} submitted for processing")
     else:
         log.info("No flowcells submitted for processing")
 
-    if flowcell_errors:
-        log.info(
-            f"Flowcells {', '.join(flowcell_errors)} had errors -- see warnings above."
-        )
+    if run_errors:
+        log.info(f"Flowcells {', '.join(run_errors)} had errors -- see warnings above.")

@@ -28,6 +28,7 @@ METADATA_COLS = [
     "library",
     "date",
     "flowcell",
+    "run_name",
     "BCLPath",
     "lane",
     "sample_barcode",
@@ -44,6 +45,12 @@ METADATA_COLS = [
     "gen_read1_plot",
     "gen_downsampling",
 ]
+
+
+# a single library can span multiple rows in the sequencing spreadsheet,
+# e.g. multiple flowcells, lanes, and sample barcodes. But the rest of the columns
+# should be constant for consistent processing
+VARIABLE_LIBRARY_COLS = {"bclpath", "lane", "sample_barcode"}
 
 
 # for columns that pandas might not recognize automatically

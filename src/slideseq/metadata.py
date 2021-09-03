@@ -9,11 +9,9 @@ import yaml
 
 import slideseq.util.constants as constants
 from slideseq.library import Library, LibraryLane, Reference
+from slideseq.util.run_info import RunInfo
 
 log = logging.getLogger(__name__)
-
-
-RunInfo = dict[Path, (str, range, str)]
 
 
 @dataclass
@@ -66,21 +64,33 @@ class Manifest:
         validate_library_df(library_name, library_df)
         row = library_df.iloc[0]
 
-        lanes = sorted(set(library_df.lane))
+        flowcell_lanes = sorted(
+            set(library_df[["flowcell", "lane"]].itertuples(index=False))
+        )
 
-        return library_name, row, lanes, Reference(row.reference)
+        return library_name, row, flowcell_lanes, Reference(row.reference)
 
     def get_library(self, library_index: int) -> Library:
         return Library(*self._get_library(library_index), library_dir=self.library_dir)
 
-    def get_library_lane(self, library_index: int, lane: int) -> Optional[LibraryLane]:
-        library_name, row, lanes, reference = self._get_library(library_index)
+    def get_library_lane(
+        self, library_index: int, flowcell: str, lane: int
+    ) -> Optional[LibraryLane]:
+        library_name, row, flowcell_lanes, reference = self._get_library(library_index)
 
-        if lane not in lanes:
+        if (flowcell, lane) not in flowcell_lanes:
             log.warning("Library not present in this lane, nothing to do here")
             return None
 
-        return LibraryLane(library_name, row, lanes, reference, self.library_dir, lane)
+        return LibraryLane(
+            library_name,
+            row,
+            flowcell_lanes,
+            reference,
+            self.library_dir,
+            flowcell,
+            lane,
+        )
 
     @property
     def tmp_dir(self):
@@ -149,13 +159,18 @@ def validate_run_df(run_name: str, run_df: pd.DataFrame) -> bool:
         return True
 
 
-def split_sample_lanes(run_df: pd.DataFrame, run_info: RunInfo):
+def split_sample_lanes(run_df: pd.DataFrame, run_info_list: list[RunInfo]):
     new_rows = []
+    run_info_d = {run_info.run_dir: run_info for run_info in run_info_list}
 
     for _, row in run_df.iterrows():
         flowcell_dir = Path(run_df.bclpath)
+
+        # write the correct flowcell barcode as an entry in the row,
+        # possibly replacing whatever string was there
+        row.flowcell = run_info_d[flowcell_dir].flowcell
         if row.lane == constants.ALL_LANES:
-            row_lanes = run_info[flowcell_dir][1]
+            row_lanes = run_info_d[flowcell_dir].lanes
         else:
             row_lanes = str(row.lane).split(",")
 
@@ -167,11 +182,11 @@ def split_sample_lanes(run_df: pd.DataFrame, run_info: RunInfo):
 
 
 def validate_library_df(library_name: str, library_df: pd.DataFrame):
-    """Verify that all of the columns in the dataframe are constant, except
-    for the lane which was expanded out earlier"""
+    """Verify that all of the metadata columns in the dataframe are constant.
+    Allows for multiple flowcells and lanes so that replicates can be combined"""
 
     for col in constants.METADATA_COLS:
-        if col.lower() == "lane":
+        if col.lower() in constants.VARIABLE_LIBRARY_COLS:
             continue
 
         if len(set(library_df[col.lower()])) != 1:
