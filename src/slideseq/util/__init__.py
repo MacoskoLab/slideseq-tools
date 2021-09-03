@@ -4,7 +4,6 @@ import datetime
 import logging
 import os
 import sys
-import xml.etree.ElementTree as et
 from pathlib import Path
 from subprocess import PIPE, Popen, run
 from typing import Any
@@ -102,59 +101,6 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
         arg_list.extend(["-v", f"{name}={value}"])
 
     return arg_list
-
-
-def get_flowcell(run_info: et.ElementTree) -> str:
-    """
-    Get the flowcell name from RunInfo.xml. This should be more reliable than
-    trying to parse the run directory, which might have been renamed.
-
-    :param run_info: ElementTree representing RunInfo.xml
-    :return: The flowcell name for this run
-    """
-    flowcell = run_info.find("./Run/Flowcell").text
-    return flowcell
-
-
-def get_read_structure(run_info: et.ElementTree) -> str:
-    """
-    Get read structure from RunInfo.xml. Assumes one index sequence only,
-    will warn if two are present and ignore the second.
-
-    :param run_info: ElementTree representing RunInfo.xml
-    :return: Formatting string representing the read structure
-    """
-    read_elems = run_info.findall("./Run/Reads/Read[@NumCycles][@Number]")
-    read_elems.sort(key=lambda el: int(el.get("Number")))
-
-    if len(read_elems) == 4:
-        # two index reads. We will just ignore the second index
-        log.warning(
-            "This sequencing run has two index reads, we are ignoring the second one"
-        )
-        return "{}T{}B{}S{}T".format(*(el.get("NumCycles") for el in read_elems))
-    elif len(read_elems) != 3:
-        raise ValueError(f"Expected three reads, got {len(read_elems)}")
-
-    return "{}T{}B{}T".format(*(el.get("NumCycles") for el in read_elems))
-
-
-def get_lanes(run_info: et.ElementTree) -> range:
-    """
-    Return the lanes for this run, as a range
-    :param run_info: ElementTree representing RunInfo.xml
-    :return: range object for the lanes of the run
-    """
-    lane_count = int(run_info.find("./Run/FlowcellLayout[@LaneCount]").get("LaneCount"))
-    return range(1, lane_count + 1)
-
-
-def get_run_info(run_info_file: Path) -> (str, range, str):
-    # open the RunInfo.xml file and parse it with element tree
-    with run_info_file.open() as f:
-        run_info = et.parse(f)
-
-    return get_flowcell(run_info), get_lanes(run_info), get_read_structure(run_info)
 
 
 def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):
