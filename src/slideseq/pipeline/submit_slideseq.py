@@ -191,10 +191,10 @@ def main(
                     log_file=manifest.log_dir / run_info.demux_log,
                     PICARD_JAR=config.picard,
                     TMP_DIR=manifest.tmp_dir,
+                    FLOWCELL=run_info.flowcell,
                     BASECALLS_DIR=run_info.basecall_dir,
                     READ_STRUCTURE=run_info.read_structure,
                     OUTPUT_DIR=output_dir,
-                    RUN_BARCODE=run_name,
                 )
                 demux_args.extend(
                     [
@@ -236,6 +236,7 @@ def main(
                         log_file=manifest.log_dir / run_info.alignment_log(lane),
                         debug=debug,
                         CONDA_ENV=env_name,
+                        FLOWCELL=run_info.flowcell,
                         LANE=lane,
                         MANIFEST=manifest_file,
                     )

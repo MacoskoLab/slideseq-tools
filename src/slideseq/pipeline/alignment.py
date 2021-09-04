@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @click.command(name="align_library", no_args_is_help=True)
+@click.option("--flowcell", type=int, required=True, help="Flowcell being aligned")
 @click.option(
     "--lane", type=int, required=True, help="Lane of the flowcell being aligned"
 )
@@ -34,6 +35,7 @@ log = logging.getLogger(__name__)
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False))
 def main(
+    flowcell: str,
     lane: int,
     library_index: int,
     manifest_file: str,
@@ -47,7 +49,7 @@ def main(
     manifest = Manifest.from_file(Path(manifest_file))
 
     # task array is 1-indexed
-    library = manifest.get_library_lane(library_index - 1, lane)
+    library = manifest.get_library_lane(library_index - 1, flowcell, lane)
     if library is None:
         return
     elif not library.raw_ubam.exists():
