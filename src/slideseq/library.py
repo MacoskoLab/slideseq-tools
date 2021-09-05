@@ -194,9 +194,14 @@ class Library:
         return self.row.gen_downsampling
 
     @property
+    def date_name(self) -> str:
+        """Unique library name and date"""
+        return f"{self.row.date}_{self.name}"
+
+    @property
     def dir(self) -> Path:
         """Base directory for the library data"""
-        return self.library_dir / f"{self.row.date}_{self.name}"
+        return self.library_dir / self.date_name
 
     @property
     def barcode_matching_dir(self) -> Path:

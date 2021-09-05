@@ -30,7 +30,14 @@ def give_group_access(path: Path):
             os.chmod(os.path.join(dirpath, filename), 0o664)
 
 
-def rsync_to_google(path: Path, gs_path: str):
+def rsync_to_google(path: Path, gs_path: Path):
+    """
+    Call gsutil rsync to upload a directory up to Google Storage, and sets Custom-Time
+    metadata on BAM files for lifecycle rules.
+
+    :param path: Local path to upload
+    :param gs_path: Path to the destination, including bucket name but *not* 'gs://'
+    """
     # -m for multithreading
     # -q to quiet output
     # -C to continue on errors
@@ -45,7 +52,7 @@ def rsync_to_google(path: Path, gs_path: str):
         "-e",
         "-r",
         f"{path}",
-        f"{gs_path}/{path.name}",
+        f"gs://{gs_path}",
     ]
 
     proc = run(cmd, capture_output=True, text=True)

@@ -322,6 +322,6 @@ def main(
     log.debug("Setting group permissions")
     give_group_access(library.dir)
     log.debug("Copying data to google storage")
-    rsync_to_google(library.dir, config.gs_path)
+    rsync_to_google(library.dir, config.gs_path / library.date_name)
 
     log.info(f"Processing for {library} complete")

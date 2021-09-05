@@ -282,6 +282,9 @@ def main(
     log.debug("Setting group permissions")
     give_group_access(library.dir)
     log.debug("Copying data to google storage")
-    rsync_to_google(library.dir, config.gs_path)
+    rsync_to_google(
+        library.lane_dir,
+        config.gs_path / library.lane_dir.relative_to(config.library_dir),
+    )
 
     log.info(f"Alignment for {library} completed")
