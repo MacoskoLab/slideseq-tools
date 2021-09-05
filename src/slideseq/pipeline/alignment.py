@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @click.command(name="align_library", no_args_is_help=True)
-@click.option("--flowcell", type=int, required=True, help="Flowcell being aligned")
+@click.option("--flowcell", required=True, help="Flowcell being aligned")
 @click.option(
     "--lane", type=int, required=True, help="Lane of the flowcell being aligned"
 )
