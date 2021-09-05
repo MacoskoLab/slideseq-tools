@@ -73,7 +73,7 @@ def rsync_to_google(path: Path, gs_path: Path):
         "setmeta",
         "-h",
         f"Custom-Time:{date}",
-        f"{gs_path}/{path.name}/**bam",
+        f"gs://{gs_path}/**bam",
     ]
     proc = run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
