@@ -77,11 +77,15 @@ def rsync_to_google(path: Path, gs_path: str):
         log.info("gsutil setmeta completed")
 
 
-def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list[str]:
+def qsub_args(
+    log_file: Path = None, email: str = None, debug: bool = False, **kwargs: Any
+) -> list[str]:
     """
     Returns command list starting with "qsub", adding configured options
 
     :param log_file: path to log file for output
+    :param email: Email addresses to include with the -M option. If None, emails will
+                  be sent to the submitting user
     :param debug: whether to turn on debug logging
     :param kwargs: additional keyword arguments are passed as environment variables.
                    Values will be converted to strings
@@ -94,6 +98,9 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
 
     if log_file is not None:
         arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
+
+    if email is not None:
+        arg_list.extend(["-M", email])
 
     if debug:
         arg_list.extend(["-v", "DEBUG=--debug"])

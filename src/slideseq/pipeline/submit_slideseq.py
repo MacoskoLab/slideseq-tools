@@ -187,6 +187,7 @@ def main(
             # request a high-cpu, high-mem machine for this step
             demux_args = qsub_args(
                 log_file=manifest.log_dir / "demultiplex.L00$TASK_ID.log",
+                email=",".join(manifest.email_addresses),
                 PICARD_JAR=config.picard,
                 TMP_DIR=manifest.tmp_dir,
                 BASECALLS_DIR=flowcell_dir / "Data" / "Intensities" / "BaseCalls",
@@ -228,6 +229,7 @@ def main(
                 # request a high-cpu, high-mem machine for this step
                 alignment_args = qsub_args(
                     log_file=manifest.log_dir / f"alignment.L00{lane}.$TASK_ID.log",
+                    email=",".join(manifest.email_addresses),
                     debug=debug,
                     CONDA_ENV=env_name,
                     LANE=lane,
@@ -270,6 +272,7 @@ def main(
             # this step requires considerably fewer resources
             processing_args = qsub_args(
                 log_file=manifest.log_dir / "processing.$TASK_ID.log",
+                email=",".join(manifest.email_addresses),
                 debug=debug,
                 CONDA_ENV=env_name,
                 MANIFEST=manifest_file,
