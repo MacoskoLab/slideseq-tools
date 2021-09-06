@@ -55,12 +55,7 @@ def rsync_to_google(path: Path, gs_path: Path):
         f"gs://{gs_path}",
     ]
 
-    proc = run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        log.error(f"Error running gsutil rsync:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info("gsutil rsync completed")
+    run_command(cmd, "gsutil rsync", path)
 
     date = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
@@ -75,12 +70,8 @@ def rsync_to_google(path: Path, gs_path: Path):
         f"Custom-Time:{date}",
         f"gs://{gs_path}/**bam",
     ]
-    proc = run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        log.error(f"Error running gsutil setmeta:\n\t{proc.stderr}")
-        sys.exit(1)
-    else:
-        log.info("gsutil setmeta completed")
+
+    run_command(cmd, "gsutil setmeta", path)
 
 
 def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list[str]:
@@ -110,7 +101,7 @@ def qsub_args(log_file: Path = None, debug: bool = False, **kwargs: Any) -> list
     return arg_list
 
 
-def run_command(cmd: list[Any], name: str, library: lib.Library, lane: int = None):
+def run_command(cmd: list[Any], name: str, library: Any, lane: int = None):
     if lane is None:
         log.info(f"{name} for {library}")
     else:
