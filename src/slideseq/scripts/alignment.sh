@@ -10,7 +10,7 @@
 #$ -P macosko_lab
 #$ -R y
 #$ -j y
-#$ -m beas
+#$ -m eas
 
 source /broad/software/scripts/useuse
 reuse Anaconda3
