@@ -77,10 +77,6 @@ def validate_demux(manifest: Manifest):
         log.error(f"{manifest.workflow_dir} does not exist")
         return False
 
-    if not manifest.metadata_file.exists():
-        log.error(f"{manifest.metadata_file} does not exist")
-        return False
-
     for flowcell_dir in manifest.flowcell_dirs:
         run_info = get_run_info(flowcell_dir)
 
