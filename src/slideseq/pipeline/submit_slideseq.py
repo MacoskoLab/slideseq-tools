@@ -164,20 +164,24 @@ def main(
         if dryrun:
             log.info(f"Would write following in {metadata_file}")
             log.info(run_df)
-        elif demux:
-            # make various directories
-            prepare_demux(
-                run_df, run_info_list, manifest.workflow_dir, manifest.library_dir
-            )
+        else:
+            if demux:
+                # make various directories
+                prepare_demux(
+                    run_df, run_info_list, manifest.workflow_dir, manifest.library_dir
+                )
+            elif not validate_demux(manifest):
+                # appears that demux was not run previously
+                run_errors.add(run_name)
+                continue
+            elif not (align or validate_alignment(manifest, n_libraries)):
+                # appears that alignment was not run and wasn't requested
+                run_errors.add(run_name)
+                continue
+
+            if metadata_file.exists():
+                log.info(f"Overwriting metadata file {metadata_file}")
             run_df.to_csv(metadata_file, header=True, index=False)
-        elif not validate_demux(manifest):
-            # appears that demux was not run previously
-            run_errors.add(run_name)
-            continue
-        elif not (align or validate_alignment(manifest, n_libraries)):
-            # appears that alignment was not run and wasn't requested
-            run_errors.add(run_name)
-            continue
 
         demux_jids = dict()
 
