@@ -8,7 +8,7 @@ import pandas as pd
 import yaml
 
 import slideseq.util.constants as constants
-from slideseq.library import Library, LibraryLane, Reference
+from slideseq.library import Library, Reference, Sample
 from slideseq.util.run_info import RunInfo
 
 log = logging.getLogger(__name__)
@@ -61,31 +61,26 @@ class Manifest:
         library_df = metadata_df.loc[metadata_df.library == library_name]
 
         # verify that all columns are consistent, except for lane
-        validate_library_df(library_name, library_df)
-        row = library_df.iloc[0]
+        data, samples = validate_library_df(library_name, library_df)
 
-        flowcell_lanes = sorted(
-            set(library_df[["flowcell", "lane"]].itertuples(index=False))
-        )
-
-        return library_name, row, flowcell_lanes, Reference(row.reference)
+        return library_name, data, samples, Reference(data.reference)
 
     def get_library(self, library_index: int) -> Library:
         return Library(*self._get_library(library_index), library_dir=self.library_dir)
 
-    def get_library_lane(
+    def get_sample(
         self, library_index: int, flowcell: str, lane: int
-    ) -> Optional[LibraryLane]:
-        library_name, row, flowcell_lanes, reference = self._get_library(library_index)
+    ) -> Optional[Sample]:
+        library_name, data, samples, reference = self._get_library(library_index)
 
-        if (flowcell, lane) not in flowcell_lanes:
+        if (flowcell, lane) not in samples:
             log.warning("Library not present in this lane, nothing to do here")
             return None
 
-        return LibraryLane(
+        return Sample(
             library_name,
-            row,
-            flowcell_lanes,
+            data,
+            samples,
             reference,
             self.library_dir,
             flowcell,
@@ -188,11 +183,24 @@ def validate_library_df(library_name: str, library_df: pd.DataFrame):
     """Verify that all of the metadata columns in the dataframe are constant.
     Allows for multiple flowcells and lanes so that replicates can be combined"""
 
-    for col in constants.METADATA_COLS:
-        if col.lower() in constants.VARIABLE_LIBRARY_COLS:
+    library_data = {}
+
+    for col in map(str.lower, constants.METADATA_COLS):
+        if col in constants.VARIABLE_LIBRARY_COLS:
             continue
 
-        if len(set(library_df[col.lower()])) != 1:
+        if len(set(library_df[col])) != 1:
             raise ValueError(
                 f"Library {library_name} has multiple values in column {col}"
             )
+
+        library_data[col] = library_df[col][0]
+
+    samples = {
+        (flowcell, lane): list(sample_df[constants.VARIABLE_LIBRARY_COLS[-1]])
+        for (_, flowcell, lane), sample_df in library_df.groupby(
+            constants.VARIABLE_LIBRARY_COLS[:3]
+        )
+    }
+
+    return pd.Series(library_data), samples

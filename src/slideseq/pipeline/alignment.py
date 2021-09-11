@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+import slideseq.util.constants as constants
 from slideseq.alignment_quality import write_alignment_stats
 from slideseq.config import get_config
 from slideseq.metadata import Manifest
@@ -49,7 +50,7 @@ def main(
     manifest = Manifest.from_file(Path(manifest_file))
 
     # task array is 1-indexed
-    library = manifest.get_library_lane(library_index - 1, flowcell, lane)
+    library = manifest.get_sample(library_index - 1, flowcell, lane)
     if library is None:
         return
     elif not library.raw_ubam.exists():
@@ -122,20 +123,21 @@ def main(
 
     procs.append(start_popen(cmd, "FilterBam", library, lane, procs[-1]))
 
-    # Trim reads with starting sequence
-    cmd = config.dropseq_cmd(
-        "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
-    )
-    cmd.extend(
-        [
-            f"OUTPUT_SUMMARY={library.trimming_summary}",
-            f"SEQUENCE={library.start_sequence}",
-            "MISMATCHES=0",
-            "NUM_BASES=5",
-        ]
-    )
+    if library.start_sequence != constants.NO_START_SEQUENCE:
+        # Trim reads with starting sequence
+        cmd = config.dropseq_cmd(
+            "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
+        )
+        cmd.extend(
+            [
+                f"OUTPUT_SUMMARY={library.trimming_summary}",
+                f"SEQUENCE={library.start_sequence}",
+                "MISMATCHES=0",
+                "NUM_BASES=5",
+            ]
+        )
 
-    procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
+        procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
 
     # Adapter-aware poly A trimming
     cmd = config.dropseq_cmd(
