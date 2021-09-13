@@ -225,12 +225,13 @@ def validate_library_df(library_name: str, library_df: pd.DataFrame):
         if col in constants.VARIABLE_LIBRARY_COLS:
             continue
 
-        if len(set(library_df[col])) != 1:
+        col_vals = set(library_df[col])
+        if len(col_vals) != 1:
             raise ValueError(
                 f"Library {library_name} has multiple values in column {col}"
             )
 
-        library_data[col] = library_df[col][0]
+        library_data[col] = col_vals.pop()
 
     samples = {
         (flowcell, lane): list(sample_df[constants.VARIABLE_LIBRARY_COLS[-1]])
