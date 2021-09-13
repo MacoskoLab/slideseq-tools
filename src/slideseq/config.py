@@ -1,8 +1,8 @@
 import importlib.resources
 import logging
 from dataclasses import dataclass
+from os import PathLike
 from pathlib import Path
-from typing import Union
 
 import yaml
 
@@ -18,6 +18,7 @@ class Config:
     reference_dir: Path
     workflow_dir: Path
     library_dir: Path
+    gsecret_name: str
     gsheet_id: str
     worksheet: str
     gs_path: str
@@ -35,6 +36,7 @@ class Config:
             reference_dir=Path(data["reference_dir"]),
             workflow_dir=Path(data["workflow_dir"]),
             library_dir=Path(data["library_dir"]),
+            gsecret_name=data["gsecret_name"],
             gsheet_id=data["gsheet_id"],
             worksheet=data["worksheet"],
             gs_path=data["gs_path"],
@@ -43,8 +45,8 @@ class Config:
     def dropseq_cmd(
         self,
         command: str,
-        input_file: Union[Path, str],
-        output_file: Union[Path, str],
+        input_file: PathLike[str],
+        output_file: PathLike[str],
         tmp_dir: Path,
         mem: str = "8g",
         compression: int = 0,
@@ -72,7 +74,7 @@ class Config:
             "QUIET=true",
         ]
 
-    def picard_cmd(self, command: str, tmp_dir: Path, mem: str = "62g"):
+    def picard_cmd(self, command: str, tmp_dir: PathLike[str], mem: str = "62g"):
         """Return the beginning of a Picard command, with standard options
 
         :param command: name of the picard tool being invoked

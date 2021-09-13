@@ -76,7 +76,7 @@ def main(
         demux = False
 
     log.debug("Fetching Google credentials")
-    google_creds = gutil.get_secrets_manager_credentials()
+    google_creds = gutil.get_secrets_manager_credentials(config.gsecret_name)
 
     log.debug("Setting up Google Drive service")
     drive_service = gutil.get_service(google_creds)
