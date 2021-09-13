@@ -123,16 +123,27 @@ def main(
         manifest_file = output_dir / "manifest.yaml"
         metadata_file = output_dir / "metadata.csv"
 
+        run_info_list = []
+
+        for flowcell_dir in flowcell_dirs:
+            run_info_list.append(get_run_info(flowcell_dir))
+
+        # break rows out per flowcell/lane for processing
+        run_df = split_sample_lanes(run_df, run_info_list)
+
         manifest = Manifest(
             run_name=run_name,
             flowcell_dirs=flowcell_dirs,
             workflow_dir=output_dir,
             library_dir=config.library_dir,
             metadata_file=metadata_file,
+            metadata=split_sample_lanes(run_df, run_info_list),
             email_addresses=sorted(
                 set(e.strip() for v in run_df.email for e in v.split(","))
             ),
         )
+
+        n_libraries = len(list(manifest.libraries))
 
         if not dryrun:
             log.debug("Creating output directories")
@@ -148,28 +159,13 @@ def main(
             manifest.tmp_dir.mkdir(exist_ok=True)
 
             log.debug(f"Writing manifest to {manifest_file}")
+            if metadata_file.exists():
+                log.info(f"Overwriting metadata file {metadata_file}")
             manifest.to_file(manifest_file)
 
-        run_info_list = []
-
-        for flowcell_dir in flowcell_dirs:
-            run_info_list.append(get_run_info(flowcell_dir))
-
-        # break rows out per flowcell/lane for processing
-        run_df = split_sample_lanes(run_df, run_info_list)
-
-        libraries = sorted(set(run_df.library))
-        n_libraries = len(libraries)
-
-        if dryrun:
-            log.info(f"Would write following in {metadata_file}")
-            log.info(run_df)
-        else:
             if demux:
                 # make various directories
-                prepare_demux(
-                    run_df, run_info_list, manifest.workflow_dir, manifest.library_dir
-                )
+                prepare_demux(run_info_list, manifest)
             elif not validate_demux(manifest):
                 # appears that demux was not run previously
                 run_errors.add(run_name)
@@ -178,10 +174,6 @@ def main(
                 # appears that alignment was not run and wasn't requested
                 run_errors.add(run_name)
                 continue
-
-            if metadata_file.exists():
-                log.info(f"Overwriting metadata file {metadata_file}")
-            run_df.to_csv(metadata_file, header=True, index=False)
 
         demux_jids = dict()
 

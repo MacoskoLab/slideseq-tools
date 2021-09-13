@@ -21,6 +21,7 @@ class Manifest:
     workflow_dir: Path
     library_dir: Path
     metadata_file: Path
+    metadata: pd.DataFrame
     email_addresses: list[str]
 
     @staticmethod
@@ -36,6 +37,7 @@ class Manifest:
             workflow_dir=Path(data["workflow_dir"]),
             library_dir=Path(data["library_dir"]),
             metadata_file=Path(data["metadata_file"]),
+            metadata=pd.read_csv(data["metadata_file"]),
             email_addresses=data["email_addresses"],
         )
 
@@ -52,13 +54,46 @@ class Manifest:
         with output_file.open("w") as out:
             yaml.safe_dump(data, stream=out)
 
-        log.debug(f"Wrote manifest file {output_file} for run {data['run_name']}")
+        log.debug(f"Wrote manifest file {output_file} for run {self.run_name}")
+
+        self.metadata.to_csv(self.metadata_file, header=True, index=False)
+        log.debug(f"Wrote metadata file {self.metadata_file} for run {self.run_name}")
+
+    @property
+    def libraries(self):
+        for library_name, lib_df in self.metadata.groupby("library"):
+            assert isinstance(library_name, str)
+            data, samples = validate_library_df(library_name, lib_df)
+
+            yield Library(
+                library_name,
+                data,
+                samples,
+                Reference(data.reference),
+                library_dir=self.library_dir,
+            )
+
+    @property
+    def samples(self):
+        for library_name, lib_df in self.metadata.groupby("library"):
+            assert isinstance(library_name, str)
+            data, samples = validate_library_df(library_name, lib_df)
+
+            for (flowcell, lane) in samples:
+                yield Sample(
+                    library_name,
+                    data,
+                    samples,
+                    Reference(data.reference),
+                    self.library_dir,
+                    flowcell,
+                    lane,
+                    samples[flowcell, lane],
+                )
 
     def _get_library(self, library_index: int):
-        metadata_df = pd.read_csv(self.metadata_file)
-
-        library_name = sorted(set(metadata_df.library))[library_index]
-        library_df = metadata_df.loc[metadata_df.library == library_name]
+        library_name = sorted(set(self.metadata.library))[library_index]
+        library_df = self.metadata.loc[self.metadata.library == library_name]
 
         # verify that all columns are consistent, except for lane
         data, samples = validate_library_df(library_name, library_df)
@@ -85,6 +120,7 @@ class Manifest:
             self.library_dir,
             flowcell,
             lane,
+            samples[flowcell, lane],
         )
 
     @property

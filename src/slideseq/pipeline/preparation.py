@@ -4,70 +4,66 @@ import csv
 import logging
 from pathlib import Path
 
-import pandas as pd
-
 from slideseq.metadata import Manifest
 from slideseq.util.run_info import RunInfo, get_run_info
 
 log = logging.getLogger(__name__)
 
 
-def gen_barcode_file(flowcell_df: pd.DataFrame, lane: int, output_file: Path):
+def gen_barcode_file(manifest: Manifest, flowcell: str, lane: int, output_file: Path):
     with output_file.open("w") as out:
         wtr = csv.writer(out, delimiter="\t")
         wtr.writerow(("barcode_sequence_1", "library_name", "barcode_name"))
 
-        for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
-            # we don't write out barcode_name but the column is required
-            wtr.writerow((row.sample_barcode, row.library, ""))
+        for library in manifest.libraries:
+            if (flowcell, lane) in library.samples:
+                for barcode in library.samples[flowcell, lane]:
+                    # we don't write out barcode_name but the column is required
+                    wtr.writerow((barcode, library.name, ""))
 
 
-def gen_library_params(
-    flowcell_df: pd.DataFrame, lane: int, output_file: Path, library_dir: Path
-):
+def gen_library_params(manifest: Manifest, flowcell: str, lane: int, output_file: Path):
     with output_file.open("w") as out:
         wtr = csv.writer(out, delimiter="\t")
         wtr.writerow(("OUTPUT", "SAMPLE_ALIAS", "LIBRARY_NAME", "BARCODE_1"))
 
-        for _, row in flowcell_df.loc[flowcell_df["lane"] == lane].iterrows():
-            # output the uBAM directly to library directory
-            lane_dir = (
-                library_dir
-                / f"{row.date}_{row.library}"
-                / row.flowcell
-                / f"L{lane:03d}"
-            )
-            lane_dir.mkdir(exist_ok=True, parents=True)
-            output_bam = f"{row.library}.unmapped.bam"
+        for sample in manifest.samples:
+            if sample.flowcell == flowcell and sample.lane == lane:
+                # output the uBAM directly to library directory
+                sample.lane_dir.mkdir(exist_ok=True, parents=True)
 
-            wtr.writerow(
-                (lane_dir / output_bam, row.library, row.library, row.sample_barcode)
-            )
+                for barcode, output_ubam in zip(sample.barcodes, sample.barcode_ubams):
+                    wtr.writerow((output_ubam, sample.name, sample.name, barcode))
 
 
-def prepare_demux(
-    run_df: pd.DataFrame,
-    run_info_list: list[RunInfo],
-    workflow_dir: Path,
-    library_dir: Path,
-):
+def prepare_demux(run_info_list: list[RunInfo], manifest: Manifest):
     """create a bunch of directories, and write some input files for picard"""
     # Create directories
-    log.info(f"Creating directories in {workflow_dir} and {library_dir}")
-    for run_info in run_info_list:
-        flowcell_df = run_df.loc[run_df.flowcell == run_info.flowcell]
+    log.info(
+        f"Creating directories in {manifest.workflow_dir} and {manifest.library_dir}"
+    )
 
+    for run_info in run_info_list:
         for lane in run_info.lanes:
-            output_lane_dir = workflow_dir / run_info.flowcell / f"L{lane:03d}"
+            output_lane_dir = manifest.workflow_dir / run_info.flowcell / f"L{lane:03d}"
+
             output_lane_dir.mkdir(exist_ok=True, parents=True)
             (output_lane_dir / "barcodes").mkdir(exist_ok=True)
 
             # Generate barcode_params.txt that is needed by ExtractIlluminaBarcodes
-            gen_barcode_file(flowcell_df, lane, output_lane_dir / "barcode_params.txt")
+            gen_barcode_file(
+                manifest,
+                run_info.flowcell,
+                lane,
+                output_lane_dir / "barcode_params.txt",
+            )
 
             # Generate library_params that is needed by IlluminaBasecallsToSam
             gen_library_params(
-                flowcell_df, lane, output_lane_dir / "library_params.txt", library_dir
+                manifest,
+                run_info.flowcell,
+                lane,
+                output_lane_dir / "library_params.txt",
             )
 
 

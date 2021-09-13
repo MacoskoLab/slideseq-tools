@@ -277,14 +277,23 @@ class Sample(Library):
 
     flowcell: str
     lane: int
+    barcodes: list[str]
 
     @property
     def lane_dir(self) -> Path:
         return self.dir / self.flowcell / f"L{self.lane:03d}"
 
     @property
+    def barcode_ubams(self) -> list[Path]:
+        """One unmapped BAM per barcode, merged into raw_ubam"""
+        return [
+            (self.lane_dir / self.base).with_suffix(f".{barcode}.unmapped.bam")
+            for barcode in self.barcodes
+        ]
+
+    @property
     def raw_ubam(self) -> Path:
-        """Raw unmapped BAM from demux. Keep this one for posterity"""
+        """Raw unmapped BAM. Keep this one for posterity"""
         return (self.lane_dir / self.base).with_suffix(".unmapped.bam")
 
     @property
