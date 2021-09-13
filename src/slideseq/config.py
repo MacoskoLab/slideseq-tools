@@ -1,8 +1,8 @@
 import importlib.resources
 import logging
 from dataclasses import dataclass
-from os import PathLike
 from pathlib import Path
+from typing import Union
 
 import yaml
 
@@ -45,8 +45,8 @@ class Config:
     def dropseq_cmd(
         self,
         command: str,
-        input_file: PathLike[str],
-        output_file: PathLike[str],
+        input_file: Union[Path, str],
+        output_file: Union[Path, str],
         tmp_dir: Path,
         mem: str = "8g",
         compression: int = 0,
@@ -74,7 +74,7 @@ class Config:
             "QUIET=true",
         ]
 
-    def picard_cmd(self, command: str, tmp_dir: PathLike[str], mem: str = "62g"):
+    def picard_cmd(self, command: str, tmp_dir: Path, mem: str = "62g"):
         """Return the beginning of a Picard command, with standard options
 
         :param command: name of the picard tool being invoked
