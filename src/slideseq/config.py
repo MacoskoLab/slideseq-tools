@@ -18,6 +18,7 @@ class Config:
     reference_dir: Path
     workflow_dir: Path
     library_dir: Path
+    gsecret_name: str
     gsheet_id: str
     worksheet: str
     gs_path: str
@@ -35,6 +36,7 @@ class Config:
             reference_dir=Path(data["reference_dir"]),
             workflow_dir=Path(data["workflow_dir"]),
             library_dir=Path(data["library_dir"]),
+            gsecret_name=data["gsecret_name"],
             gsheet_id=data["gsheet_id"],
             worksheet=data["worksheet"],
             gs_path=data["gs_path"],
