@@ -6,4 +6,4 @@ library_dir: /broad/macosko/data/libraries
 gsecret_name: 'projects/velina-208320/secrets/sequencing-credentials/versions/latest'
 gsheet_id: 1kwnKrkbl80LyE9lND0UZZJXipL4yfBbGjkTe6hcwJic
 worksheet: 'Experiment Log'
-gs_path: gs://macosko_data/libraries
+gs_path: macosko_data/libraries

@@ -28,6 +28,7 @@ fi
 
 # this will run slideseq.pipeline.alignment:main
 align_library ${DEBUG} \
+  --flowcell ${FLOWCELL} \
   --lane ${LANE} \
   --library-index ${SGE_TASK_ID} \
   --manifest-file ${MANIFEST}
