@@ -1,6 +1,11 @@
 # number of times to try qsub before giving up
 MAX_QSUB = 3
 
+# string used to mean "demux all lanes for this sample"
+ALL_LANES = "{LANE}"
+
+# string used to mean "no starting sequence to trim" (used for 10x runs)
+NO_START_SEQUENCE = "no start sequence"
 
 # these biotypes are _removed_ from the reference GTF
 FILTERED_BIOTYPES = [
@@ -26,6 +31,7 @@ METADATA_COLS = [
     "library",
     "date",
     "flowcell",
+    "run_name",
     "BCLPath",
     "lane",
     "sample_barcode",
@@ -42,6 +48,12 @@ METADATA_COLS = [
     "gen_read1_plot",
     "gen_downsampling",
 ]
+
+
+# a single library can span multiple rows in the sequencing spreadsheet,
+# e.g. multiple flowcells, lanes, and sample barcodes. But the rest of the columns
+# should be constant for consistent processing
+VARIABLE_LIBRARY_COLS = ["bclpath", "flowcell", "lane", "sample_barcode"]
 
 
 # for columns that pandas might not recognize automatically

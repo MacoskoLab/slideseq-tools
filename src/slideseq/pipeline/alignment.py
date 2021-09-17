@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+import slideseq.util.constants as constants
 from slideseq.alignment_quality import write_alignment_stats
 from slideseq.config import get_config
 from slideseq.metadata import Manifest
@@ -16,6 +17,7 @@ log = logging.getLogger(__name__)
 
 
 @click.command(name="align_library", no_args_is_help=True)
+@click.option("--flowcell", required=True, help="Flowcell being aligned")
 @click.option(
     "--lane", type=int, required=True, help="Lane of the flowcell being aligned"
 )
@@ -29,11 +31,12 @@ log = logging.getLogger(__name__)
 @click.option(
     "--manifest-file",
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help="YAML file containing the flowcell manifest",
+    help="YAML file containing the manifest",
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False))
 def main(
+    flowcell: str,
     lane: int,
     library_index: int,
     manifest_file: str,
@@ -47,32 +50,56 @@ def main(
     manifest = Manifest.from_file(Path(manifest_file))
 
     # task array is 1-indexed
-    library = manifest.get_library_lane(library_index - 1, lane)
-    if library is None:
+    sample = manifest.get_sample(library_index - 1, flowcell, lane)
+    if sample is None:
         return
-    elif not library.raw_ubam.exists():
-        raise ValueError(f"{library.raw_ubam} does not exist")
+    else:
+        for barcode_ubam in sample.barcode_ubams:
+            if not barcode_ubam.exists():
+                raise ValueError(f"{barcode_ubam} does not exist")
 
     # create a subdirectory for alignment
-    (library.lane_dir / "alignment").mkdir(exist_ok=True)
+    (sample.lane_dir / "alignment").mkdir(exist_ok=True)
 
-    bead_structure = library.get_bead_structure()
+    bead_structure = sample.get_bead_structure()
     xc_range = ":".join(f"{i}-{j}" for c, i, j in bead_structure if c == "C")
     xm_range = ":".join(f"{i}-{j}" for c, i, j in bead_structure if c == "M")
+
+    # if multiple barcodes correspond to one sample, merge them
+    if len(sample.barcode_ubams) > 1:
+        cmd = config.picard_cmd("MergeSamFiles", manifest.tmp_dir)
+        cmd.extend(
+            [
+                "--OUTPUT",
+                sample.raw_ubam,
+                "--SORT_ORDER",
+                "unsorted",
+                "--ASSUME_SORTED",
+                "true",
+            ]
+        )
+
+        for ubam_file in sample.barcode_ubams:
+            cmd.extend(["--INPUT", ubam_file])
+
+        run_command(cmd, "MergeBamFiles", sample)
+    else:
+        # otherwise, just rename the file
+        os.rename(sample.barcode_ubams[0], sample.raw_ubam)
 
     procs = []
 
     cmd = config.dropseq_cmd(
         "TagBamWithReadSequenceExtended",
-        library.raw_ubam,
+        sample.raw_ubam,
         "/dev/stdout",
         manifest.tmp_dir,
     )
     cmd.extend(
         [
-            f"SUMMARY={library.cellular_tagged_summary}",
+            f"SUMMARY={sample.cellular_tagged_summary}",
             f"BASE_RANGE={xc_range}",
-            f"BASE_QUALITY={library.base_quality}",
+            f"BASE_QUALITY={sample.base_quality}",
             "BARCODED_READ=1",
             "DISCARD_READ=false",
             "TAG_NAME=XC",
@@ -84,7 +111,7 @@ def main(
         start_popen(
             cmd,
             "TagBamWithReadSequenceExtended (Cellular)",
-            library,
+            sample,
             lane,
         )
     )
@@ -95,9 +122,9 @@ def main(
     )
     cmd.extend(
         [
-            f"SUMMARY={library.molecular_tagged_summary}",
+            f"SUMMARY={sample.molecular_tagged_summary}",
             f"BASE_RANGE={xm_range}",
-            f"BASE_QUALITY={library.base_quality}",
+            f"BASE_QUALITY={sample.base_quality}",
             "BARCODED_READ=1",
             "DISCARD_READ=true",
             "TAG_NAME=XM",
@@ -108,7 +135,7 @@ def main(
         start_popen(
             cmd,
             "TagBamWithReadSequenceExtended (Molecular)",
-            library,
+            sample,
             lane,
             procs[-1],
         )
@@ -118,37 +145,38 @@ def main(
     cmd = config.dropseq_cmd("FilterBam", "/dev/stdin", "/dev/stdout", manifest.tmp_dir)
     cmd.extend(["PASSING_READ_THRESHOLD=0.1", "TAG_REJECT=XQ"])
 
-    procs.append(start_popen(cmd, "FilterBam", library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "FilterBam", sample, lane, procs[-1]))
 
-    # Trim reads with starting sequence
-    cmd = config.dropseq_cmd(
-        "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
-    )
-    cmd.extend(
-        [
-            f"OUTPUT_SUMMARY={library.trimming_summary}",
-            f"SEQUENCE={library.start_sequence}",
-            "MISMATCHES=0",
-            "NUM_BASES=5",
-        ]
-    )
+    if sample.start_sequence != constants.NO_START_SEQUENCE:
+        # Trim reads with starting sequence
+        cmd = config.dropseq_cmd(
+            "TrimStartingSequence", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
+        )
+        cmd.extend(
+            [
+                f"OUTPUT_SUMMARY={sample.trimming_summary}",
+                f"SEQUENCE={sample.start_sequence}",
+                "MISMATCHES=0",
+                "NUM_BASES=5",
+            ]
+        )
 
-    procs.append(start_popen(cmd, "TrimStartingSequence", library, lane, procs[-1]))
+        procs.append(start_popen(cmd, "TrimStartingSequence", sample, lane, procs[-1]))
 
     # Adapter-aware poly A trimming
     cmd = config.dropseq_cmd(
-        "PolyATrimmer", "/dev/stdin", library.polya_filtered_ubam, manifest.tmp_dir
+        "PolyATrimmer", "/dev/stdin", sample.polya_filtered_ubam, manifest.tmp_dir
     )
     cmd.extend(
         [
-            f"OUTPUT_SUMMARY={library.polya_filtering_summary}",
+            f"OUTPUT_SUMMARY={sample.polya_filtering_summary}",
             "MISMATCHES=0",
             "NUM_BASES=6",
             "USE_NEW_TRIMMER=true",
         ]
     )
 
-    procs.append(start_popen(cmd, "PolyATrimmer", library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "PolyATrimmer", sample, lane, procs[-1]))
 
     # close intermediate streams
     for p in procs[:-1]:
@@ -163,24 +191,24 @@ def main(
     cmd.extend(
         [
             "-I",
-            library.polya_filtered_ubam,
+            sample.polya_filtered_ubam,
             "-F",
-            library.polya_filtered_fastq,
+            sample.polya_filtered_fastq,
         ]
     )
-    run_command(cmd, "SamToFastq", library, lane)
+    run_command(cmd, "SamToFastq", sample, lane)
 
     # Map reads to genome sequence using STAR
     cmd = [
         "STAR",
         "--genomeDir",
-        library.reference.genome_dir,
+        sample.reference.genome_dir,
         "--readFilesIn",
-        library.polya_filtered_fastq,
+        sample.polya_filtered_fastq,
         "--readFilesCommand",
         "zcat",
         "--outFileNamePrefix",
-        library.star_prefix,
+        sample.star_prefix,
         "--outStd",
         "Log",
         "--outSAMtype",
@@ -194,14 +222,14 @@ def main(
         "8",
     ]
 
-    run_command(cmd, "STAR", library, lane)
+    run_command(cmd, "STAR", sample, lane)
 
     # Check alignments quality
     log.debug(
-        f"Writing alignment statistics for {library.aligned_bam} to"
-        f" {library.alignment_pickle}"
+        f"Writing alignment statistics for {sample.aligned_bam} to"
+        f" {sample.alignment_pickle}"
     )
-    write_alignment_stats(library.aligned_bam, library.alignment_pickle)
+    write_alignment_stats(sample.aligned_bam, sample.alignment_pickle)
 
     procs = []
 
@@ -210,23 +238,23 @@ def main(
     cmd.extend(
         [
             "-I",
-            library.aligned_bam,
+            sample.aligned_bam,
             "-O",
             "/dev/stdout",
             "--SORT_ORDER",
             "queryname",
         ]
     )
-    procs.append(start_popen(cmd, "SortSam", library, lane))
+    procs.append(start_popen(cmd, "SortSam", sample, lane))
 
     # Merge unmapped bam and aligned bam
     cmd = config.picard_cmd("MergeBamAlignment", manifest.tmp_dir, mem="24g")
     cmd.extend(
         [
             "-R",
-            library.reference.fasta,
+            sample.reference.fasta,
             "--UNMAPPED",
-            library.polya_filtered_ubam,
+            sample.polya_filtered_ubam,
             "--ALIGNED",
             "/dev/stdin",
             "-O",
@@ -240,29 +268,29 @@ def main(
         ]
     )
 
-    procs.append(start_popen(cmd, "MergeBamAlignment", library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "MergeBamAlignment", sample, lane, procs[-1]))
 
     # Tag read with interval
     cmd = config.dropseq_cmd(
         "TagReadWithInterval", "/dev/stdin", "/dev/stdout", manifest.tmp_dir
     )
-    cmd.extend([f"INTERVALS={library.reference.intervals}", "TAG=XG"])
+    cmd.extend([f"INTERVALS={sample.reference.intervals}", "TAG=XG"])
 
-    procs.append(start_popen(cmd, "TagReadWithInterval", library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "TagReadWithInterval", sample, lane, procs[-1]))
 
     # Tag read with gene function
     cmd = config.dropseq_cmd(
         "TagReadWithGeneFunction",
         "/dev/stdin",
-        library.processed_bam,
+        sample.processed_bam,
         manifest.tmp_dir,
         compression=5,
     )
     cmd.extend(
-        [f"ANNOTATIONS_FILE={library.reference.annotations}", "CREATE_INDEX=false"]
+        [f"ANNOTATIONS_FILE={sample.reference.annotations}", "CREATE_INDEX=false"]
     )
 
-    procs.append(start_popen(cmd, "TagReadWithGeneFunction", library, lane, procs[-1]))
+    procs.append(start_popen(cmd, "TagReadWithGeneFunction", sample, lane, procs[-1]))
 
     # close intermediate streams
     for p in procs[:-1]:
@@ -273,13 +301,16 @@ def main(
     log.debug("Finished with post-alignment processing")
 
     # removed unneeded files
-    os.remove(library.polya_filtered_ubam)
-    os.remove(library.polya_filtered_fastq)
-    os.remove(library.aligned_bam)
+    os.remove(sample.polya_filtered_ubam)
+    os.remove(sample.polya_filtered_fastq)
+    os.remove(sample.aligned_bam)
 
     log.debug("Setting group permissions")
-    give_group_access(library.dir)
+    give_group_access(sample.dir)
     log.debug("Copying data to google storage")
-    rsync_to_google(library.dir, config.gs_path)
+    rsync_to_google(
+        sample.lane_dir,
+        config.gs_path / sample.lane_dir.relative_to(config.library_dir),
+    )
 
-    log.info(f"Alignment for {library} completed")
+    log.info(f"Alignment for {sample} completed")

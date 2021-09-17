@@ -233,6 +233,7 @@ def match_tags(
     match_and_const_but_no_tag = 0
 
     umis_per_bead = defaultdict(lambda: defaultdict(set))
+    raw_umis_per_bead = defaultdict(lambda: defaultdict(set))
     reads_per_bead = defaultdict(Counter)
 
     for r1, r2 in zip(r1_reads, r2_reads):
@@ -256,6 +257,7 @@ def match_tags(
         dtag = tag_to_degen_tag[tag]
 
         umis_per_bead[bead_bc][dtag].add(umi)
+        raw_umis_per_bead[bead_bc][tag].add(umi)
         reads_per_bead[bead_bc][dtag] += 1
 
     log.debug(f"bead matched, no constant seq: {matched_but_no_const}")
@@ -265,8 +267,12 @@ def match_tags(
         bead_bc: {dtag: len(v) for dtag, v in dtags_per_bead.items()}
         for bead_bc, dtags_per_bead in umis_per_bead.items()
     }
+    raw_umis_per_bead = {
+        bead_bc: {tag: len(v) for tag, v in tags_per_bead.items()}
+        for bead_bc, tags_per_bead in raw_umis_per_bead.items()
+    }
 
-    return umis_per_bead, reads_per_bead
+    return umis_per_bead, raw_umis_per_bead, reads_per_bead
 
 
 def write_matrix(upb, beads, tags, output_file):
@@ -404,7 +410,7 @@ def main(
     with gzip.open(output_dir / "raw_sequences.txt.gz", "wt") as out:
         print("\n".join(tag_sequences), file=out)
 
-    umis_per_bead, reads_per_bead = match_tags(
+    umis_per_bead, raw_umis_per_bead, reads_per_bead = match_tags(
         r1_reads, r2_reads, barcode_mapping, constant_sequence_hset, tag_to_degen_tag
     )
 
@@ -422,6 +428,7 @@ def main(
     log.info("Writing output files")
     beads = sorted(umis_per_bead)
     tags = sorted({t for b in beads for t in umis_per_bead[b]})
+    raw_tags = sorted({t for b in beads for t in raw_umis_per_bead[b]})
 
     with gzip.open(output_dir / "beads.txt.gz", "wt") as out:
         print("\n".join(beads), file=out)
@@ -429,8 +436,16 @@ def main(
     with gzip.open(output_dir / "tags.txt.gz", "wt") as out:
         print("\n".join(tags), file=out)
 
+    with gzip.open(output_dir / "raw_tags.txt.gz", "wt") as out:
+        print("\n".join(raw_tags), file=out)
+
     log.debug("Writing umi matrix")
     m = write_matrix(umis_per_bead, beads, tags, output_dir / "umi_matrix.mtx.gz")
+
+    log.debug("Writing raw umi matrix")
+    write_matrix(
+        raw_umis_per_bead, beads, raw_tags, output_dir / "raw_umi_matrix.mtx.gz"
+    )
 
     log.debug("Writing read matrix")
     write_matrix(reads_per_bead, beads, tags, output_dir / "read_matrix.mtx.gz")

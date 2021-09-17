@@ -8,18 +8,20 @@ import pandas as pd
 import yaml
 
 import slideseq.util.constants as constants
-from slideseq.library import Library, LibraryLane, Reference
+from slideseq.library import Library, Reference, Sample
+from slideseq.util.run_info import RunInfo
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
 class Manifest:
-    flowcell: str
-    flowcell_dir: Path
+    run_name: str
+    flowcell_dirs: list[Path]
     workflow_dir: Path
     library_dir: Path
     metadata_file: Path
+    metadata: pd.DataFrame
     email_addresses: list[str]
 
     @staticmethod
@@ -27,21 +29,22 @@ class Manifest:
         with input_file.open() as fh:
             data = yaml.safe_load(fh)
 
-        log.debug(f"Read manifest file {input_file} for flowcell {data['flowcell']}")
+        log.debug(f"Read manifest file {input_file} for run {data['run_name']}")
 
         return Manifest(
-            flowcell=data["flowcell"],
-            flowcell_dir=Path(data["flowcell_dir"]),
+            run_name=data["run_name"],
+            flowcell_dirs=[Path(fd) for fd in data["flowcell_dirs"]],
             workflow_dir=Path(data["workflow_dir"]),
             library_dir=Path(data["library_dir"]),
             metadata_file=Path(data["metadata_file"]),
+            metadata=pd.read_csv(data["metadata_file"]),
             email_addresses=data["email_addresses"],
         )
 
     def to_file(self, output_file: Path):
         data = {
-            "flowcell": self.flowcell,
-            "flowcell_dir": str(self.flowcell_dir),
+            "run_name": self.run_name,
+            "flowcell_dirs": [str(fd) for fd in self.flowcell_dirs],
             "workflow_dir": str(self.workflow_dir),
             "library_dir": str(self.library_dir),
             "metadata_file": str(self.metadata_file),
@@ -51,33 +54,74 @@ class Manifest:
         with output_file.open("w") as out:
             yaml.safe_dump(data, stream=out)
 
-        log.debug(f"Wrote manifest file {output_file} for flowcell {data['flowcell']}")
+        log.debug(f"Wrote manifest file {output_file} for run {self.run_name}")
+
+        self.metadata.to_csv(self.metadata_file, header=True, index=False)
+        log.debug(f"Wrote metadata file {self.metadata_file} for run {self.run_name}")
+
+    @property
+    def libraries(self):
+        for library_name, lib_df in self.metadata.groupby("library"):
+            assert isinstance(library_name, str)
+            data, samples = validate_library_df(library_name, lib_df)
+
+            yield Library(
+                library_name,
+                data,
+                samples,
+                Reference(data.reference),
+                library_dir=self.library_dir,
+            )
+
+    @property
+    def samples(self):
+        for library_name, lib_df in self.metadata.groupby("library"):
+            assert isinstance(library_name, str)
+            data, samples = validate_library_df(library_name, lib_df)
+
+            for (flowcell, lane) in samples:
+                yield Sample(
+                    library_name,
+                    data,
+                    samples,
+                    Reference(data.reference),
+                    self.library_dir,
+                    flowcell,
+                    lane,
+                    samples[flowcell, lane],
+                )
 
     def _get_library(self, library_index: int):
-        metadata_df = pd.read_csv(self.metadata_file)
-
-        library_name = sorted(set(metadata_df.library))[library_index]
-        library_df = metadata_df.loc[metadata_df.library == library_name]
+        library_name = sorted(set(self.metadata.library))[library_index]
+        library_df = self.metadata.loc[self.metadata.library == library_name]
 
         # verify that all columns are consistent, except for lane
-        validate_library_df(library_name, library_df)
-        row = library_df.iloc[0]
+        data, samples = validate_library_df(library_name, library_df)
 
-        lanes = sorted(set(library_df.lane))
-
-        return library_name, row, lanes, Reference(row.reference)
+        return library_name, data, samples, Reference(data.reference)
 
     def get_library(self, library_index: int) -> Library:
         return Library(*self._get_library(library_index), library_dir=self.library_dir)
 
-    def get_library_lane(self, library_index: int, lane: int) -> Optional[LibraryLane]:
-        library_name, row, lanes, reference = self._get_library(library_index)
+    def get_sample(
+        self, library_index: int, flowcell: str, lane: int
+    ) -> Optional[Sample]:
+        library_name, data, samples, reference = self._get_library(library_index)
 
-        if lane not in lanes:
+        if (flowcell, lane) not in samples:
             log.warning("Library not present in this lane, nothing to do here")
             return None
 
-        return LibraryLane(library_name, row, lanes, reference, self.library_dir, lane)
+        return Sample(
+            library_name,
+            data,
+            samples,
+            reference,
+            self.library_dir,
+            flowcell,
+            lane,
+            samples[flowcell, lane],
+        )
 
     @property
     def tmp_dir(self):
@@ -88,54 +132,51 @@ class Manifest:
         return self.workflow_dir / "logs"
 
 
-def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
+def validate_run_df(run_name: str, run_df: pd.DataFrame) -> bool:
     warning_logs = []
 
-    if len(set(flowcell_df.library)) != len(flowcell_df.library):
+    library_tuples = list(
+        run_df[["library", *constants.VARIABLE_LIBRARY_COLS]].itertuples()
+    )
+    if len(set(library_tuples)) != len(library_tuples):
         warning_logs.append(
-            f"Flowcell {flowcell} does not have unique library names;"
+            f"{run_name} does not have unique library names;"
             " please fill out naming metadata correctly or add suffixes."
         )
 
-    if any(" " in name for name in flowcell_df.library):
+    if any(" " in name for name in run_df.library):
         warning_logs.append(
-            f"The 'library' column for {flowcell} contains spaces;"
+            f"The 'library' column for {run_name} contains spaces;"
             " please remove all spaces before running."
         )
 
-    if flowcell_df.isna().values.any():
+    if run_df.isna().values.any():
         warning_logs.append(
-            f"Flowcell {flowcell} does not have complete submission metadata (orange"
+            f"{run_name} does not have complete submission metadata (orange"
             " and blue cols); please fill out before running."
         )
 
-    bcl_path_set = set(flowcell_df.bclpath)
-    if len(bcl_path_set) > 1:
-        warning_logs.append(
-            f"Flowcell {flowcell} has multiple BCLPaths associated with it;"
-            " please correct to single path before running."
-        )
+    bcl_path_set = set(map(Path, run_df.bclpath))
+    for bcl_path in bcl_path_set:
+        if not bcl_path.is_dir():
+            warning_logs.append(
+                f"{run_name} has incorrect BCLPath associated with it;"
+                " please correct path before running."
+            )
 
-    bcl_path = Path(bcl_path_set.pop())
-    if not bcl_path.is_dir():
-        warning_logs.append(
-            f"Flowcell {flowcell} has incorrect BCLPath associated with it;"
-            " please correct path before running."
-        )
-
-    run_info_file = bcl_path / "RunInfo.xml"
-    if not run_info_file.exists():
-        warning_logs.append(f"{run_info_file} for flowcell {flowcell} does not exist")
+        run_info_file = bcl_path / "RunInfo.xml"
+        if not run_info_file.exists():
+            warning_logs.append(f"{run_info_file} for {run_name} does not exist")
 
     # check if references exist
-    if not all(os.path.isfile(build) for build in flowcell_df.reference):
+    if not all(os.path.isfile(build) for build in run_df.reference):
         warning_logs.append(
-            f"Reference for {flowcell} does not exist; please correct reference values"
+            f"Reference for {run_name} does not exist; please correct reference values"
             " before running.",
         )
 
     # for runs that need barcode matching, check for the existence of necessary files
-    for _, row in flowcell_df.iterrows():
+    for _, row in run_df.iterrows():
         if row.run_barcodematching:
             puck_dir = Path(row.puckcaller_path)
             if not (puck_dir / "BeadBarcodes.txt").exists():
@@ -152,12 +193,18 @@ def validate_flowcell_df(flowcell: str, flowcell_df: pd.DataFrame) -> bool:
         return True
 
 
-def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
+def split_sample_lanes(run_df: pd.DataFrame, run_info_list: list[RunInfo]):
     new_rows = []
+    run_info_d = {run_info.run_dir: run_info for run_info in run_info_list}
 
-    for _, row in flowcell_df.iterrows():
-        if row.lane == "{LANE}":
-            row_lanes = lanes
+    for _, row in run_df.iterrows():
+        flowcell_dir = Path(row.bclpath)
+
+        # write the correct flowcell barcode as an entry in the row,
+        # possibly replacing whatever string was there
+        row.flowcell = run_info_d[flowcell_dir].flowcell
+        if row.lane == constants.ALL_LANES:
+            row_lanes = run_info_d[flowcell_dir].lanes
         else:
             row_lanes = str(row.lane).split(",")
 
@@ -169,14 +216,28 @@ def split_sample_lanes(flowcell_df: pd.DataFrame, lanes: range):
 
 
 def validate_library_df(library_name: str, library_df: pd.DataFrame):
-    """Verify that all of the columns in the dataframe are constant, except
-    for the lane which was expanded out earlier"""
+    """Verify that all of the metadata columns in the dataframe are constant.
+    Allows for multiple flowcells and lanes so that replicates can be combined"""
 
-    for col in constants.METADATA_COLS:
-        if col.lower() == "lane":
+    library_data = {}
+
+    for col in map(str.lower, constants.METADATA_COLS):
+        if col in constants.VARIABLE_LIBRARY_COLS:
             continue
 
-        if len(set(library_df[col.lower()])) != 1:
+        col_vals = set(library_df[col])
+        if len(col_vals) != 1:
             raise ValueError(
                 f"Library {library_name} has multiple values in column {col}"
             )
+
+        library_data[col] = col_vals.pop()
+
+    samples = {
+        (flowcell, lane): list(sample_df[constants.VARIABLE_LIBRARY_COLS[-1]])
+        for (_, flowcell, lane), sample_df in library_df.groupby(
+            constants.VARIABLE_LIBRARY_COLS[:3]
+        )
+    }
+
+    return pd.Series(library_data), samples

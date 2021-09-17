@@ -9,21 +9,25 @@ from google.cloud import secretmanager
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import Resource, build
 
-# name for secret storing service account credentials. the API will use existing user credentials
-# which should be configured locally to retrieve this secret, and then configure the service account
-SECRET_NAME = "projects/velina-208320/secrets/sequencing-credentials/versions/latest"
-
-
-DIMENSION = "ROWS"
-INPUT_MODE = "RAW"
+# retry the connection in case there are transient network issues
 NUM_RETRIES = 5
 
 log = logging.getLogger(__name__)
 
 
-def get_secrets_manager_credentials(
-    secret_name: str = SECRET_NAME,
-) -> Credentials:
+def get_secrets_manager_credentials(secret_name: str) -> Credentials:
+    """
+    Fetches service account credentials from a Google Secret. This allows us to
+    avoid keeping a copy of these credentials in each installation, and lets the
+    user just authenticate as themselves.
+
+    :param secret_name: name for secret storing service account credentials.
+                        the API will use existing user credentials, which should
+                        be configured locally, to retrieve this secret, and then
+                        configure the service account
+    :return: the credentials for a google service account
+    """
+
     client = secretmanager.SecretManagerServiceClient()
     secret_string = client.access_secret_version(name=secret_name).payload.data
 

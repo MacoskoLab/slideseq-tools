@@ -185,7 +185,7 @@ def calc_alignment_metrics(
 @click.option(
     "--manifest-file",
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
-    help="YAML file containing the flowcell manifest",
+    help="YAML file containing the manifest",
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False))
@@ -322,6 +322,6 @@ def main(
     log.debug("Setting group permissions")
     give_group_access(library.dir)
     log.debug("Copying data to google storage")
-    rsync_to_google(library.dir, config.gs_path)
+    rsync_to_google(library.dir, config.gs_path / library.date_name)
 
     log.info(f"Processing for {library} complete")

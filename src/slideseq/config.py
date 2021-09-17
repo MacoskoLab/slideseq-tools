@@ -18,9 +18,10 @@ class Config:
     reference_dir: Path
     workflow_dir: Path
     library_dir: Path
+    gsecret_name: str
     gsheet_id: str
     worksheet: str
-    gs_path: str
+    gs_path: Path
 
     @staticmethod
     def from_file(input_file: Path):
@@ -35,9 +36,10 @@ class Config:
             reference_dir=Path(data["reference_dir"]),
             workflow_dir=Path(data["workflow_dir"]),
             library_dir=Path(data["library_dir"]),
+            gsecret_name=data["gsecret_name"],
             gsheet_id=data["gsheet_id"],
             worksheet=data["worksheet"],
-            gs_path=data["gs_path"],
+            gs_path=Path(data["gs_path"]),
         )
 
     def dropseq_cmd(
