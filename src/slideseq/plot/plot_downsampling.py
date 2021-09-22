@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-# edit9 Ali Qutab
+# edit10 Ali Qutab
 # This script is to generate PDF for downsampling
-# took out [:10000] and changed ax.plot() to ax.scatter() - took out markersize and added in color
+# for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
+# also fixed indentation, only using tab now
 
 import logging
 from pathlib import Path
@@ -19,15 +20,19 @@ log = logging.getLogger(__name__)
 def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
    xy = []
 
+   bc_list, full_umis_per_bc, _ = read_dge_summary("Puck_210203_04.matched.digital_expression_summary.txt")
+   bc_set = set(bc_list)
+
    for r, downsample_summary in downsampling_output:
-       _, umis_per_bc, _ = read_dge_summary(downsample_summary)
-       # take the first 10000 barcodes as representative of real cells
-       data = np.mean(umis_per_bc)
+      barcodes, umis_per_bc, _ = read_dge_summary(downsample_summary)
+      # take all barcodes as representative of real cells
+      data = np.mean(umis_per_bc)
 
-       xy.append((r, data))
+      if barcodes in bc_set:
+         xy.append((r, data))
 
-   xy.sort()
-   x, y = zip(*xy)
+      xy.sort()
+      x, y = zip(*xy)
 
    fig = matplotlib.figure.Figure(figsize=(8, 8))
    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -54,4 +59,4 @@ if __name__ == "__main__":
    (0.8, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
    (0.9, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
    (1.0, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04.matched.digital_expression_summary.txt"))
-   ], figure_path = Path("aq_edit9_plot_downsampling.png"))
+   ], figure_path = Path("aq_edit10_plot_downsampling.png"))
