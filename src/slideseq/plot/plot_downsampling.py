@@ -20,7 +20,11 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
    xy = []
 
    # right now barcodes is a list
+<<<<<<< HEAD
    bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt")) # use Path() over ".../.../..."
+=======
+   bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
+>>>>>>> 771d8e848948a9bebf0965395dc193b6fa73d597
    # make a set out of the list
    bc_set = set(bc_list)
 
