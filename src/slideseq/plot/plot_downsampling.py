@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit10 Ali Qutab
+# edit11 Ali Qutab
 # This script is to generate PDF for downsampling
 # for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
 # also fixed indentation, only using tab now
@@ -20,16 +20,26 @@ log = logging.getLogger(__name__)
 def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
    xy = []
 
+   # right now barcodes is a list
    bc_list, full_umis_per_bc, _ = read_dge_summary("Puck_210203_04.matched.digital_expression_summary.txt")
+   # make a set out of the list
    bc_set = set(bc_list)
 
    for r, downsample_summary in downsampling_output:
+      # read the barcodes and counts from this downsampled file
       barcodes, umis_per_bc, _ = read_dge_summary(downsample_summary)
+      filtered_barcodes = []
+      filtered_umis_per_bc = []
+      # we zip together those lists so that we have each value as a pair
+      for bc, umis in zip(barcodes, umis_per_bc):
+         # checking for this is fast because it's a set
+         if bc in bc_set:
+            filtered_barcodes.append(bc)
+            filtered_umis_per_bc.append(umis)
       # take all barcodes as representative of real cells
-      data = np.mean(umis_per_bc)
+      data = np.mean(filtered_umis_per_bc)
 
-      if barcodes in bc_set:
-         xy.append((r, data))
+      xy.append((r, data))
 
       xy.sort()
       x, y = zip(*xy)
@@ -39,8 +49,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 
    ax.scatter(x, y, marker="o", alpha=0.8, color='r')
    ax.set_xlabel("Subsampling Ratio")
-   ax.set_ylabel("Transcripts per barcode")
-   ax.set_title("Average transcripts for all barcodes")
+   ax.set_ylabel("Transcripts per filtered barcode")
+   ax.set_title("Average transcripts for all filtered barcodes")
 
    ax.set_xlim(0.0, 1.1)
 
@@ -59,4 +69,4 @@ if __name__ == "__main__":
    (0.8, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
    (0.9, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
    (1.0, Path("/Users/aqutab/aqutab/aq_downsampling/aqutab_files/Puck_210203_04.matched.digital_expression_summary.txt"))
-   ], figure_path = Path("aq_edit10_plot_downsampling.png"))
+   ], figure_path = Path("aq_edit11_plot_downsampling.png"))
