@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-# edit7 Ali Qutab
+# edit8 Ali Qutab
 # This script is to generate PDF for downsampling
-# called plot_downsampling and added in files r = 0.1 to r = 1.0
+# same as edit 7 but took out [:10000]
 
 import logging
 from pathlib import Path
@@ -19,12 +19,12 @@ log = logging.getLogger(__name__)
 def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
    xy = []
 
-   for r, downsample_summary in downsampling_output:
+   for ratio, downsample_summary in downsampling_output:
        _, umis_per_bc, _ = read_dge_summary(downsample_summary)
        # take the first 10000 barcodes as representative of real cells
-       data = np.mean(umis_per_bc[:10000])
+       v = np.mean(umis_per_bc)
 
-       xy.append((r, data))
+       xy.append((ratio, v))
 
    xy.sort()
    x, y = zip(*xy)
@@ -35,7 +35,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
    ax.plot(x, y, marker="o", markersize=10, alpha=0.8)
    ax.set_xlabel("Subsampling Ratio")
    ax.set_ylabel("Transcripts per barcode")
-   ax.set_title("Average transcripts for top 10,000 barcodes")
+   ax.set_title("Average transcripts for all barcodes")
 
    ax.set_xlim(0.0, 1.1)
 
@@ -54,4 +54,4 @@ if __name__ == "__main__":
    (0.8, Path("/Users/aqutab/slideseq-tools/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
    (0.9, Path("/Users/aqutab/slideseq-tools/aqutab/aq_downsampling/aqutab_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
    (1.0, Path("/Users/aqutab/slideseq-tools/aqutab/aq_downsampling/aqutab_files/Puck_210203_04.matched.digital_expression_summary.txt"))
-   ], figure_path = Path("aq_edit7_plot_downsampling.png")) # use Path(".../.../...") instead of just ".../.../..."
+   ], figure_path = Path("aq_edit8_plot_downsampling.png"))
