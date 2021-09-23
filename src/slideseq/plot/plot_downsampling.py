@@ -1,10 +1,11 @@
 
 #!/usr/bin/python
 
-# edit18 Ali Qutab
+# edit19 Ali Qutab
 # This script is to generate PDF for downsampling
 # for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
 # fixed indentation
+# fixed bc_set for "-1" in matched file
 
 import logging
 from pathlib import Path
@@ -23,8 +24,9 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 
     # right now barcodes is a list
     bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
-    # make a set out of the list
-    bc_set = set(bc_list)
+    # this is a set comprehension, so we can remove the -1 from the matched barcodes
+    # bc.split("-") will split it into two parts, and we take the first one
+    bc_set = {bc.split("-")[0] for bc in bc_list}
 
     for r, downsample_summary in downsampling_output:
         # read the barcodes and counts from this downsampled file
@@ -67,6 +69,5 @@ if __name__ == "__main__":
                        (0.6, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.6.digital_expression_summary.txt")),
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
-                       (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
-                       (1.0, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit18_plot_downsampling.png"))
+                       (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit19_plot_downsampling.png"))
