@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
-# edit12 Ali Qutab
+# edit13 Ali Qutab
 # This script is to generate PDF for downsampling
 # for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
+# use Path()
+# edit 12 only plotted r = 1.0, indent "data" and "xy.append inside" "if bc in bc_set:"
 
 import logging
 from pathlib import Path
@@ -20,7 +22,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
    xy = []
 
    # right now barcodes is a list
-   bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt")) # use Path() over ".../.../..."
+   bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
    # make a set out of the list
    bc_set = set(bc_list)
 
@@ -35,13 +37,12 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
          if bc in bc_set:
             filtered_barcodes.append(bc)
             filtered_umis_per_bc.append(umis)
-      # take all barcodes as representative of real cells
-      data = np.mean(filtered_umis_per_bc)
+            # take all barcodes as representative of real cells
+            data = np.mean(filtered_umis_per_bc)
+            xy.append((r, data))
 
-      xy.append((r, data))
-
-      xy.sort()
-      x, y = zip(*xy)
+   xy.sort()
+   x, y = zip(*xy)
 
    fig = matplotlib.figure.Figure(figsize=(8, 8))
    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -57,8 +58,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 
 if __name__ == "__main__":
    # call the function here with input
-   plot_downsampling(downsampling_output = [
-   (0.1, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.1.digital_expression_summary.txt")),
+   plot_downsampling(downsampling_output =
+   [(0.1, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.1.digital_expression_summary.txt")),
    (0.2, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.2.digital_expression_summary.txt")),
    (0.3, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.3.digital_expression_summary.txt")),
    (0.4, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.4.digital_expression_summary.txt")),
@@ -67,5 +68,5 @@ if __name__ == "__main__":
    (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
    (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
    (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
-   (1.0, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
-   ], figure_path = Path("aq_edit12_plot_downsampling.png"))
+   (1.0, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))],
+   figure_path = Path("aq_edit13_plot_downsampling.png"))
