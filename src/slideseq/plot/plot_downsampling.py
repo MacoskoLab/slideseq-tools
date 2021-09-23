@@ -3,6 +3,7 @@
 # edit15 Ali Qutab
 # This script is to generate PDF for downsampling
 # for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
+# in edit 14 "fig =" to "FigureCanvasAgg...." were inside the plot_downsampling function
 
 import logging
 from pathlib import Path
