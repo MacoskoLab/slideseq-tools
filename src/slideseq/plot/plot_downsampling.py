@@ -1,11 +1,8 @@
 #!/usr/bin/python
 
-# edit14 Ali Qutab
+# edit15 Ali Qutab
 # This script is to generate PDF for downsampling
 # for each file r = 0.1...1.0, read umi_per_barcode for barcodes that match barcodes in match file
-# use Path()
-# edit 13 had "data" and "xy.append inside" "if bc in bc_set:" so dding a value to xy (appending the current mean of however many values are in filtered_umis_per_bc) for every barcode in the file (which is a lot), so xy will end up being very very long, but really want to add one value per file
-# de-dent lines 44 and 45 out of function
 
 import logging
 from pathlib import Path
@@ -45,17 +42,17 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 xy.sort()
 x, y = zip(*xy)
 
-    fig = matplotlib.figure.Figure(figsize=(8, 8))
-    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+fig = matplotlib.figure.Figure(figsize=(8, 8))
+ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
-    ax.scatter(x, y, marker="o", alpha=0.8, color='r')
-    ax.set_xlabel("Subsampling Ratio")
-    ax.set_ylabel("Transcripts per filtered barcode")
-    ax.set_title("Average transcripts for all filtered barcodes")
+ax.scatter(x, y, marker="o", alpha=0.8, color='r')
+ax.set_xlabel("Subsampling Ratio")
+ax.set_ylabel("Transcripts per filtered barcode")
+ax.set_title("Average transcripts for all filtered barcodes")
 
-    ax.set_xlim(0.0, 1.1)
+ax.set_xlim(0.0, 1.1)
 
-    FigureCanvasAgg(fig).print_figure(figure_path)
+FigureCanvasAgg(fig).print_figure(figure_path)
 
 if __name__ == "__main__":
     # call the function here with input
@@ -70,4 +67,4 @@ if __name__ == "__main__":
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt")),
                        (1.0, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))],
-                      figure_path = Path("aq_edit14_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit15_plot_downsampling.png"))
