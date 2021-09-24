@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-# edit27 Ali Qutab
-# when de-dent, get NameError: name 'params' is not defined
-# print the output of scipy.optimize.least_squares
+# edit28 Ali Qutab
+# plot real data and model data with output.x for optimal alpha and beta values
 
 import logging
 from pathlib import Path
@@ -77,11 +76,10 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         method="dogbox",  # I found this method to work well for this problem
     )
 
-    print(output)
+    params = output.x
 
-"""
     x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
-    predicted_y = model(x_values, [-10.0,10.0])
+    predicted_y = model(x_values, params)
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -96,8 +94,6 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 
     FigureCanvasAgg(fig).print_figure(figure_path)
 
-"""
-
 if __name__ == "__main__":
     # call the function here with input
     plot_downsampling(downsampling_output =
@@ -110,4 +106,4 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit27_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit28_plot_downsampling.png"))
