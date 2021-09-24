@@ -1,7 +1,7 @@
 
 #!/usr/bin/python
 
-# edit22 Ali Qutab
+# edit23 Ali Qutab
 # IndentationError: unexpected indent, de-dent
 # this plot includes scatter plot of actual data r=0.1...1.0 and line plot of model r=0.1...3.0
 
@@ -78,8 +78,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         method="dogbox",  # I found this method to work well for this problem
     )
 
-        x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
-        predicted_y = model(x_values, params)
+    x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
+    predicted_y = model(x_values, params)
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -106,4 +106,4 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit22_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit23_plot_downsampling.png"))
