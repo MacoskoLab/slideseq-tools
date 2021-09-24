@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit25 Ali Qutab
+# edit26 Ali Qutab
 # when de-dent, get NameError: name 'params' is not defined
 # this plot includes scatter plot of actual data r=0.1...1.0 and line plot of model r=0.1...3.0
 
@@ -96,6 +96,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 
     FigureCanvasAgg(fig).print_figure(figure_path)
 
+"""
+
 if __name__ == "__main__":
     # call the function here with input
     plot_downsampling(downsampling_output =
@@ -108,5 +110,4 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit25_plot_downsampling.png"))
-"""
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit26_plot_downsampling.png"))
