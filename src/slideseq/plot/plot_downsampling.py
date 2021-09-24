@@ -1,7 +1,6 @@
-
 #!/usr/bin/python
 
-# edit24 Ali Qutab
+# edit25 Ali Qutab
 # when de-dent, get NameError: name 'params' is not defined
 # this plot includes scatter plot of actual data r=0.1...1.0 and line plot of model r=0.1...3.0
 
@@ -70,7 +69,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         # computes model and compares it to the data
         return model(r, params) - data
 
-    scipy.optimize.least_squares(
+    output = scipy.optimize.least_squares(
         model_least_squares,
         [-10.0, 10.],  # initial values for params
         bounds=([-np.inf, 0], [0, np.inf]),  # some bounds on params. alpha should be negative, beta is positive
@@ -78,14 +77,17 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         method="dogbox",  # I found this method to work well for this problem
     )
 
-        x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
-        predicted_y = model(x_values, params)
+    print(output)
+
+"""
+    x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
+    predicted_y = model(x_values, [-10.0,10.0])
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     ax.scatter(x, y, marker="o", alpha=0.8, color="r")  # red scatter plot for actual data r = 0.1...1.0
-    ax.plot(x_values, predicted_y, marker="o", markersize=10, alpha=0.8, color="p")  # purple line plot for model data r = 0.1...3.0
+    ax.plot(x_values, predicted_y, marker="o", markersize=10, alpha=0.8, color="b")  # blue line plot for model data r = 0.1...3.0
     ax.set_xlabel("Subsampling Ratio")
     ax.set_ylabel("Transcripts per barcode")
     ax.set_title("Average transcripts for matched barcodes")
@@ -106,4 +108,5 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit24_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit25_plot_downsampling.png"))
+"""
