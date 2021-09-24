@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
-# edit28 Ali Qutab
+# edit29 Ali Qutab
 # plot real data and model data with output.x for optimal alpha and beta values
+# model plot is only a line now, no marker
 
 import logging
 from pathlib import Path
@@ -85,7 +86,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     ax.scatter(x, y, marker="o", alpha=0.8, color="r")  # red scatter plot for actual data r = 0.1...1.0
-    ax.plot(x_values, predicted_y, marker="o", markersize=10, alpha=0.8, color="b")  # blue line plot for model data r = 0.1...3.0
+    ax.plot(x_values, predicted_y, alpha=0.8, color="b")  # blue line plot for model data r = 0.1...3.0
     ax.set_xlabel("Subsampling Ratio")
     ax.set_ylabel("Transcripts per barcode")
     ax.set_title("Average transcripts for matched barcodes")
@@ -106,4 +107,4 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit28_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit29_plot_downsampling.png"))
