@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-# edit30 Ali Qutab
+# edit31 Ali Qutab
 # plot real data and model data and calculating np.mean(filtered_umis_per_bc) for the data, calculate 5 different values.
-# the mean of the top 20%, the top 40%, etc up to the top 100%
+# the mean of the top 20%, the top 40%, 60%, 80%, 100%
 # five different values of data and fit the model five times, plot five lines and five sets of points
+# this script edit plots the top 80%
 
 import logging
 from pathlib import Path
@@ -40,8 +41,9 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
                 filtered_barcodes.append(bc)
                 filtered_umis_per_bc.append(umis)
                 # take all barcodes as representative of real cells
-        data = np.mean(filtered_umis_per_bc)
-        xy.append((r, data))
+        data_100 = np.mean(filtered_umis_per_bc)
+        data_80 = np.mean(filtered_umis_per_bc[:(int(0.8 * (len(filtered_umis_per_bc))))]) # top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
+        xy.append((r, data_80))
 
     xy.sort()
     x, y = zip(*xy)
@@ -66,15 +68,15 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     The least_squares function is to optimize the model function, we want to minimize the error, which is the difference between the model prediction and the data.
     """
 
-    def model_least_squares(params, *, r, data):
+    def model_least_squares(params, *, r, data_80):
         # computes model and compares it to the data
-        return model(r, params) - data
+        return model(r, params) - data_80
 
     output = scipy.optimize.least_squares(
         model_least_squares,
         [-10.0, 10.],  # initial values for params
         bounds=([-np.inf, 0], [0, np.inf]),  # some bounds on params. alpha should be negative, beta is positive
-        kwargs={"data": y, "r": x},
+        kwargs={"data_80": y, "r": x},
         method="dogbox",  # I found this method to work well for this problem
     )
 
@@ -89,15 +91,9 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     ax.scatter(x, y, marker="o", alpha=0.8, color="r")  # red scatter plot for actual data r = 0.1...1.0
     ax.plot(x_values, predicted_y, alpha=0.8, color="b")  # blue line plot for model data r = 0.1...3.0
 
-    quintiles = [100, 80, 60, 40, 20] # top 100,80,60,40,20%
-
-    for i, (quintile,r) in enumerate(zip(quintiles,r)):
-        # enumerate() to get index of elements and zip() because have multiple elements
-        ax.plot(x_values, predicted_y, r, alpha=0.8, color="g")
-
     ax.set_xlabel("Subsampling Ratio")
-    ax.set_ylabel("Transcripts per barcode")
-    ax.set_title("Average transcripts for matched barcodes")
+    ax.set_ylabel("Transcripts per matched barcode")
+    ax.set_title("Average transcripts for top 80% matched barcodes")
 
     ax.set_xlim(0.0, 3.1)  # was 1.1, but x_values for model go up to 3.0
 
@@ -115,4 +111,4 @@ if __name__ == "__main__":
                        (0.7, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
                        (0.8, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit30_plot_downsampling.png"))
+                      figure_path = Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit31_plot_downsampling.png"))
