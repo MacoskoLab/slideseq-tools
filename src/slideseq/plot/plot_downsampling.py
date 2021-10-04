@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit35 Ali Qutab
+# edit36 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -265,15 +265,11 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     args = parser.parse_args()
 
     # Parse paths
-    full_paths = [os.path.join(os.getcwd(), path) for path in args.path]
     files = set()
-    for path in full_paths:
-        files.add(path)
+    files.add(path)
     for file in files:
-        with open(file, 'r') as current_file:
-            for line in current_file:
-                characters = line.split("_")[-1] # split each file and the first 3 characters to get the ratio value
-                float = (float(characters[0:3]) + "\n") # convert with float
+            characters = file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
+            r = (float(characters[0:3]) + "\n") # convert with float
 
                 # make the list of (float, Path) to pass into the main plotting function
 
@@ -328,5 +324,5 @@ if __name__ == "__main__":
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path(
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit35_plot_downsampling.png"))
+                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit36_plot_downsampling.png"))
     """
