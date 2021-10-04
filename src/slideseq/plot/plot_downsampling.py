@@ -1,12 +1,15 @@
 #!/usr/bin/python
 
-# edit34 Ali Qutab
+# edit35 Ali Qutab
 # plot real data and model data
-# now have five quantiles:
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
-# added in (for each quantile) scatter for actual data and plot for model data
-# added legend
+# all edits upto edit 34, code is reading specifically from the file on my computer, instead;
+# the downsampled files are all going to be [Puck name]_[ratio].digital_expression_summary.txt
+# the matched file will be [Puck name].matched.digital_expression_summary.txt
+# use argparse to get a list of files from the command line, as strings
+# split each file and the first 3 characters to get the ratio value, and convert that with float
+# make the list of (float, Path) to pass into the main plotting function
 
 import logging
 from pathlib import Path
@@ -18,6 +21,10 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from slideseq.plot import read_dge_summary
 
 import scipy.optimize
+
+import argparse
+import os
+import glob
 
 log = logging.getLogger(__name__)
 
@@ -244,30 +251,50 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     params_40 = output_40.x
     params_20 = output_20.x
 
-    x_values = np.linspace(0.1, 3.0, 30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
+    x_values = np.linspace(0.1, 3.0,30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
     predicted_y_100 = model_100(x_values, params_100)
     predicted_y_80 = model_80(x_values, params_80)
     predicted_y_60 = model_80(x_values, params_60)
     predicted_y_40 = model_80(x_values, params_40)
     predicted_y_20 = model_80(x_values, params_20)
 
+    # use argparse to get a list of files from the command line, as strings
+    parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('path', nargs='+', help='Path of a file or a folder of files.')
+    parser.add_argument('-e', '--extension', default='', help='File extension to filter by.')
+    args = parser.parse_args()
+
+    # Parse paths
+    full_paths = [os.path.join(os.getcwd(), path) for path in args.path]
+    files = set()
+    for path in full_paths:
+        files.add(path)
+    for file in files:
+        with open(file, 'r') as current_file:
+            for line in current_file:
+                characters = line.split("_")[-1] # split each file and the first 3 characters to get the ratio value
+                float = (float(characters[0:3]) + "\n") # convert with float
+
+                # make the list of (float, Path) to pass into the main plotting function
+
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     ax.scatter(x_100, y_100, marker="o", alpha=0.8, color="r")  # red scatter plot for actual data r = 0.1...1.0
-    ax.plot(x_values, predicted_y_100, alpha=0.8, color="r", label = 'top 100%')  # blue line plot for model data r = 0.1...3.0
+    ax.plot(x_values, predicted_y_100, alpha=0.8, color="r",
+            label='top 100%')  # blue line plot for model data r = 0.1...3.0
 
     ax.scatter(x_80, y_80, marker="o", alpha=0.8, color="g")
-    ax.plot(x_values, predicted_y_80, alpha=0.8, color="g", label = 'top 80%')
+    ax.plot(x_values, predicted_y_80, alpha=0.8, color="g", label='top 80%')
 
     ax.scatter(x_60, y_60, marker="o", alpha=0.8, color="m")
-    ax.plot(x_values, predicted_y_60, alpha=0.8, color="m", label = 'top 60%')
+    ax.plot(x_values, predicted_y_60, alpha=0.8, color="m", label='top 60%')
 
     ax.scatter(x_40, y_40, marker="o", alpha=0.8, color="k")
-    ax.plot(x_values, predicted_y_40, alpha=0.8, color="k", label = 'top 40%')
+    ax.plot(x_values, predicted_y_40, alpha=0.8, color="k", label='top 40%')
 
     ax.scatter(x_20, y_20, marker="o", alpha=0.8, color="c")
-    ax.plot(x_values, predicted_y_20, alpha=0.8, color="c", label = 'top 20%')
+    ax.plot(x_values, predicted_y_20, alpha=0.8, color="c", label='top 20%')
 
     ax.set_xlabel("Subsampling Ratio")
     ax.set_ylabel("Transcripts per matched barcode")
@@ -276,12 +303,12 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     ax.set_xlim(0.0, 3.1)  # r went upto 1.0 for actual data, but x_values for model go up to 3.0
 
     ax.legend()
-    
+
     FigureCanvasAgg(fig).print_figure(figure_path)
 
-
 if __name__ == "__main__":
-    # call the function here with input
+    # not sure what the input should be now with argparse?
+    """
     plot_downsampling(downsampling_output=
                       [(0.1, Path(
                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.1.digital_expression_summary.txt")),
@@ -301,4 +328,5 @@ if __name__ == "__main__":
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path(
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit34_plot_downsampling.png"))
+                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit35_plot_downsampling.png"))
+    """
