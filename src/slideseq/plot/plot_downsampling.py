@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit36 Ali Qutab
+# edit37 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -44,6 +44,22 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
+
+
+    # use argparse to get a list of files from the command line, as strings
+    parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('path', nargs='+', help='Path of a file or a folder of files.')
+    parser.add_argument('-e', '--extension', default='', help='File extension to filter by.')
+    args = parser.parse_args()
+
+    # Parse paths
+    files = set()
+    files.add(path)
+    for file in files:
+            characters = file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
+            r = (float(characters[0:3]) + "\n") # convert with float
+
+    # make the list of (float, Path) to pass into the main plotting function
 
     for r, downsample_summary in downsampling_output:
         # read the barcodes and counts from this downsampled file
@@ -258,21 +274,6 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     predicted_y_40 = model_80(x_values, params_40)
     predicted_y_20 = model_80(x_values, params_20)
 
-    # use argparse to get a list of files from the command line, as strings
-    parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('path', nargs='+', help='Path of a file or a folder of files.')
-    parser.add_argument('-e', '--extension', default='', help='File extension to filter by.')
-    args = parser.parse_args()
-
-    # Parse paths
-    files = set()
-    files.add(path)
-    for file in files:
-            characters = file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
-            r = (float(characters[0:3]) + "\n") # convert with float
-
-                # make the list of (float, Path) to pass into the main plotting function
-
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
@@ -324,5 +325,5 @@ if __name__ == "__main__":
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
                        (0.9, Path(
                            "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit36_plot_downsampling.png"))
+                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit37_plot_downsampling.png"))
     """
