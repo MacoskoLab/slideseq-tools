@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
-# edit37 Ali Qutab
+# edit38 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
 # all edits upto edit 34, code is reading specifically from the file on my computer, instead;
+# trying to use arguments for ratio and path instead of hardcoding them into the script
 # the downsampled files are all going to be [Puck name]_[ratio].digital_expression_summary.txt
 # the matched file will be [Puck name].matched.digital_expression_summary.txt
 # use argparse to get a list of files from the command line, as strings
@@ -31,6 +32,12 @@ log = logging.getLogger(__name__)
 
 # pycharmedit
 
+# use argparse to get a list of files from the command line, as strings
+parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-P', '--Path', nargs='+', help='Path of a file or a folder of files.')
+parser.add_argument('-r', '--ratio', default='', help='value of subsampling ratio of each file')
+args = parser.parse_args()
+
 def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
     x_100y_100 = []
     x_80y_80 = []
@@ -38,28 +45,24 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     x_40y_40 = []
     x_20y_20 = []
 
+    # Parse paths
+    files = set()
+    files.add(Path)
+    for file in files:
+        # trying to read each file and convert to string
+        read_file = open(file, 'r')
+        string_file = str(read_file.string_file())
+        characters = string_file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
+        r = (float(characters[0:3]) + "\n") # convert with float
+
+    # make the list of (float, Path) to pass into the main plotting function
+
     # right now barcodes is a list
     bc_list, full_umis_per_bc, _ = read_dge_summary(
         Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
-
-
-    # use argparse to get a list of files from the command line, as strings
-    parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('path', nargs='+', help='Path of a file or a folder of files.')
-    parser.add_argument('-e', '--extension', default='', help='File extension to filter by.')
-    args = parser.parse_args()
-
-    # Parse paths
-    files = set()
-    files.add(path)
-    for file in files:
-            characters = file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
-            r = (float(characters[0:3]) + "\n") # convert with float
-
-    # make the list of (float, Path) to pass into the main plotting function
 
     for r, downsample_summary in downsampling_output:
         # read the barcodes and counts from this downsampled file
@@ -74,8 +77,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
                 filtered_umis_per_bc.append(umis)
                 # take all barcodes as representative of real cells
         data_100 = np.mean(filtered_umis_per_bc)
-        data_80 = np.mean(filtered_umis_per_bc[:(int(0.8 * (
-            len(filtered_umis_per_bc))))])  # for example, top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
+        data_80 = np.mean(filtered_umis_per_bc[:(int(0.8 * (len(filtered_umis_per_bc))))])  # for example, top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
         data_60 = np.mean(filtered_umis_per_bc[:(int(0.6 * (len(filtered_umis_per_bc))))])
         data_40 = np.mean(filtered_umis_per_bc[:(int(0.4 * (len(filtered_umis_per_bc))))])
         data_20 = np.mean(filtered_umis_per_bc[:(int(0.2 * (len(filtered_umis_per_bc))))])
@@ -304,26 +306,5 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     FigureCanvasAgg(fig).print_figure(figure_path)
 
 if __name__ == "__main__":
-    # not sure what the input should be now with argparse?
-    """
-    plot_downsampling(downsampling_output=
-                      [(0.1, Path(
-                          "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.1.digital_expression_summary.txt")),
-                       (0.2, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.2.digital_expression_summary.txt")),
-                       (0.3, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.3.digital_expression_summary.txt")),
-                       (0.4, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.4.digital_expression_summary.txt")),
-                       (0.5, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.5.digital_expression_summary.txt")),
-                       (0.6, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.6.digital_expression_summary.txt")),
-                       (0.7, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.7.digital_expression_summary.txt")),
-                       (0.8, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.8.digital_expression_summary.txt")),
-                       (0.9, Path(
-                           "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04_0.9.digital_expression_summary.txt"))],
-                      figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit37_plot_downsampling.png"))
-    """
+    # trying to use arguments for ratio and path instead of hardcoding them into the script
+    plot_downsampling([(args.ratio, args.Path)], figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit38_plot_downsampling.png"))
