@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit38 Ali Qutab
+# edit39 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -26,17 +26,12 @@ import scipy.optimize
 import argparse
 import os
 import glob
+import pathlib
 
 log = logging.getLogger(__name__)
 
 
 # pycharmedit
-
-# use argparse to get a list of files from the command line, as strings
-parser = argparse.ArgumentParser(description='Read in a file or set of files, and return the result.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-P', '--Path', nargs='+', help='Path of a file or a folder of files.')
-parser.add_argument('-r', '--ratio', default='', help='value of subsampling ratio of each file')
-args = parser.parse_args()
 
 def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
     x_100y_100 = []
@@ -45,21 +40,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     x_40y_40 = []
     x_20y_20 = []
 
-    # Parse paths
-    files = set()
-    files.add(Path)
-    for file in files:
-        # trying to read each file and convert to string
-        read_file = open(file, 'r')
-        string_file = str(read_file.string_file())
-        characters = string_file.split("_")[-1] # split each file and the first 3 characters to get the ratio value
-        r = (float(characters[0:3]) + "\n") # convert with float
-
-    # make the list of (float, Path) to pass into the main plotting function
-
     # right now barcodes is a list
-    bc_list, full_umis_per_bc, _ = read_dge_summary(
-        Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
+    bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
@@ -306,5 +288,24 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     FigureCanvasAgg(fig).print_figure(figure_path)
 
 if __name__ == "__main__":
+    # use argparse to get a list of files from the command line, as strings
+    parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('path', type=pathlib.Path, nargs='+', help='Path of a downsample_summary text file')
+    args = parser.parse_args()
+    print(args)
+
+    # Parse paths
+    for downsample_summary in args.path:
+        # trying to read each file and convert to string
+        read_downsample_summary = open(downsample_summary, 'r')
+        string_downsample_summary = str(read_downsample_summary)
+        split_path = string_downsample_summary.split("_")  # split each file and the first 3 characters to get the ratio value
+        characters = (str(split_path[6:7]) + "\n")
+        r = (str(characters[2:5]) + "\n")
+
+    # make the list of (float, Path) to pass into the main plotting function
+    downsampling_list = []
+    downsampling_list.append(tuple((r, downsample_summary)))
+
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling([(args.ratio, args.Path)], figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit38_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit39_plot_downsampling.png"))
