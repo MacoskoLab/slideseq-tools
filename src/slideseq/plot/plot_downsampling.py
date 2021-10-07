@@ -300,9 +300,12 @@ if __name__ == "__main__":
        read_downsample_summary = open(downsample_summary, 'r')
        string_downsample_summary = str(read_downsample_summary)
        split_path = string_downsample_summary.split("_")  # split each file and the first 3 characters to get the ratio value
-       characters = (str(split_path[6:7]) + "\n")
-       print(characters[2:5])
-       # r = float(characters[2:5])
+       characters = str((split_path[6:7]))
+       if characters.find("exp") > -1:
+           pass
+       else:
+           r = float(characters[2:5])
+           print(r)
 
    # make the list of (float, Path) to pass into the main plotting function
    downsampling_list = []
