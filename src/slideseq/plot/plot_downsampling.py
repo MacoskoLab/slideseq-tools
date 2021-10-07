@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit41 Ali Qutab
+# edit42 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -295,13 +295,14 @@ if __name__ == "__main__":
     print(args)
 
     # Parse paths
+    # downsample_summary is a string containing the full path of a filename
     for downsample_summary in args.path:
-        # trying to read each file and convert to string
-        read_downsample_summary = open(downsample_summary, 'r')
-        string_downsample_summary = str(read_downsample_summary)
-        split_path = string_downsample_summary.split("_")  # split each file and the first 3 characters to get the ratio value
-        characters = str((split_path[6:7]))
-        if string_downsample_summary.find("matched") > -1:
+        split_path = downsample_summary.split("_")  # split on _
+        print(split_path)
+        characters = str((split_path[6:7])) # grab the 7th item in the list, which seems to have the right information...for now
+        # use os.path.basename("long_path/to/a_file_somewhere/filename.txt") == "filename.txt") ?
+        print(characters)
+        if downsample_summary.find("matched") > -1:
             pass
         else:
             r = float(characters[2:5])
@@ -312,5 +313,6 @@ if __name__ == "__main__":
     downsampling_list.append((r, downsample_summary))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit41_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit42_plot_downsampling.png"))
 
+'''
