@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit42 Ali Qutab
+# edit43 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -27,6 +27,8 @@ import argparse
 import os
 import glob
 import pathlib
+
+import os.path
 
 log = logging.getLogger(__name__)
 
@@ -297,22 +299,23 @@ if __name__ == "__main__":
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
     for downsample_summary in args.path:
-        split_path = downsample_summary.split("_")  # split on _
-        print(split_path)
-        characters = str((split_path[6:7])) # grab the 7th item in the list, which seems to have the right information...for now
-        # use os.path.basename("long_path/to/a_file_somewhere/filename.txt") == "filename.txt") ?
-        print(characters)
+        matched_path = "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"
+        basename = os.path.basename(matched_path)
+        print(matched_path)
+        # split_path = downsample_summary.split("_")  # split on _
+        # print(split_path)
+        # characters = str((split_path[6:7])) # grab the 7th item in the list, which seems to have the right information...for now
+        # print(characters)
         if downsample_summary.find("matched") > -1:
             pass
         else:
-            r = float(characters[2:5])
-            print(r)
+            if downsample_summary.find(isinstance(f, float)) > -1:
+                r = f
+        print(r)
 
     # make the list of (float, Path) to pass into the main plotting function
     downsampling_list = []
     downsampling_list.append((r, downsample_summary))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit42_plot_downsampling.png"))
-
-'''
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit43_plot_downsampling.png"))
