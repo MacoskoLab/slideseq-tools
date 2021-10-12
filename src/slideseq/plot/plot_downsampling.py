@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit45 Ali Qutab
+# edit46 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -13,6 +13,7 @@
 # make the list of (float, Path) to pass into the main plotting function
 # convert downsample_summary to path object
 # changed matched expression summary path to matched_path instead of hardcoding it in
+# moved empty list outside the for loop, that's why it was only 0.9 before because it empties after 0.1,...0.8 then adds in 0.9 last and the for loop stops with only 0.9 for r
 
 import logging
 from pathlib import Path
@@ -309,6 +310,7 @@ if __name__ == "__main__":
             print(basename)
 
     # for 0.1,0.2,... files
+    downsampling_list = [] # moved empty list outside the for loop, that's why it was only 0.9 before because it empties after 0.1,...0.8 then adds in 0.9 last and the for loop stops with only 0.9 for r
     for downsample_summary in args.path:
         split_path = downsample_summary.split("_")  # split on _
         print(split_path)
@@ -317,20 +319,13 @@ if __name__ == "__main__":
         if downsample_summary.find("matched") > -1:
             pass
         else:
-            '''
-            for f in characters:
-                if type(f) == float:
-                r = f
-                print(r)
-            print(characters[0:3])
-            '''
             r = float(characters[0:3]) # first three characters are 0.1,0.2,...
             print(r)
-
-    # make the list of (float, Path) to pass into the main plotting function
-    downsampling_list = []
-    downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
-    downsampling_list.append((r, downsample_summary_path))
+            # make the list of (float, Path) to pass into the main plotting function
+            downsampling_list = []
+            downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
+            downsampling_list.append((r, downsample_summary_path))
+            print(downsampling_list) # checking why edit45 only plots r 0.9
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit45_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit46_plot_downsampling.png"))
