@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit44 Ali Qutab
+# edit45 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -11,6 +11,8 @@
 # use argparse to get a list of files from the command line, as strings
 # split each file and the first 3 characters to get the ratio value, and convert that with float
 # make the list of (float, Path) to pass into the main plotting function
+# convert downsample_summary to path object
+# changed matched expression summary path to matched_path instead of hardcoding it in
 
 import logging
 from pathlib import Path
@@ -43,7 +45,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     x_20y_20 = []
 
     # right now barcodes is a list
-    bc_list, full_umis_per_bc, _ = read_dge_summary(Path("/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"))
+    bc_list, full_umis_per_bc, _ = read_dge_summary(Path(matched_path))
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
@@ -298,12 +300,18 @@ if __name__ == "__main__":
 
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
+    # for matched expression summary file
+    for matched_expression_summary in args.path:
+        if matched_expression_summary.find("matched") > -1:
+            matched_path = matched_expression_summary
+            print(matched_path)
+            basename = os.path.basename(matched_path)
+            print(basename)
+
+    # for 0.1,0.2,... files
     for downsample_summary in args.path:
-        matched_path = "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"
-        basename = os.path.basename(matched_path)
-        # print(matched_path)
         split_path = downsample_summary.split("_")  # split on _
-        # print(split_path)
+        print(split_path)
         characters = split_path[5] # grab the 5th item in the list split by '_'
         # print(characters)
         if downsample_summary.find("matched") > -1:
@@ -321,7 +329,8 @@ if __name__ == "__main__":
 
     # make the list of (float, Path) to pass into the main plotting function
     downsampling_list = []
-    downsampling_list.append((r, downsample_summary))
+    downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
+    downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit44_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit45_plot_downsampling.png"))
