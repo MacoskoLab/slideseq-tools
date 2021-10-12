@@ -316,7 +316,7 @@ if __name__ == "__main__":
                 print(r)
             print(characters[0:3])
             '''
-            r = float(characters[0:3])
+            r = float(characters[0:3]) # first three characters are 0.1,0.2,...
             print(r)
 
     # make the list of (float, Path) to pass into the main plotting function
