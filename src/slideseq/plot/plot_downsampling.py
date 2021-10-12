@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit43 Ali Qutab
+# edit44 Ali Qutab
 # plot real data and model data
 # this script edit plots five quantiles by fitting model for the top 20%, 40%, 60%, 80%, 100%
 # conceptually have five different values of data and fit the model five times, plot five lines and five sets of points
@@ -292,7 +292,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('path', type=pathlib.Path, nargs='+', help='Path of a downsample_summary text file')
+    parser.add_argument('path', nargs='+', help='Path of a downsample_summary text file')
     args = parser.parse_args()
     print(args)
 
@@ -301,21 +301,27 @@ if __name__ == "__main__":
     for downsample_summary in args.path:
         matched_path = "/Users/aqutab/aq/aq_downsampling/aq_files/Puck_210203_04.matched.digital_expression_summary.txt"
         basename = os.path.basename(matched_path)
-        print(matched_path)
-        # split_path = downsample_summary.split("_")  # split on _
+        # print(matched_path)
+        split_path = downsample_summary.split("_")  # split on _
         # print(split_path)
-        # characters = str((split_path[6:7])) # grab the 7th item in the list, which seems to have the right information...for now
+        characters = split_path[5] # grab the 5th item in the list split by '_'
         # print(characters)
         if downsample_summary.find("matched") > -1:
             pass
         else:
-            if downsample_summary.find(isinstance(f, float)) > -1:
+            '''
+            for f in characters:
+                if type(f) == float:
                 r = f
-        print(r)
+                print(r)
+            print(characters[0:3])
+            '''
+            r = float(characters[0:3])
+            print(r)
 
     # make the list of (float, Path) to pass into the main plotting function
     downsampling_list = []
     downsampling_list.append((r, downsample_summary))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit43_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit44_plot_downsampling.png"))
