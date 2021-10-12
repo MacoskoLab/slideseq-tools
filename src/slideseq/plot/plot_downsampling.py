@@ -322,7 +322,6 @@ if __name__ == "__main__":
             r = float(characters[0:3]) # first three characters are 0.1,0.2,...
             print(r)
             # make the list of (float, Path) to pass into the main plotting function
-            downsampling_list = []
             downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
             downsampling_list.append((r, downsample_summary_path))
             print(downsampling_list) # checking why edit45 only plots r 0.9
