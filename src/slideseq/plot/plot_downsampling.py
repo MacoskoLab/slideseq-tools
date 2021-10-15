@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-# edit51 Ali Qutab
+# edit54 Ali Qutab
 # fit the model once for each of the y variables, in the same for-loop as the plotting
 # use the parameters immediately to get pred_y
+# append to xy list once for 1.0 and again for 0.1,0.2,... instead of reading in the matched file twice
 
 import logging
 
@@ -28,24 +29,33 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
+    data_100 = np.mean(full_umis_per_bc)
+    data_80 = np.mean(full_umis_per_bc[:(int(0.8 * (len(full_umis_per_bc))))])  # for example, top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
+    data_60 = np.mean(full_umis_per_bc[:(int(0.6 * (len(full_umis_per_bc))))])
+    data_40 = np.mean(full_umis_per_bc[:(int(0.4 * (len(full_umis_per_bc))))])
+    data_20 = np.mean(full_umis_per_bc[:(int(0.2 * (len(full_umis_per_bc))))])
+    xy.append((1.0, data_100, data_80, data_60, data_40, data_20))
 
     for r, downsample_summary in downsampling_output:
-        # read the barcodes and counts from this downsampled file
-        barcodes, umis_per_bc, _ = read_dge_summary(downsample_summary)
-        filtered_barcodes = [] # will append barcodes that match barcodes in matched expression sumarry file
-        filtered_umis_per_bc = [] # will append UMIs that match barcodes in matched expression sumarry file
-        # we zip together those lists so that we have each value as a pair
-        for bc, umis in zip(barcodes, umis_per_bc):
-            # checking for this is fast because it's a set
-            if bc in bc_set:
-                filtered_barcodes.append(bc)
-                filtered_umis_per_bc.append(umis)
-                # take all barcodes as representative of real cells
-        data_100 = np.mean(filtered_umis_per_bc)
-        data_80 = np.mean(filtered_umis_per_bc[:(int(0.8 * (len(filtered_umis_per_bc))))])  # for example, top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
-        data_60 = np.mean(filtered_umis_per_bc[:(int(0.6 * (len(filtered_umis_per_bc))))])
-        data_40 = np.mean(filtered_umis_per_bc[:(int(0.4 * (len(filtered_umis_per_bc))))])
-        data_20 = np.mean(filtered_umis_per_bc[:(int(0.2 * (len(filtered_umis_per_bc))))])
+        if r == 1.0:
+            continue
+        else:
+            # read the barcodes and counts from this downsampled file
+            barcodes, umis_per_bc, _ = read_dge_summary(downsample_summary)
+            filtered_barcodes = [] # will append barcodes that match barcodes in matched expression sumarry file
+            filtered_umis_per_bc = [] # will append UMIs that match barcodes in matched expression sumarry file
+            # we zip together those lists so that we have each value as a pair
+            for bc, umis in zip(barcodes, umis_per_bc):
+                # checking for this is fast because it's a set
+                if bc in bc_set:
+                    filtered_barcodes.append(bc)
+                    filtered_umis_per_bc.append(umis)
+                    # take all barcodes as representative of real cells
+            data_100 = np.mean(filtered_umis_per_bc)
+            data_80 = np.mean(filtered_umis_per_bc[:(int(0.8 * (len(filtered_umis_per_bc))))])  # for example, top 80% is from top item to item at 0.8 * number of items in list filtered_umis_per_bc
+            data_60 = np.mean(filtered_umis_per_bc[:(int(0.6 * (len(filtered_umis_per_bc))))])
+            data_40 = np.mean(filtered_umis_per_bc[:(int(0.4 * (len(filtered_umis_per_bc))))])
+            data_20 = np.mean(filtered_umis_per_bc[:(int(0.2 * (len(filtered_umis_per_bc))))])
 
         xy.append((r, data_100, data_80, data_60, data_40, data_20))
 
@@ -146,4 +156,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit51_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit54_plot_downsampling.png"))
