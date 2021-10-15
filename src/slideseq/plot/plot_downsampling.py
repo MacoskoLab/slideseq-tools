@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('path', nargs='+', help='Path of a downsample_summary text file')
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--output", help="output filename", required=True)
     args = parser.parse_args()
 
     downsampling_list = []  # empty list outside the for loops
