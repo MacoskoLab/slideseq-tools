@@ -1,10 +1,7 @@
 #!/usr/bin/python
 
-# edit55 Ali Qutab
-# fit the model once for each of the y variables, in the same for-loop as the plotting
-# use the parameters immediately to get pred_y
-# append to xy list once for 1.0 and again for 0.1,0.2,... instead of reading in the matched file twice
-# change color of lines
+# edit56 Ali Qutab
+# use args.output for figure path
 
 import logging
 
@@ -154,4 +151,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit55_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path = args.output)
