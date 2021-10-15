@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit50 Ali Qutab
+# edit51 Ali Qutab
 # fit the model once for each of the y variables, in the same for-loop as the plotting
 # use the parameters immediately to get pred_y
 
@@ -24,7 +24,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     xy = []
 
     # right now barcodes is a list
-    bc_list, full_umis_per_bc, _ = read_dge_summary(Path(matched_path))
+    bc_list, full_umis_per_bc, _ = read_dge_summary(matched_path)
     # this is a set comprehension, so we can remove the -1 from the matched barcodes
     # bc.split("-") will split it into two parts, and we take the first one
     bc_set = {bc.split("-")[0] for bc in bc_list}
@@ -146,4 +146,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit50_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit51_plot_downsampling.png"))
