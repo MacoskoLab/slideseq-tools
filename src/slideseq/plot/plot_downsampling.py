@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit49 Ali Qutab
+# edit50 Ali Qutab
 # fit the model once for each of the y variables, in the same for-loop as the plotting
 # use the parameters immediately to get pred_y
 
@@ -120,9 +120,10 @@ if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('path', nargs='+', help='Path of a downsample_summary text file')
+    parser.add_argument("--output", help="output filename")
     args = parser.parse_args()
 
-    downsampling_list = []  # empty list outside the for loop
+    downsampling_list = []  # empty list outside the for loops
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
     # for matched expression summary file
@@ -132,7 +133,7 @@ if __name__ == "__main__":
             print(matched_path)
             basename = os.path.basename(matched_path)
             print(basename)
-            downsampling_list.append((1.0, matched_path)) # to get 1.0 point in the plot, using the matched data
+            # downsampling_list.append((1.0, matched_path)) # to get 1.0 point in the plot, using the matched data
 
     # for 0.1,0.2,... files
     for downsample_summary in args.path:
@@ -145,4 +146,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit49_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit50_plot_downsampling.png"))
