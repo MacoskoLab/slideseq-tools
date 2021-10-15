@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-# edit54 Ali Qutab
+# edit55 Ali Qutab
 # fit the model once for each of the y variables, in the same for-loop as the plotting
 # use the parameters immediately to get pred_y
 # append to xy list once for 1.0 and again for 0.1,0.2,... instead of reading in the matched file twice
+# change color of lines
 
 import logging
 
@@ -93,9 +94,10 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
-    for y, label in zip(
+    for y, label, color in zip(
             (y_100, y_80, y_60, y_40, y_20),
-            ("100", "80", "60", "40", "20")
+            ("100", "80", "60", "40", "20"),
+            ("r", "b", "g", "k", "p")
     ):
         output = scipy.optimize.least_squares(
             model_least_squares,
@@ -108,13 +110,9 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         params = output.x
 
         pred_y = model(x_values, params)
-        # predicted_y_80 = model_80(x_values, params_80)
-        # predicted_y_60 = model_80(x_values, params_60)
-        # predicted_y_40 = model_80(x_values, params_40)
-        # predicted_y_20 = model_80(x_values, params_20)
 
-        ax.scatter(x, y, marker="o", alpha=0.8, color="r")
-        ax.plot(x_values, pred_y, label=f"top {label}%", alpha=0.8, color="r")
+        ax.scatter(x, y, marker="o", alpha=0.8)
+        ax.plot(x_values, pred_y, label=f"top {label}%", alpha=0.8)
 
     ax.set_xlabel("Subsampling Ratio")
     ax.set_ylabel("Transcripts per matched barcode")
@@ -156,4 +154,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit54_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit55_plot_downsampling.png"))
