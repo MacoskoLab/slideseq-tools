@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# edit48 Ali Qutab
+# edit49 Ali Qutab
 # fit the model once for each of the y variables, in the same for-loop as the plotting
 # use the parameters immediately to get pred_y
 
@@ -145,4 +145,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit48_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit49_plot_downsampling.png"))
