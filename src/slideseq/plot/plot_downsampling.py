@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-# edit47 Ali Qutab
+# edit48 Ali Qutab
+# fit the model once for each of the y variables, in the same for-loop as the plotting
+# use the parameters immediately to get pred_y
 
 import logging
 
@@ -76,31 +78,31 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
         # computes model and compares it to the data
         return model(r, params) - data
 
-    output = scipy.optimize.least_squares(
-        model_least_squares,
-        [-10.0, 10.],  # initial values for params
-        bounds=([-np.inf, 0], [0, np.inf]),  # some bounds on params. alpha should be negative, beta is positive
-        kwargs={"data": y, "r": x},
-        method="dogbox",  # I found this method to work well for this problem
-    )
-
-    params = output.x
-
     x_values = np.linspace(0.1, 3.0,30)  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
-    predicted_y_100 = model_100(x_values, params_100)
-    predicted_y_80 = model_80(x_values, params_80)
-    predicted_y_60 = model_80(x_values, params_60)
-    predicted_y_40 = model_80(x_values, params_40)
-    predicted_y_20 = model_80(x_values, params_20)
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
-    for y, pred_y, label in zip(
+    for y, label in zip(
             (y_100, y_80, y_60, y_40, y_20),
-            (predicted_y_100, predicted_y_80, predicted_y_60, predicted_y_40, predicted_y_20),
             ("100", "80", "60", "40", "20")
     ):
+        output = scipy.optimize.least_squares(
+            model_least_squares,
+            [-10.0, 10.],  # initial values for params
+            bounds=([-np.inf, 0], [0, np.inf]),  # some bounds on params. alpha should be negative, beta is positive
+            kwargs={"data": y, "r": x},
+            method="dogbox",  # I found this method to work well for this problem
+        )
+
+        params = output.x
+
+        pred_y = model(x_values, params)
+        # predicted_y_80 = model_80(x_values, params_80)
+        # predicted_y_60 = model_80(x_values, params_60)
+        # predicted_y_40 = model_80(x_values, params_40)
+        # predicted_y_20 = model_80(x_values, params_20)
+
         ax.scatter(x, y, marker="o", alpha=0.8, color="r")
         ax.plot(x_values, pred_y, label=f"top {label}%", alpha=0.8, color="r")
 
@@ -120,19 +122,19 @@ if __name__ == "__main__":
     parser.add_argument('path', nargs='+', help='Path of a downsample_summary text file')
     args = parser.parse_args()
 
+    downsampling_list = []  # empty list outside the for loop
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
     # for matched expression summary file
     for matched_expression_summary in args.path:
         if matched_expression_summary.find("matched") > -1:
-            matched_path = matched_expression_summary
+            matched_path = Path(matched_expression_summary)
             print(matched_path)
             basename = os.path.basename(matched_path)
             print(basename)
-            downsampling_list.append((r, matched_path)) # to get 1.0 point in the plot, using the matched data
+            downsampling_list.append((1.0, matched_path)) # to get 1.0 point in the plot, using the matched data
 
     # for 0.1,0.2,... files
-    downsampling_list = [] # moved empty list outside the for loop, that's why it was only 0.9 before because it empties after 0.1,...0.8 then adds in 0.9 last and the for loop stops with only 0.9 for r
     for downsample_summary in args.path:
         split_path = downsample_summary.split("_")  # split on _
         characters = split_path[5] # grab the 5th item in the list split by '_'
@@ -143,4 +145,4 @@ if __name__ == "__main__":
             downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit47_plot_downsampling.png"))
+    plot_downsampling(downsampling_list, figure_path=Path("/Users/aqutab/aq/aq_downsampling/aq_plots/aq_edit48_plot_downsampling.png"))
