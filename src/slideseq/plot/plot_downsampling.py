@@ -1,21 +1,16 @@
 #!/usr/bin/python
 
-# edit56 Ali Qutab
-# use args.output for figure path
-
+import argparse
 import logging
+import os
+from pathlib import Path
 
 import matplotlib.figure
 import numpy as np
+import scipy.optimize
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from slideseq.plot import read_dge_summary
-
-import scipy.optimize
-
-import argparse
-import os
-from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -124,7 +119,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('path', nargs='+', help='Path of a downsample_summary text file')
+    parser.add_argument('ds_path', nargs='+', help='Path of a downsample_summary text file')
     parser.add_argument("--output", help="output filename", required=True)
     args = parser.parse_args()
 
@@ -132,19 +127,21 @@ if __name__ == "__main__":
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
     # for matched expression summary file
-    for matched_expression_summary in args.path:
-        if matched_expression_summary.find("matched") > -1:
-            matched_path = Path(matched_expression_summary)
-            print(matched_path)
-            basename = os.path.basename(matched_path)
-            print(basename)
+    #for matched_expression_summary in args.path:
+        #if matched_expression_summary.find("matched") > -1:
+            #matched_path = Path(matched_expression_summary)
+            #print(matched_path)
+            #basename = os.path.basename(matched_path)
+            #print(basename)
             # downsampling_list.append((1.0, matched_path)) # to get 1.0 point in the plot, using the matched data
 
     # for 0.1,0.2,... files
     for downsample_summary in args.path:
         split_path = downsample_summary.split("_")  # split on _
         characters = split_path[5] # grab the 5th item in the list split by '_'
-        if downsample_summary.find("matched") == -1:
+        if downsample_summary.find("matched") > -1:
+            matched_path = Path(downsample_summary) # matched_path as an additional input in the list of downsampled output
+        elif downsample_summary.find("matched") == -1:
             r = float(characters[0:3]) # first three characters are 0.1,0.2,...
             # make the list of (float, Path) to pass into the main plotting function
             downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
