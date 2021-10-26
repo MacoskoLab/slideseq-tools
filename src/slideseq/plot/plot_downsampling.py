@@ -14,7 +14,7 @@ from slideseq.plot import read_dge_summary
 
 log = logging.getLogger(__name__)
 
-def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path: Path):
+def plot_downsampling(matched_path: Path, downsampling_output: list[tuple[float, Path]], figure_path: Path):
     xy = []
 
     # right now barcodes is a list
@@ -119,7 +119,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('m_path', nargs='+', help='Path of match text file')
+    parser.add_argument('--m_path', help='Path of match text file')
     parser.add_argument('ds_path', nargs='+', help='Path of a downsample_summary text file')
     parser.add_argument("--output", help="output filename", required=True)
     args = parser.parse_args()
@@ -132,13 +132,11 @@ if __name__ == "__main__":
     for downsample_summary in args.path:
         split_path = downsample_summary.split("_")  # split on _
         characters = split_path[5] # grab the 5th item in the list split by '_'
-        if downsample_summary.find("matched") > -1:
-            matched_path = Path(downsample_summary) # matched_path as an additional input in the list of downsampled output
-        elif downsample_summary.find("matched") == -1:
-            r = float(characters[0:3]) # first three characters are 0.1,0.2,...
-            # make the list of (float, Path) to pass into the main plotting function
-            downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
-            downsampling_list.append((r, downsample_summary_path))
+        matched_path = Path(downsample_summary) # matched_path as an additional input in the list of downsampled output
+        r = float(characters[0:3]) # first three characters are 0.1,0.2,...
+        # make the list of (float, Path) to pass into the main plotting function
+        downsample_summary_path = Path(downsample_summary) # convert downsample_summary to path object
+        downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, figure_path = args.output)
+    plot_downsampling(matched_path, downsampling_list, figure_path = args.output)
