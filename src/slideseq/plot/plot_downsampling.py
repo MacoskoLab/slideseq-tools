@@ -119,6 +119,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], figure_path
 if __name__ == "__main__":
     # use argparse to get a list of files from the command line, as strings
     parser = argparse.ArgumentParser(description='Read in downsample_summary text files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('m_path', nargs='+', help='Path of match text file')
     parser.add_argument('ds_path', nargs='+', help='Path of a downsample_summary text file')
     parser.add_argument("--output", help="output filename", required=True)
     args = parser.parse_args()
@@ -126,14 +127,6 @@ if __name__ == "__main__":
     downsampling_list = []  # empty list outside the for loops
     # Parse paths
     # downsample_summary is a string containing the full path of a filename
-    # for matched expression summary file
-    #for matched_expression_summary in args.path:
-        #if matched_expression_summary.find("matched") > -1:
-            #matched_path = Path(matched_expression_summary)
-            #print(matched_path)
-            #basename = os.path.basename(matched_path)
-            #print(basename)
-            # downsampling_list.append((1.0, matched_path)) # to get 1.0 point in the plot, using the matched data
 
     # for 0.1,0.2,... files
     for downsample_summary in args.path:
