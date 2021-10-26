@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 def plot_downsampling(
-    downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
+        downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
 ):
     xy = []
 
@@ -105,9 +105,9 @@ def plot_downsampling(
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     for y, label, color in zip(
-        (y_100, y_80, y_60, y_40, y_20),
-        ("100", "80", "60", "40", "20"),
-        ("r", "b", "g", "k", "p"),
+            (y_100, y_80, y_60, y_40, y_20),
+            ("100", "80", "60", "40", "20"),
+            ("r", "b", "g", "k", "p"),
     ):
         output = scipy.optimize.least_squares(
             model_least_squares,
