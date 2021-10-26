@@ -169,6 +169,4 @@ if __name__ == "__main__":
         downsampling_list.append((r, downsample_summary_path))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(
-        downsampling_list, matched_path=args.m_path, figure_path=args.output
-    )
+    plot_downsampling(downsampling_list, matched_path=args.m_path, figure_path=args.output)
