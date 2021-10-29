@@ -202,6 +202,7 @@ def main(
         )
 
     log.debug(f"Counting UMIs and reads per bead for sequence {tag_sequence}")
+    reads_per_umi_per_bead = defaultdict(Counter)
     umis_per_bead = defaultdict(set)
     reads_per_bead = Counter()
 
@@ -216,11 +217,18 @@ def main(
         bead_bc = barcode_matching[seq_bc]
         umi = r1[32:41]
 
+        reads_per_umi_per_bead[bead_bc][umi] += 1
         umis_per_bead[bead_bc].add(umi)
         reads_per_bead[bead_bc] += 1
 
     filtered_barcodes = [bc for bc in degen_bead_barcodes if umis_per_bead[bc]]
     bead_xy_a = np.vstack([bead_xy[dbc] for dbc in filtered_barcodes])
+
+    with gzip.open(output_pdf.with_suffix(".reads_per_umi.txt.gz"), "wt") as out:
+        print("bead_barcodes\tumi\treads", file=out)
+        for bc in filtered_barcodes:
+            for umi in reads_per_umi_per_bead[bc][umi]:
+                print(f"{bc}\t{umi}\t{reads_per_umi_per_bead[bc][umi]}", file=out)
 
     with output_pdf.with_suffix(".txt").open("w") as out:
         print("bead_barcode\tumis\treads", file=out)
