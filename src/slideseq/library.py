@@ -61,7 +61,7 @@ class Base:
         return self.path.with_suffix(".pdf")
 
     @property
-    def downsampling(self) -> Path:
+    def downsampling_pdf(self) -> Path:
         return self.path.with_suffix(".downsampling.pdf")
 
     @property

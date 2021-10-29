@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import os
 from pathlib import Path
 
 import matplotlib.figure
@@ -16,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 def plot_downsampling(
-        downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
+    downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
 ):
     xy = []
 
@@ -91,7 +90,8 @@ def plot_downsampling(
     # model function takes 0.1, 0.2 ... 1.0 for r and outputs the mean counts values which are y,
     # based on some parameters alpha and beta, which we need to find to predict the result for any value of r.
 
-    # The least_squares function is to optimize the model function, we want to minimize the error, which is the difference between the model prediction and the data.
+    # The least_squares function is to optimize the model function, we want to minimize the error,
+    # which is the difference between the model prediction and the data.
 
     def model_least_squares(params, *, r, data):
         # computes model and compares it to the data
@@ -105,9 +105,9 @@ def plot_downsampling(
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     for y, label, color in zip(
-            (y_100, y_80, y_60, y_40, y_20),
-            ("100", "80", "60", "40", "20"),
-            ("r", "b", "g", "k", "p"),
+        (y_100, y_80, y_60, y_40, y_20),
+        ("100", "80", "60", "40", "20"),
+        ("r", "b", "g", "k", "p"),
     ):
         output = scipy.optimize.least_squares(
             model_least_squares,
@@ -131,9 +131,8 @@ def plot_downsampling(
     ax.set_ylabel("Transcripts per matched barcode")
     ax.set_title("Average transcripts for matched barcodes")
 
-    ax.set_xlim(
-        0.0, 3.1
-    )  # r went upto 1.0 for actual data, but x_values for model go up to 3.0
+    # r went upto 1.0 for actual data, but x_values for model go up to 3.0
+    ax.set_xlim(0.0, 3.1)
 
     ax.legend()
 
@@ -146,27 +145,26 @@ if __name__ == "__main__":
         description="Read in downsample_summary text files",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--m_path", type=Path, help="Path of match text file")
     parser.add_argument(
         "ds_path", nargs="+", help="Path of a downsample_summary text file"
     )
+    parser.add_argument("--m_path", type=Path, help="Path of match text file")
     parser.add_argument("--output", help="output filename", required=True)
     args = parser.parse_args()
 
+    # make the list of (float, Path) to pass into the main plotting function
     downsampling_list = []  # empty list outside the for loops
-    # Parse paths
-    # downsample_summary is a string containing the full path of a filename
 
     # for 0.1,0.2,... files
     for downsample_summary in args.ds_path:
         split_path = downsample_summary.split("_")  # split on _
         characters = split_path[5]  # grab the 5th item in the list split by '_'
         r = float(characters[0:3])  # first three characters are 0.1,0.2,...
-        # make the list of (float, Path) to pass into the main plotting function
-        downsample_summary_path = Path(
-            downsample_summary
-        )  # convert downsample_summary to path object
-        downsampling_list.append((r, downsample_summary_path))
+
+        # convert downsample_summary to path object
+        downsampling_list.append((r, Path(downsample_summary)))
 
     # trying to use arguments for ratio and path instead of hardcoding them into the script
-    plot_downsampling(downsampling_list, matched_path=args.m_path, figure_path=args.output)
+    plot_downsampling(
+        downsampling_list, matched_path=args.m_path, figure_path=args.output
+    )

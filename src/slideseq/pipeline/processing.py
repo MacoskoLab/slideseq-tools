@@ -283,13 +283,18 @@ def main(
         log.info("Starting downsampling")
         library.downsample_dir.mkdir(exist_ok=True, parents=True)
 
-        # start with the full DGE summary
-        downsample_output = [(1.0, library.merged.digital_expression_summary)]
+        if library.run_barcodematching:
+            # this will be *much* faster on matched bams
+            downsample_input = library.matched
+        else:
+            downsample_input = library.merged
+
+        downsample_output = []
 
         # Progressively downsample the BAM from largest to smallest
-        input_bam = library.merged.bam
+        input_bam = downsample_input.bam
         for ratio in np.linspace(0.1, 0.9, 9)[::-1]:
-            downsampled_bam = library.merged.downsampled_bam(ratio)
+            downsampled_bam = downsample_input.downsampled_bam(ratio)
             downsample_output.append(
                 downsample_dge(
                     config=config,
@@ -300,15 +305,19 @@ def main(
                     tmp_dir=manifest.tmp_dir,
                 )
             )
-            if input_bam != library.merged.bam:
+            if input_bam != downsample_input.bam:
                 os.remove(input_bam)
             input_bam = downsampled_bam
 
         # remove final downsampled_bam
-        if input_bam != library.merged.bam:
+        if input_bam != downsample_input.bam:
             os.remove(input_bam)
 
-        plot_downsampling(downsample_output, library.merged.downsampling)
+        plot_downsampling(
+            downsample_output,
+            downsample_input.digital_expression_summary,
+            downsample_input.downsampling_pdf,
+        )
 
     # remove unneeded files now that we're done
     for bam_file in library.processed_bams:
