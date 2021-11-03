@@ -100,8 +100,8 @@ def plot_downsampling(
         return model(r, params) - data
 
     x_values = np.linspace(
-        0.1, 10.0, 100
-    )  # this function creates a linear space of points: 100 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
+        0.1, 3.0, 30
+    )  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -134,8 +134,8 @@ def plot_downsampling(
     ax.set_title("Average transcripts for matched barcodes")
 
     ax.set_xlim(
-        0.0, 10.1
-    )  # r went upto 1.0 for actual data, but x_values for model go up to 10.0
+        0.0, 3.1
+    )  # r went upto 1.0 for actual data, but x_values for model go up to 3.0
 
     ax.legend()
 
