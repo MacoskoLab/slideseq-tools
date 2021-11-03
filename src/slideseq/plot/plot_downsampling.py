@@ -145,8 +145,8 @@ def plot_downsampling(
 
     # text box for a summary of the return for 2x and 10x depth for the 100% model
     textstr = '\n'.join((('2x depth for 100% model = 1.3287231945062343'), ('10x depth for 100% model = 1.5199682596154036')))
-    ax.text(0.05, 0.05, textstr, transform=ax.transAxes, fontsize=9,
-            verticalalignment='top', horizontalalignment='left', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    ax.text(0.5, 0.5, textstr, transform=ax.transAxes, fontsize=9,
+            verticalalignment='top', horizontalalignment='right', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 
     FigureCanvasAgg(fig).print_figure(figure_path)
