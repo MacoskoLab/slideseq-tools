@@ -144,7 +144,7 @@ def plot_downsampling(
     r_10 = (model(10.0, params)/model(1.0, params))
 
     # text box for a summary of the return for 2x and 10x depth for the 100% model
-    ax.text(0.05, 0.95, '2x depth for 100% model = 1.3287231945062343', transform=ax.transAxes, fontsize=14,
+    ax.text('2x depth for 100% model = 1.3287231945062343', transform=ax.transAxes, fontsize=9,
             verticalalignment='top', horizontalalignment='left', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
             # '10x depth for 100% model = 1.5199682596154036',
 
