@@ -142,13 +142,12 @@ def plot_downsampling(
     # calculate 2x and 10x depth for the 100% model with the ratios model(2) / model(1) and model(10) / model(1)
     r_2 = (model(2.0, params)/model(1.0, params))
     r_10 = (model(10.0, params)/model(1.0, params))
-    print(r_2)
-    print(r_10)
+
     # text box for a summary of the return for 2x and 10x depth for the 100% model
-    ax.text(0.5, 0.5, '2x depth for 100% model = 1.3287231945062343',
-         horizontalalignment='center',
-         verticalalignment='center',
-         transform=ax.transAxes)
+    ax.text(0.05, 0.95, '2x depth for 100% model = 1.3287231945062343', transform=ax.transAxes, fontsize=14,
+            verticalalignment='top', horizontalalignment='right', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            # '10x depth for 100% model = 1.5199682596154036',
+
 
     FigureCanvasAgg(fig).print_figure(figure_path)
 
