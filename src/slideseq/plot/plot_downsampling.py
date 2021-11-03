@@ -12,6 +12,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from slideseq.plot import read_dge_summary
 
+import matplotlib.pyplot as plt
+
 log = logging.getLogger(__name__)
 
 
@@ -98,8 +100,8 @@ def plot_downsampling(
         return model(r, params) - data
 
     x_values = np.linspace(
-        0.1, 3.0, 30
-    )  # this function creates a linear space of points: 30 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
+        0.1, 10.0, 100
+    )  # this function creates a linear space of points: 100 points from 0.1 to 3.0 (0.1, 0.2, ... 2.9, 3.0)
 
     fig = matplotlib.figure.Figure(figsize=(8, 8))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
@@ -132,10 +134,18 @@ def plot_downsampling(
     ax.set_title("Average transcripts for matched barcodes")
 
     ax.set_xlim(
-        0.0, 3.1
-    )  # r went upto 1.0 for actual data, but x_values for model go up to 3.0
+        0.0, 10.1
+    )  # r went upto 1.0 for actual data, but x_values for model go up to 10.0
 
     ax.legend()
+
+    # calculate 2x and 10x depth for the 100% model with the ratios model(2) / model(1) and model(10) / model(1)
+    r_2 = (model(2.0, params)/model(1.0, params))
+    r_10 = (model(10.0, params)/model(1.0, params))
+
+    # text box for a summary of the return for 2x and 10x depth for the 100% model
+    ax.plot(r_2, label="2x depth =" + str(r_2), alpha=0.8)
+    ax.plot(r_10, label="10x depth =" + str(r_10), alpha=0.8)
 
     FigureCanvasAgg(fig).print_figure(figure_path)
 
