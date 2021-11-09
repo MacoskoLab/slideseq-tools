@@ -10,7 +10,7 @@
 #$ -P macosko_lab
 #$ -R y
 #$ -j y
-#$ -m beas
+#$ -m eas
 
 source /broad/software/scripts/useuse
 reuse Anaconda3
@@ -28,6 +28,7 @@ fi
 
 # this will run slideseq.pipeline.alignment:main
 align_library ${DEBUG} \
+  --flowcell ${FLOWCELL} \
   --lane ${LANE} \
   --library-index ${SGE_TASK_ID} \
   --manifest-file ${MANIFEST}

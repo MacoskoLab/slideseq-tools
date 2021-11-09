@@ -231,6 +231,10 @@ def match_barcodes(
         bead_barcodes, degen_bead_barcodes, bead_groups, seq_barcodes
     )
 
+    # filter degen_bead_barcodes to only barcodes that were observed
+    matched_set = set(barcode_matching.values())
+    degen_bead_barcodes = [bc for bc in degen_bead_barcodes if bc in matched_set]
+
     return degen_bead_barcodes, barcode_matching, bead_xy, combined_graph
 
 

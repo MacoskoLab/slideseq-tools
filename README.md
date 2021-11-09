@@ -28,7 +28,7 @@ Again, you should do this from an interactive session, as downloading the worksh
 use UGER  # for submitting jobs to the cluster
 use Google-Cloud-SDK  # for accessing the Google worksheet
 conda activate slideseq
-submit_flowcell FLOWCELL [FLOWCELL...]
+submit_slideseq RUN [RUN...]
 ```
 
 This is will submit a set of jobs to process the flowcell(s). You will get emails when the jobs start and end.

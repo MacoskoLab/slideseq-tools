@@ -61,7 +61,7 @@ class Base:
         return self.path.with_suffix(".pdf")
 
     @property
-    def downsampling(self) -> Path:
+    def downsampling_pdf(self) -> Path:
         return self.path.with_suffix(".downsampling.pdf")
 
     @property
@@ -130,8 +130,8 @@ class Library:
     # a dataclass to represent a single library that defines all the files
     # generated during processing
     name: str
-    row: pd.Series
-    lanes: list[int]
+    data: pd.Series
+    samples: dict[tuple[str, int], list[str]]
     reference: Reference
     library_dir: Path
 
@@ -150,7 +150,7 @@ class Library:
         #   - 2 * (iter(re),) makes a second reference (not copy) to the iterator
         #   - zip(*(2iter)) zips together pairs of elements
         # then, add up the lengths to get ranges
-        for j, c in zip(*(2 * (iter(re.split("([CXM])", self.row.bead_structure)),))):
+        for j, c in zip(*(2 * (iter(re.split("([CXM])", self.data.bead_structure)),))):
             j = int(j)
             intervals.append((c, i, i + j - 1))
             i += j
@@ -159,23 +159,23 @@ class Library:
 
     @property
     def base_quality(self) -> int:
-        return self.row.base_quality
+        return self.data.base_quality
 
     @property
     def start_sequence(self) -> str:
-        return self.row.start_sequence
+        return self.data.start_sequence
 
     @property
     def min_transcripts_per_cell(self) -> int:
-        return self.row.min_transcripts_per_cell
+        return self.data.min_transcripts_per_cell
 
     @property
     def locus_function_list(self) -> str:
-        return self.row.locus_function_list
+        return self.data.locus_function_list
 
     @property
     def puckcaller_path(self) -> Path:
-        return Path(self.row.puckcaller_path)
+        return Path(self.data.puckcaller_path)
 
     @property
     def bead_barcodes(self) -> Path:
@@ -187,16 +187,21 @@ class Library:
 
     @property
     def run_barcodematching(self) -> bool:
-        return self.row.run_barcodematching
+        return self.data.run_barcodematching
 
     @property
     def gen_downsampling(self) -> bool:
-        return self.row.gen_downsampling
+        return self.data.gen_downsampling
+
+    @property
+    def date_name(self) -> str:
+        """Unique library name and date"""
+        return f"{self.data.date}_{self.name}"
 
     @property
     def dir(self) -> Path:
         """Base directory for the library data"""
-        return self.library_dir / f"{self.row.date}_{self.name}"
+        return self.library_dir / self.date_name
 
     @property
     def barcode_matching_dir(self) -> Path:
@@ -234,49 +239,61 @@ class Library:
             min_transcripts_per_cell=self.min_transcripts_per_cell,
         )
 
-    def per_lane(self, *args, suffix) -> list[Path]:
+    def per_sample(self, *args, suffix) -> list[Path]:
         return [
-            ((self.dir / f"L{lane:03d}").joinpath(*args) / self.base).with_suffix(
-                suffix
-            )
-            for lane in self.lanes
+            (
+                (self.dir / flowcell / f"L{lane:03d}").joinpath(*args) / self.base
+            ).with_suffix(suffix)
+            for flowcell, lane in self.samples
         ]
 
     @property
     def polya_filtering_summaries(self) -> list[Path]:
         """polyA filtering summary"""
-        return self.per_lane("alignment", suffix=".polyA_filtering.summary.txt")
+        return self.per_sample("alignment", suffix=".polyA_filtering.summary.txt")
 
     @property
     def star_logs(self) -> list[Path]:
         """Log files from STAR alignment"""
-        return self.per_lane("alignment", suffix=".star.Log.final.out")
+        return self.per_sample("alignment", suffix=".star.Log.final.out")
 
     @property
     def alignment_pickles(self) -> list[Path]:
         """Pickle files containing statistics about the alignment"""
-        return self.per_lane("alignment", suffix=".alignment_statistics.pickle")
+        return self.per_sample("alignment", suffix=".alignment_statistics.pickle")
 
     @property
     def processed_bams(self) -> list[Path]:
         """Final aligned+unmapped output BAMs"""
-        return self.per_lane(suffix=".final.bam")
+        return self.per_sample(suffix=".final.bam")
 
     def __str__(self):
         return self.name
 
 
 @dataclass
-class LibraryLane(Library):
+class Sample(Library):
+    """Represent a single entry in a samplesheet, which may be part of a larger library"""
+
+    flowcell: str
     lane: int
+    barcodes: list[str]
 
     @property
     def lane_dir(self) -> Path:
-        return self.dir / f"L{self.lane:03d}"
+        return self.dir / self.flowcell / f"L{self.lane:03d}"
+
+    @property
+    def barcode_ubams(self) -> list[Path]:
+        """One unmapped BAM per barcode, merged into raw_ubam"""
+        return [
+            (self.lane_dir / self.base).with_suffix(f".{barcode}.unmapped.bam")
+            for barcode in self.barcodes
+        ]
 
     @property
     def raw_ubam(self) -> Path:
-        """Raw unmapped BAM from demux. Keep this one for posterity"""
+        """Raw unmapped BAM. Keep this one for posterity"""
         return (self.lane_dir / self.base).with_suffix(".unmapped.bam")
 
     @property

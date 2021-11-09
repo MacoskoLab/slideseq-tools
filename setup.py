@@ -16,7 +16,7 @@ def read(*names, **kwargs):
 
 setuptools.setup(
     name="slideseq-tools",
-    version="0.2.2",
+    version="0.2.3",
     license="MIT License",
     description="Scripts processing slideseq data",
     long_description=read("README.md"),
@@ -46,7 +46,7 @@ setuptools.setup(
     extras_require={"dev": ["black", "isort", "flake8", "pre-commit"]},
     entry_points={
         "console_scripts": [
-            "submit_flowcell = slideseq.pipeline.submit_slideseq:main",
+            "submit_slideseq = slideseq.pipeline.submit_slideseq:main",
             "align_library = slideseq.pipeline.alignment:main",
             "process_library = slideseq.pipeline.processing:main",
             "build_ref = slideseq.pipeline.reference:main",
