@@ -2,7 +2,7 @@ import importlib.resources
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import yaml
 
@@ -21,7 +21,7 @@ class Config:
     gsecret_name: str
     gsheet_id: str
     worksheet: str
-    gs_path: Path
+    gs_path: Optional[Path]
 
     @staticmethod
     def from_file(input_file: Path):
@@ -39,7 +39,7 @@ class Config:
             gsecret_name=data["gsecret_name"],
             gsheet_id=data["gsheet_id"],
             worksheet=data["worksheet"],
-            gs_path=Path(data["gs_path"]),
+            gs_path=Path(data["gs_path"]) if data["gs_path"] else None,
         )
 
     def dropseq_cmd(

@@ -307,10 +307,11 @@ def main(
 
     log.debug("Setting group permissions")
     give_group_access(sample.dir)
-    log.debug("Copying data to google storage")
-    rsync_to_google(
-        sample.lane_dir,
-        config.gs_path / sample.lane_dir.relative_to(config.library_dir),
-    )
+    if config.gs_path is not None:
+        log.debug("Copying data to google storage")
+        rsync_to_google(
+            sample.lane_dir,
+            config.gs_path / sample.lane_dir.relative_to(config.library_dir),
+        )
 
     log.info(f"Alignment for {sample} completed")
