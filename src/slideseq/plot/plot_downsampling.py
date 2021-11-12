@@ -17,9 +17,7 @@ import matplotlib.pyplot as plt
 log = logging.getLogger(__name__)
 
 
-def plot_downsampling(
-        downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
-):
+def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path):
     xy = []
 
     # right now barcodes is a list
@@ -140,12 +138,12 @@ def plot_downsampling(
     ax.legend()
 
     # calculate 2x and 10x depth for the 100% model with the ratios model(2) / model(1) and model(10) / model(1)
-    r_2 = (model(2.0, params)/model(1.0, params))
-    r_10 = (model(10.0, params)/model(1.0, params))
+    r_2 = (model(2.0, params)/model(1.0, params)) # model(2) / model(1)
+    r_10 = (model(10.0, params)/model(1.0, params)) # model(10) / model(1)
 
-    # text box for a summary of the return for 2x and 10x depth for the 100% model
-    textstr = '\n'.join(((f"{r_2:.1%}"), (f"{r_10:.1%}")))
-    ax.text(1.0, 1.0, textstr, transform=ax.transAxes, fontsize=9,
+    # text box, bottom right, for a summary of the return for 2x and 10x depth for the 100% model
+    textstr = '\n'.join(((f"{r_2:.1%}"), (f"{r_10:.1%}"))) # used string formatting to use the number from the code.
+    ax.text(1.0, 0, textstr, transform=ax.transAxes, fontsize=9,
             verticalalignment='top', horizontalalignment='right', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 
