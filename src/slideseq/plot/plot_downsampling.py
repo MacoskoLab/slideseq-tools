@@ -145,8 +145,7 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_pat
 
     # text box, bottom right, for a summary of the return for 2x and 10x depth for the 100% model
     textstr = '\n'.join(((f"{r_2:.1%}"), (f"{r_10:.1%}"))) # used string formatting to use the number from the code.
-    # ax.text(0.99, 0.05, textstr, transform=ax.transAxes, fontsize=9,
-    # verticalalignment='top', horizontalalignment='right', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    # use AnchoredText to position text box to bottom right
     at = AnchoredText(textstr,
                       loc='lower right', prop=dict(size=8), frameon=True,
                       )
