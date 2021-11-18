@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import os
 from pathlib import Path
 
 import matplotlib.figure
@@ -12,14 +11,14 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from slideseq.plot import read_dge_summary
 
-import matplotlib.pyplot as plt
-
 from matplotlib.offsetbox import AnchoredText
 
 log = logging.getLogger(__name__)
 
 
-def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path):
+def plot_downsampling(
+    downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
+):
     xy = []
 
     # right now barcodes is a list
@@ -93,7 +92,8 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_pat
     # model function takes 0.1, 0.2 ... 1.0 for r and outputs the mean counts values which are y,
     # based on some parameters alpha and beta, which we need to find to predict the result for any value of r.
 
-    # The least_squares function is to optimize the model function, we want to minimize the error, which is the difference between the model prediction and the data.
+    # The least_squares function is to optimize the model function, we want to minimize the error,
+    # which is the difference between the model prediction and the data.
 
     def model_least_squares(params, *, r, data):
         # computes model and compares it to the data
@@ -107,9 +107,9 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_pat
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
     for y, label, color in zip(
-            (y_100, y_80, y_60, y_40, y_20),
-            ("100", "80", "60", "40", "20"),
-            ("r", "b", "g", "k", "p"),
+        (y_100, y_80, y_60, y_40, y_20),
+        ("100", "80", "60", "40", "20"),
+        ("r", "b", "g", "k", "p"),
     ):
         output = scipy.optimize.least_squares(
             model_least_squares,
@@ -133,22 +133,19 @@ def plot_downsampling(downsampling_output: list[tuple[float, Path]], matched_pat
     ax.set_ylabel("Transcripts per matched barcode")
     ax.set_title("Average transcripts for matched barcodes")
 
-    ax.set_xlim(
-        0.0, 3.1
-    )  # r went upto 1.0 for actual data, but x_values for model go up to 3.0
+    # r went up to 1.0 for actual data, but x_values for model go up to 3.0
+    ax.set_xlim(0.0, 3.1)
 
     ax.legend()
 
     # calculate 2x and 10x depth for the 100% model with the ratios model(2) / model(1) and model(10) / model(1)
-    r_2 = (model(2.0, params)/model(1.0, params)) # model(2) / model(1)
-    r_10 = (model(10.0, params)/model(1.0, params)) # model(10) / model(1)
+    r_2 = model(2.0, params) / model(1.0, params)
+    r_10 = model(10.0, params) / model(1.0, params)
 
     # text box, bottom right, for a summary of the return for 2x and 10x depth for the 100% model
-    textstr = '\n'.join(((f"{r_2:.1%}"), (f"{r_10:.1%}"))) # used string formatting to use the number from the code.
+    textstr = f"top 20%, 2x depth:  {r_2:.1%}\ntop 20%, 10x depth: {r_10:.1%}"
     # use AnchoredText to position text box to bottom right
-    at = AnchoredText(textstr,
-                      loc='lower right', prop=dict(size=8), frameon=True,
-                      )
+    at = AnchoredText(textstr, loc='lower right', prop=dict(size=8), frameon=True)
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
     ax.add_artist(at)
 
