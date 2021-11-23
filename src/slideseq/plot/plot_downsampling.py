@@ -22,7 +22,7 @@ def plot_downsampling(
     percentiles = np.array([80, 60, 40, 20])
 
     bc_list, full_umis_per_bc, _ = read_dge_summary(matched_path)
-    # set comprehension to can remove the -1 from the matched barcodes
+    # set comprehension to remove the -1 from the matched barcodes
     bc_set = {bc.split("-")[0] for bc in bc_list}
 
     total_umis = sum(full_umis_per_bc)
@@ -47,7 +47,11 @@ def plot_downsampling(
         total_umis = sum(r_umis_per_bc)
         n_bcs = len(r_umis_per_bc)
 
-        # calculate total UMIs for top 80, 40, 60, 20% of umis
+        # how this works: r_umis_per_bc is in descending order. We reverse it,
+        # then calculate the cumulative sum. The percentiles of that sum are
+        # equal to the total reads from the bottom 20%, 40%, etc. We subtract
+        # from the overall total to get the top 80%, 60%, etc. Then divide to
+        # get the mean
         quintiles = total_umis - np.percentile(
             np.cumsum(r_umis_per_bc[::-1]), percentiles[::-1]
         )
