@@ -128,9 +128,6 @@ def main(
         for flowcell_dir in flowcell_dirs:
             run_info_list.append(get_run_info(flowcell_dir))
 
-        # break rows out per flowcell/lane for processing
-        run_df = split_sample_lanes(run_df, run_info_list)
-
         manifest = Manifest(
             run_name=run_name,
             flowcell_dirs=flowcell_dirs,

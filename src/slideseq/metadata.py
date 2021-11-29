@@ -209,7 +209,9 @@ def split_sample_lanes(run_df: pd.DataFrame, run_info_list: list[RunInfo]):
             row_lanes = str(row.lane).split(",")
 
         for lane in row_lanes:
-            row.lane = int(lane)
+
+            # go through float() to protect against pandas weirdness
+            row.lane = int(float(lane))
             new_rows.append(row.copy())
 
     return pd.DataFrame(new_rows, index=range(len(new_rows)))
