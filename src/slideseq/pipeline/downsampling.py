@@ -113,7 +113,7 @@ def main(
     # Progressively downsample the BAM from largest to smallest
     input_bam = downsample_input.bam
     for ratio in range(9, 0, -1):
-        downsampled_bam = downsample_input.downsampled_bam(ratio)
+        downsampled_bam = downsample_input.downsampled_bam(ratio / 10)
         downsample_output.append(
             downsample_dge(
                 config=config,
