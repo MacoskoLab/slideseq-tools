@@ -15,49 +15,40 @@ from slideseq.plot import read_dge_summary
 log = logging.getLogger(__name__)
 
 
+def calculate_quintiles(umis_per_bc: list[int], percentiles: np.ndarray):
+    total_umis = sum(umis_per_bc)
+    n_bcs = len(umis_per_bc)
+
+    print(total_umis, n_bcs)
+
+    # how this works: umis_per_bc is in descending order. We reverse it,
+    # then calculate the cumulative sum. The percentiles of that sum are
+    # equal to the total reads from the bottom 20%, 40%, etc. We subtract
+    # from the overall total to get the top 80%, 60%, etc. Then divide to
+    # get the mean
+    quintiles = total_umis - np.percentile(
+        np.cumsum(umis_per_bc[::-1]), percentiles[::-1]
+    )
+    quintiles /= n_bcs * percentiles / 100
+
+    return total_umis / n_bcs, *quintiles
+
+
 def plot_downsampling(
-    downsampling_output: list[tuple[float, Path]], matched_path: Path, figure_path: Path
+    downsampling_output: list[tuple[float, Path]],
+    full_dge_path: Path,
+    figure_path: Path,
 ):
     # percentiles of top barcodes to compute
     percentiles = np.array([80, 60, 40, 20])
 
-    bc_list, full_umis_per_bc, _ = read_dge_summary(matched_path)
-    # set comprehension to remove the -1 from the matched barcodes
-    bc_set = {bc.split("-")[0] for bc in bc_list}
-
-    total_umis = sum(full_umis_per_bc)
-    n_bcs = len(full_umis_per_bc)
-
-    quintiles = total_umis - np.percentile(
-        np.cumsum(full_umis_per_bc[::-1]), percentiles[::-1]
-    )
-    quintiles /= n_bcs * percentiles / 100
-
-    xy = [(1.0, total_umis / n_bcs, *quintiles)]
+    _, umis_per_bc, _ = read_dge_summary(full_dge_path)
+    xy = [(1.0, *calculate_quintiles(umis_per_bc, percentiles))]
 
     for ratio, downsample_file in downsampling_output:
         # read the barcodes and counts from this downsampled file
-        barcodes, umis_per_bc, _ = read_dge_summary(downsample_file)
-
-        # filter to barcodes from the matched expression summary file
-        r_umis_per_bc = [
-            umis for bc, umis in zip(barcodes, umis_per_bc) if bc in bc_set
-        ]
-
-        total_umis = sum(r_umis_per_bc)
-        n_bcs = len(r_umis_per_bc)
-
-        # how this works: r_umis_per_bc is in descending order. We reverse it,
-        # then calculate the cumulative sum. The percentiles of that sum are
-        # equal to the total reads from the bottom 20%, 40%, etc. We subtract
-        # from the overall total to get the top 80%, 60%, etc. Then divide to
-        # get the mean
-        quintiles = total_umis - np.percentile(
-            np.cumsum(r_umis_per_bc[::-1]), percentiles[::-1]
-        )
-        quintiles /= n_bcs * percentiles / 100
-
-        xy.append((ratio, total_umis / n_bcs, *quintiles))
+        _, umis_per_bc, _ = read_dge_summary(downsample_file)
+        xy.append((ratio, *calculate_quintiles(umis_per_bc, percentiles)))
 
     xy.sort()
     x, *ys = zip(*xy)
@@ -135,8 +126,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "ds_path", nargs="+", type=Path, help="Downsampled summary files"
     )
-    parser.add_argument("--m_path", type=Path, help="Matched summary file")
-    parser.add_argument("--output", help="output filename", required=True)
+    parser.add_argument("--full_dge_path", type=Path, help="Full summary file")
+    parser.add_argument("--output", help="Path for output figure", required=True)
     args = parser.parse_args()
 
     # make the list of (float, Path) to pass into the main plotting function
@@ -146,9 +137,8 @@ if __name__ == "__main__":
     for downsample_summary in args.ds_path:
         # extract ratio from file name
         downsample_ratio = float(downsample_summary.name.split("_")[3][:3])
-
         downsampling_list.append((downsample_ratio, downsample_summary))
 
     plot_downsampling(
-        downsampling_list, matched_path=args.m_path, figure_path=args.output
+        downsampling_list, full_dge_path=args.full_dge_path, figure_path=args.output
     )
