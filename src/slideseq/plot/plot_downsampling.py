@@ -118,7 +118,7 @@ def plot_downsampling(
     # text box, bottom right, for a summary of the return for 2x and 10x depth for the 100% model
     textstr = f"top 20%, 2x depth: {r_2:8.1%}\ntop 20%, 10x depth: {r_10:6.1%}"
     # use AnchoredText to position text box to bottom right
-    at = AnchoredText(textstr, loc="lower right", prop=dict(size=8), frameon=True)
+    at = AnchoredText(textstr, loc="lower right", prop=dict(size=10), frameon=True)
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
     at.patch.set_edgecolor((0.8, 0.8, 0.8))
     ax.add_artist(at)
