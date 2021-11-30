@@ -19,8 +19,6 @@ def calculate_quintiles(umis_per_bc: list[int], percentiles: np.ndarray):
     total_umis = sum(umis_per_bc)
     n_bcs = len(umis_per_bc)
 
-    print(total_umis, n_bcs)
-
     # how this works: umis_per_bc is in descending order. We reverse it,
     # then calculate the cumulative sum. The percentiles of that sum are
     # equal to the total reads from the bottom 20%, 40%, etc. We subtract
