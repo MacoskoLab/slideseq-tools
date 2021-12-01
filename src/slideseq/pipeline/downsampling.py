@@ -112,8 +112,10 @@ def main(
 
     # Progressively downsample the BAM from largest to smallest
     input_bam = downsample_input.bam
-    for ratio in range(9, 0, -1):
-        downsampled_bam = downsample_input.downsampled_bam(ratio / 10)
+    for n in range(9, 0, -1):
+        ratio = n / 10
+
+        downsampled_bam = downsample_input.downsampled_bam(ratio)
         downsample_output.append(
             downsample_dge(
                 config=config,
@@ -121,10 +123,11 @@ def main(
                 downsampled_bam=downsampled_bam,
                 cell_tag=downsample_tag,
                 library=library,
-                ratio=ratio / 10,
+                ratio=ratio,
                 tmp_dir=manifest.tmp_dir,
             )
         )
+
         if input_bam != downsample_input.bam:
             os.remove(input_bam)
         input_bam = downsampled_bam
