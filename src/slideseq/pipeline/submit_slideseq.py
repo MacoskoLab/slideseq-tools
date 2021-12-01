@@ -246,11 +246,7 @@ def main(
                         )
 
                     alignment_args.extend(
-                        [
-                            "-t",
-                            f"1-{n_libraries}",
-                            f"{qsub_script.absolute()}",
-                        ]
+                        ["-t", f"1-{n_libraries}", f"{qsub_script.absolute()}"]
                     )
 
                     if align:
@@ -265,8 +261,6 @@ def main(
 
         if run_name in run_errors:
             continue
-
-        processing_jids = dict()
 
         # this script analyzes the alignment output, generates plots, matches to puck, etc
         # this is per-library, which means each library needs to wait on the alignment jobs
@@ -300,21 +294,17 @@ def main(
                         )
 
             processing_args.extend(
-                [
-                    "-t",
-                    f"1-{n_libraries}",
-                    f"{qsub_script.absolute()}",
-                ]
+                ["-t", f"1-{n_libraries}", f"{qsub_script.absolute()}"]
             )
 
             if processing:
-                processing_jids[run_info.flowcell, lane] = attempt_qsub(
+                processing_jid = attempt_qsub(
                     processing_args, run_name, "processing", dryrun
                 )
-                if processing_jids[run_info.flowcell, lane] is None:
+                if processing_jid is None:
                     run_errors.add(run_name)
             else:
-                processing_jids[run_info.flowcell, lane] = None
+                processing_jid = None
                 log.info("Skipping processing step")
 
         if run_name in run_errors:
@@ -322,19 +312,12 @@ def main(
 
         # this (optional) script will downsample the alignment output and plot the results
         # this is per-library, which means each library needs to wait on the processing jobs
-        # for the relevant lane(s) that contain that library. We're going to wait on all the
-        # lanes, but use hold_jid_ad to wait on only that library's processing jobs
+        # for the library
         with importlib.resources.path(
             slideseq.scripts, "downsampling.sh"
         ) as qsub_script:
-            if processing and any(
-                processing_jids[run_info.flowcell, lane] is None
-                for run_info in run_info_list
-                for lane in run_info.lanes
-            ):
-                log.debug(
-                    "Not downsampling because some processing jobs were not submitted"
-                )
+            if processing and processing_jid is None:
+                log.debug("Not downsampling because processing job was not submitted")
                 continue
 
             downsample_args = qsub_args(
@@ -346,21 +329,10 @@ def main(
             )
 
             if processing:
-                for run_info in run_info_list:
-                    for lane in run_info.lanes:
-                        downsample_args.extend(
-                            [
-                                "-hold_jid_ad",
-                                f"{processing_jids[run_info.flowcell, lane]}",
-                            ]
-                        )
+                downsample_args.extend(["-hold_jid_ad", f"{processing_jid}"])
 
             downsample_args.extend(
-                [
-                    "-t",
-                    f"1-{n_libraries}",
-                    f"{qsub_script.absolute()}",
-                ]
+                ["-t", f"1-{n_libraries}", f"{qsub_script.absolute()}"]
             )
 
             downsample_jid = attempt_qsub(
