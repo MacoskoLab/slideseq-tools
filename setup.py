@@ -53,6 +53,7 @@ setuptools.setup(
             "build_ref = slideseq.pipeline.reference:main",
             "plot_barcodes = slideseq.scripts.plot_barcodes:main",
             "barcode_matrix = slideseq.scripts.barcode_matrix:main",
+            "check_barcodes = slideseq.scripts.check_barcodes:main",
         ]
     },
 )
