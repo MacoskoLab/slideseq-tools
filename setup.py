@@ -49,6 +49,7 @@ setuptools.setup(
             "submit_slideseq = slideseq.pipeline.submit_slideseq:main",
             "align_library = slideseq.pipeline.alignment:main",
             "process_library = slideseq.pipeline.processing:main",
+            "downsample_library = slideseq.pipeline.downsampling:main",
             "build_ref = slideseq.pipeline.reference:main",
             "plot_barcodes = slideseq.scripts.plot_barcodes:main",
             "barcode_matrix = slideseq.scripts.barcode_matrix:main",
