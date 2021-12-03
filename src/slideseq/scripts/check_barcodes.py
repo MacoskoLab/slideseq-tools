@@ -34,7 +34,7 @@ def main(run: str, debug: bool = False):
     seq_barcodes = dict()
     bead_barcodes = dict()
 
-    log.info("Reading sequenced barcode and bead barcodes")
+    log.info("Reading sequenced barcodes and bead barcodes")
     for library in manifest.libraries:
         if library.merged.selected_cells.exists():
             with gzip.open(library.merged.selected_cells, "rt") as fh:
