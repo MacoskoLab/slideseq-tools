@@ -52,7 +52,7 @@ def main(run: str, debug: bool = False):
 
     log.debug(f"Read data for {len(seq_barcodes)} libraries")
 
-    max_len = max(map(len, bead_barcodes)) + 1
+    max_len = max(map(len, bead_barcodes))
 
     print(
         f"{'library':{max_len}s}",
