@@ -293,17 +293,17 @@ def write_matrix(upb, beads, tags, output_file):
 
 
 @click.command()
-@click.argument("fastq-r1", type=click.Path(exists=True))
-@click.argument("fastq-r2", type=click.Path(exists=True))
+@click.argument("fastq-r1", type=click.Path(exists=True, path_type=Path))
+@click.argument("fastq-r2", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--puck-dir",
-    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
     help="Path containing BeadBarcodes.txt and BeadLocations.txt",
     required=True,
 )
 @click.option(
     "--output-dir",
-    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
     help="Path for output",
     required=True,
 )
@@ -362,7 +362,6 @@ def main(
     """
     create_logger(debug, dryrun=False)
 
-    output_dir = Path(output_dir)
     output_pdf = output_dir / "plots.pdf"
 
     log.info(f"Saving output to {output_dir}")
@@ -378,7 +377,7 @@ def main(
     assert len(r1_reads) == len(r2_reads), "read different number of reads"
     log.info(f"Total of {len(r1_reads)} reads")
 
-    bead_barcodes, xy = get_barcodes(Path(puck_dir))
+    bead_barcodes, xy = get_barcodes(puck_dir)
 
     constant_sequence_hset = slideseq.bead_matching.hamming_set(
         slideseq.bead_matching.initial_h_set(constant_sequence), include_N=False

@@ -54,7 +54,7 @@ def attempt_qsub(qsub_arg_list: list[str], run_name: str, job_name: str, dryrun:
 )
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
-@click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
+@click.option("--log-file", type=click.Path(path_type=Path))
 def main(
     runs: list[str],
     demux: bool = True,
@@ -62,7 +62,7 @@ def main(
     processing: bool = True,
     dryrun: bool = False,
     debug: bool = False,
-    log_file: str = None,
+    log_file: Path = None,
 ):
     """
     Submit each RUN to the Slide-seq alignment pipeline.

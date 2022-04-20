@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - Click>=7.1
+  - Click>=8.0
   - PyYAML>=5.4
   - google-api-python-client>=2.2
   - google-auth>=1.29

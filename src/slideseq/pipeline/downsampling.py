@@ -76,19 +76,19 @@ def downsample_dge(
 )
 @click.option(
     "--manifest-file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
     help="YAML file containing the manifest",
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
-@click.option("--log-file", type=click.Path(exists=False))
+@click.option("--log-file", type=click.Path(path_type=Path))
 def main(
-    library_index: int, manifest_file: str, debug: bool = False, log_file: str = None
+    library_index: int, manifest_file: Path, debug: bool = False, log_file: Path = None
 ):
     create_logger(debug=debug, log_file=log_file)
     config = get_config()
 
     log.debug(f"Reading manifest from {manifest_file}")
-    manifest = Manifest.from_file(Path(manifest_file))
+    manifest = Manifest.from_file(manifest_file)
 
     # task array is 1-indexed
     library = manifest.get_library(library_index - 1)

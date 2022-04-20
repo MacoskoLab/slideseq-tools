@@ -61,10 +61,13 @@ def check_gtf(reference_gtf: Path, mt_sequence: str):
     "-f",
     "--reference-fasta",
     required=True,
-    type=click.Path(dir_okay=False, exists=True),
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
 )
 @click.option(
-    "-g", "--reference-gtf", required=True, type=click.Path(dir_okay=False, exists=True)
+    "-g",
+    "--reference-gtf",
+    required=True,
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
 )
 @click.option(
     "-m", "--mt-sequence", required=True, help="Name in GTF for mitochrondrial sequence"
@@ -80,25 +83,23 @@ def check_gtf(reference_gtf: Path, mt_sequence: str):
 @click.option("--overwrite", is_flag=True, help="Overwrite any existing reference")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
-@click.option("--log-file", type=click.Path(exists=False))
+@click.option("--log-file", type=click.Path(path_type=Path))
 def main(
     genome_name: str,
-    reference_fasta: str,
-    reference_gtf: str,
+    reference_fasta: Path,
+    reference_gtf: Path,
     mt_sequence: str,
     filter_biotypes: list[str],
     overwrite: bool = False,
     debug: bool = False,
     dryrun: bool = False,
-    log_file: str = None,
+    log_file: Path = None,
 ):
     create_logger(debug=debug, dryrun=dryrun, log_file=log_file)
     env_name = slideseq.util.get_env_name()
     log.debug(f"Running in Conda env {env_name}")
     config = get_config()
 
-    reference_fasta = Path(reference_fasta)
-    reference_gtf = Path(reference_gtf)
     output_dir = config.reference_dir / genome_name
     star_dir = output_dir / "STAR"
 

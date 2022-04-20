@@ -260,32 +260,32 @@ def write_barcode_xy(bead_list, bead_xy, output_file: Path):
     "-s",
     "--sequence-barcodes",
     required=True,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
 )
 @click.option(
     "-b",
     "--bead-barcodes",
     required=True,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
 )
 @click.option(
     "-l",
     "--bead-locations",
     required=True,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
 )
 @click.option(
     "-o",
     "--output-file",
     required=True,
-    type=click.Path(exists=False, file_okay=True, dir_okay=False),
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),
 )
 @click.option("--radius", default=10.0, type=float, show_default=True)
 def main(
-    sequence_barcodes: str,
-    bead_barcodes: str,
-    bead_locations: str,
-    output_file: str,
+    sequence_barcodes: Path,
+    bead_barcodes: Path,
+    bead_locations: Path,
+    output_file: Path,
     radius: float = 10.0,
 ):
     log.setLevel(logging.DEBUG)
@@ -298,11 +298,6 @@ def main(
 
     log.addHandler(stream_handler)
     log.info(msg="Added stream handler")
-
-    sequence_barcodes = Path(sequence_barcodes)
-    bead_barcodes = Path(bead_barcodes)
-    bead_locations = Path(bead_locations)
-    output_file = Path(output_file)
 
     barcode_list, barcode_mapping, bead_xy, bead_graph = match_barcodes(
         sequence_barcodes, bead_barcodes, bead_locations, radius

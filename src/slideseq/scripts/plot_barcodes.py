@@ -50,17 +50,17 @@ def spatial_plot(bead_xy_a, dist, title, pdf_pages, pct: float = 95.0):
 
 
 @click.command()
-@click.argument("fastq_r1", type=click.Path(exists=True))
-@click.argument("fastq_r2", type=click.Path(exists=True))
+@click.argument("fastq_r1", type=click.Path(exists=True, path_type=Path))
+@click.argument("fastq_r2", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--barcodes",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, path_type=Path),
     help="Path to BeadBarcodes.txt",
     required=True,
 )
 @click.option(
     "--locations",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, path_type=Path),
     help="Path to BeadLocations.txt",
     required=True,
 )
@@ -68,10 +68,15 @@ def spatial_plot(bead_xy_a, dist, title, pdf_pages, pct: float = 95.0):
     "--tag_sequence", default="TCGAGAGATCTACGGGTGGC", help="sequence to match against"
 )
 @click.option(
-    "--output_pdf", type=click.Path(), help="Path to output figure", required=True
+    "--output_pdf",
+    type=click.Path(path_type=Path),
+    help="Path to output figure",
+    required=True,
 )
 @click.option(
-    "--extra_pdf", type=click.Path(), help="Optional path for a bunch of other plots"
+    "--extra_pdf",
+    type=click.Path(path_type=Path),
+    help="Optional path for a bunch of other plots",
 )
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option(
@@ -96,8 +101,6 @@ def main(
     The second read is assumed to have TAG_SEQUENCE in bases 20-40.
     """
     create_logger(debug, dryrun=False)
-
-    output_pdf = Path(output_pdf)
 
     log.debug(f"Reading from {fastq_r1}")
     with gzip.open(fastq_r1, "rt") as fh:
