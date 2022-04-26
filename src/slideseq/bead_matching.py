@@ -100,9 +100,9 @@ def bipartite_matching(
     assert (
         bead_lens == seq_lens
     ), f"Beads have length {bead_lens} but sequenced lengths {seq_lens}"
-    log.debug(msg=f"Barcodes all have length {set(map(len, bead_barcodes))}")
+    log.debug(msg=f"Barcodes all have length {bead_lens}")
 
-    assert {c for bc in bead_barcodes for c in bc} == set("ACGTN")
+    assert {c for bc in bead_barcodes for c in bc}.issubset("ACGTN")
 
     seq_nset = {c for bc in seq_barcodes for c in bc}
     assert seq_nset.issubset("ACGTN")
