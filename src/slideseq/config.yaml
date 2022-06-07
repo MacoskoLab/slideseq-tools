@@ -1,3 +1,4 @@
+project_name: macosko_lab
 picard: /seq/software/picard-public/2.24.2/picard.jar
 dropseq_dir: /broad/macosko/bin/dropseq-tools-2.4.0
 reference_dir: /broad/macosko/reference

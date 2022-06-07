@@ -75,11 +75,16 @@ def rsync_to_google(path: Path, gs_path: Path):
 
 
 def qsub_args(
-    log_file: Path = None, email: str = None, debug: bool = False, **kwargs: Any
+    project_name: str = None,
+    log_file: Path = None,
+    email: str = None,
+    debug: bool = False,
+    **kwargs: Any,
 ) -> list[str]:
     """
     Returns command list starting with "qsub", adding configured options
 
+    :param project_name: name for the project to use with the -P option, if any
     :param log_file: path to log file for output
     :param email: Email addresses to include with the -M option. If None, emails will
                   be sent to the submitting user
@@ -92,6 +97,9 @@ def qsub_args(
 
     # standard options, including resources requests, are specified in the shell scripts
     arg_list = ["qsub"]
+
+    if project_name is not None:
+        arg_list.extend(["-P", project_name])
 
     if log_file is not None:
         arg_list.extend(["-o", f"{log_file.absolute().resolve()}"])
