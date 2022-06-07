@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Config:
+    project_name: str
     picard: Path
     dropseq_dir: Path
     reference_dir: Path
@@ -31,6 +32,7 @@ class Config:
         log.debug(f"Read config file {input_file}")
 
         return Config(
+            project_name=data["project_name"] or None,
             picard=Path(data["picard"]),
             dropseq_dir=Path(data["dropseq_dir"]),
             reference_dir=Path(data["reference_dir"]),

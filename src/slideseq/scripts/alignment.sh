@@ -7,7 +7,6 @@
 #$ -binding linear:8
 #$ -terse
 #$ -notify
-#$ -P macosko_lab
 #$ -R y
 #$ -j y
 #$ -m eas

@@ -185,6 +185,7 @@ def main(
         ) as qsub_script:
             for run_info in run_info_list:
                 demux_args = qsub_args(
+                    project_name=config.project_name,
                     log_file=manifest.log_dir / run_info.demux_log,
                     email=",".join(manifest.email_addresses),
                     PICARD_JAR=config.picard,
@@ -231,6 +232,7 @@ def main(
                         continue
 
                     alignment_args = qsub_args(
+                        project_name=config.project_name,
                         log_file=manifest.log_dir / run_info.alignment_log(lane),
                         email=",".join(manifest.email_addresses),
                         debug=debug,
@@ -276,6 +278,7 @@ def main(
                 continue
 
             processing_args = qsub_args(
+                project_name=config.project_name,
                 log_file=manifest.log_dir / "processing.$TASK_ID.log",
                 email=",".join(manifest.email_addresses),
                 debug=debug,
@@ -321,6 +324,7 @@ def main(
                 continue
 
             downsample_args = qsub_args(
+                project_name=config.project_name,
                 log_file=manifest.log_dir / "downsampling.$TASK_ID.log",
                 email=",".join(manifest.email_addresses),
                 debug=debug,

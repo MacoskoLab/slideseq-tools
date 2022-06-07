@@ -136,6 +136,7 @@ def main(
         slideseq.scripts, "build_reference.sh"
     ) as qsub_script:
         mkref_args = qsub_args(
+            project_name=config.project_name,
             log_file=output_dir / "build_reference.log",
             CONDA_ENV=env_name,
             PICARD_JAR=config.picard,
