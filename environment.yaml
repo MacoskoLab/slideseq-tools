@@ -10,7 +10,7 @@ dependencies:
   - google-auth>=1.29
   - google-cloud-secret-manager>=2.4
   - matplotlib>=3.4,<3.5
-  - networkx>=2.5
+  - networkx>=2.7
   - numpy>=1.20
   - openpyxl>=3.0
   - pandas>=1.2
