@@ -185,7 +185,7 @@ def match_barcodes(
     log.debug(f"hamming matrix (<=1) with {hamming_matrix.nnz // 2} edges")
 
     # just multiply together to get the combined adjacency matrix!
-    combined_graph = nx.from_scipy_sparse_matrix(radius_matrix.multiply(hamming_matrix))
+    combined_graph = nx.from_scipy_sparse_array(radius_matrix.multiply(hamming_matrix))
     log.debug(f"combined graph with {combined_graph.number_of_edges()} edges")
 
     # add xy coordinates to graph so we can analyze later
