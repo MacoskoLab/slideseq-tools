@@ -52,6 +52,9 @@ def attempt_qsub(qsub_arg_list: list[str], run_name: str, job_name: str, dryrun:
 @click.option(
     "--processing/--no-processing", default=True, help="Whether to run processing"
 )
+@click.option(
+    "--downsample/--no-downsample", default=None, help="Overwrite downsampling flag"
+)
 @click.option("--dryrun", is_flag=True, help="Show the plan but don't execute")
 @click.option("--debug", is_flag=True, help="Turn on debug logging")
 @click.option("--log-file", type=click.Path(exists=False), help="File to write logs")
@@ -60,6 +63,7 @@ def main(
     demux: bool = True,
     align: bool = True,
     processing: bool = True,
+    downsample: bool = None,
     dryrun: bool = False,
     debug: bool = False,
     log_file: str = None,
@@ -119,6 +123,10 @@ def main(
 
         # convert columns to desired types
         run_df = run_df.astype(constants.METADATA_TYPES)
+
+        if downsample is not None:
+            log.warning(f"Overwriting downsample flag, setting to {downsample}")
+            run_df.gen_downsampling = downsample
 
         # data locations
         output_dir = config.workflow_dir / run_name
